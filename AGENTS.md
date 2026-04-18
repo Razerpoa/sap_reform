@@ -65,3 +65,13 @@ npm run lint    # ESLint
 
 - Light mode only - dark mode media query in `globals.css` is disabled
 - Use Tailwind CSS classes (v4)
+
+## Git Integration
+
+- **Remote**: https://github.com/Razerpoa/sap_reform
+- **Protocol**: HTTPS with GitHub CLI credential helper
+- **Setup**: Run `gh auth login` once, then:
+  ```bash
+  git config credential.helper '!gh auth git-credential'
+  ```
+- **Push**: `git push -u origin main`
