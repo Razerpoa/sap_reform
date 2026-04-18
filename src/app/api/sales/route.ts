@@ -1,0 +1,90 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+import { startOfDay, isToday } from "date-fns";
+import { calculateSalesRevenue, calculateSalesTotals } from "@/lib/calculations";
+
+const salesSchema = z.object({
+  id: z.string().optional(),
+  date: z.string().transform((str) => startOfDay(new Date(str))),
+  customerName: z.string().min(1),
+  jmlPeti: z.number().default(0),
+  totalKg: z.number().default(0),
+  hargaCentral: z.number().default(0),
+  up: z.number().default(0),
+  hargaJual: z.number().default(0),
+  subTotal: z.number().default(0),
+  totalKgHariIni: z.number().optional().nullable(),
+  totalPetiHariIni: z.number().optional().nullable(),
+  penjualanHariIni: z.number().optional().nullable(),
+  totalProduksi: z.number().optional().nullable(),
+  stockAkhir: z.number().optional().nullable(),
+});
+
+export async function GET(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  const dateStr = searchParams.get("date");
+
+  if (dateStr) {
+    const date = startOfDay(new Date(dateStr));
+    const entries = await prisma.sales.findMany({ where: { date } });
+    return NextResponse.json(entries);
+  }
+
+  const entries = await prisma.sales.findMany({
+    orderBy: { date: "desc" },
+    take: 100,
+  });
+  return NextResponse.json(entries);
+}
+
+export async function POST(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const body = await request.json();
+    const validatedData = salesSchema.parse(body);
+    
+    if (!isToday(validatedData.date)) {
+      return NextResponse.json({ error: "Modification of past entries is forbidden." }, { status: 403 });
+    }
+
+    // Auto-calculate revenue and daily totals using centralized functions
+    const subTotal = validatedData.subTotal || calculateSalesRevenue(validatedData.totalKg || 0, validatedData.hargaJual || 0);
+    
+    // Get existing entries for this date to calculate daily totals
+    const existingEntries = await prisma.sales.findMany({
+      where: { date: validatedData.date },
+    });
+    
+    const dailyTotals = calculateSalesTotals(existingEntries, {
+      totalKg: validatedData.totalKg,
+      jmlPeti: validatedData.jmlPeti,
+      hargaJual: validatedData.hargaJual,
+    });
+
+    const { id, ...data } = validatedData;
+    const entry = id 
+      ? await prisma.sales.update({ 
+          where: { id }, 
+          data: { ...data, subTotal, ...dailyTotals } as any 
+        })
+      : await prisma.sales.create({ 
+          data: { ...data, subTotal, ...dailyTotals } as any 
+        });
+
+    return NextResponse.json(entry);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const messages = error.issues.map((e) => `${e.path.join(".")}: ${e.message}`);
+      return NextResponse.json({ error: messages.join(", ") }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
