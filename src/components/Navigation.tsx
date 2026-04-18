@@ -19,7 +19,7 @@ export default function Navigation({ user }: NavigationProps) {
 
   const navItems = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "New Entry", href: "/entry", icon: PlusCircle },
+    { name: "Entri Baru", href: "/entry", icon: PlusCircle },
   ];
 
   return (

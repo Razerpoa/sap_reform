@@ -125,9 +125,11 @@ export default function EntryPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight capitalize">{activeTab} Entry</h1>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight capitalize">
+            {activeTab === "production" ? "Entri Produksi" : activeTab === "cashflow" ? "Arus Kas" : activeTab === "sales" ? "Penjualan" : "Data Master"}
+          </h1>
           <p className={cn("text-sm", isEditable ? "text-slate-500" : "text-amber-600 font-bold flex items-center gap-1")}>
-            {isEditable ? "Update daily records" : <><AlertCircle className="w-4 h-4" /> Read-only: History</>}
+            {isEditable ? "Update catatan harian" : <><AlertCircle className="w-4 h-4" /> Baca-saja: Riwayat</>}
           </p>
         </div>
         
@@ -147,10 +149,10 @@ export default function EntryPage() {
       {/* Tabs Navigation */}
       <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-8 overflow-x-auto no-scrollbar">
         {[
-          { id: "production", icon: TrendingUp, label: "Production" },
-          { id: "cashflow", icon: Wallet, label: "Cash Flow" },
-          { id: "sales", icon: ShoppingBag, label: "Sales" },
-          { id: "master", icon: Settings2, label: "Master" },
+          { id: "production", icon: TrendingUp, label: "Produksi" },
+          { id: "cashflow", icon: Wallet, label: "Arus Kas" },
+          { id: "sales", icon: ShoppingBag, label: "Penjualan" },
+          { id: "master", icon: Settings2, label: "Data Master" },
         ].map((t) => (
           <button
             key={t.id}
@@ -213,7 +215,7 @@ export default function EntryPage() {
             className="w-full sm:w-auto flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-blue-500/20"
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-            Save Information
+            Simpan Informasi
           </button>
         </div>
       )}
@@ -309,7 +311,7 @@ function SalesSection({ data, newSale, setNewSale, isEditable, onSave }: any) {
     <div className="space-y-6">
       {isEditable && (
         <div className="bg-blue-50 p-8 rounded-3xl border border-blue-100">
-          <h3 className="text-xl font-black text-blue-900 mb-6">Record New Sale</h3>
+          <h3 className="text-xl font-black text-blue-900 mb-6">Entri Penjualan Baru</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-blue-400 tracking-widest px-1">Customer</label>
@@ -338,7 +340,7 @@ function SalesSection({ data, newSale, setNewSale, isEditable, onSave }: any) {
       {data.length > 0 ? (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-black text-slate-900">Today's Transactions</h3>
+            <h3 className="font-black text-slate-900">Transaksi Hari Ini</h3>
             <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
               {data.length} Records
             </span>
@@ -361,7 +363,7 @@ function SalesSection({ data, newSale, setNewSale, isEditable, onSave }: any) {
       ) : (
         <div className="py-20 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
           <ShoppingBag className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-          <p className="text-slate-400 font-bold">No sales recorded for this date</p>
+          <p className="text-slate-400 font-bold">Tidak ada penjualan tercatat untuk tanggal ini</p>
         </div>
       )}
     </div>

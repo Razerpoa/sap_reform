@@ -16,14 +16,14 @@ export default function LoginPage() {
           SAP REFORM
         </h2>
         <p className="mt-2 text-center text-sm text-slate-600">
-          Secure tracker for daily operations
+          Pelacak aman untuk operasi harian
         </p>
       </div>
 
       <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
         <div className="bg-white px-8 py-10 shadow-xl shadow-slate-200 rounded-3xl border border-slate-100">
           <p className="text-center text-sm font-medium text-slate-700 mb-8">
-            Access restricted to whitelisted users
+            Akses terbatas untuk pengguna yang diizinkan
           </p>
           
           <button
@@ -48,7 +48,7 @@ export default function LoginPage() {
                 fill="#34A853"
               />
             </svg>
-            Continue with Google
+            Lanjutkan dengan Google
           </button>
         </div>
         

@@ -41,8 +41,8 @@ export default async function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Executive Dashboard</h1>
-          <p className="text-slate-500 font-medium italic">Comprehensive performance & financial monitoring</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Dashboard Eksekutif</h1>
+          <p className="text-slate-500 font-medium italic">Pemantauan kinerja & keuangan komprehensif</p>
         </div>
         <div className="flex gap-3">
           <Link
