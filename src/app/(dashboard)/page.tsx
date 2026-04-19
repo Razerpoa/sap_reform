@@ -72,8 +72,8 @@ export default async function DashboardPage() {
           ]}
         />
 
-        {/* Triple Grid Cards */}
-        <div className="grid grid-cols-3 gap-3 sm:gap-6">
+        {/* Quad Grid Cards (4 in desktop, 2x2 in mobile) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <PremiumStatCard 
             variant="compact"
             title="Produksi Hari ini"
@@ -93,7 +93,18 @@ export default async function DashboardPage() {
             icon={TrendingUp}
             color="bg-emerald-600"
             breakdown={[
-              { label: "Peti", value: `${(stats.salesTodayPeti || 0).toLocaleString()} Peti`, icon: Layers }
+              { label: "Peti Hari Ini", value: `${(stats.salesTodayPeti || 0).toLocaleString()} Peti`, icon: Layers }
+            ]}
+          />
+          <PremiumStatCard 
+            variant="compact"
+            title="Ringkasan Profit"
+            value={`Rp ${Math.round(stats.cashFlowTotalProfit || 0).toLocaleString()}`}
+            subtitle="Total Profit (30h)"
+            icon={TrendingDown}
+            color="bg-rose-600"
+            breakdown={[
+              { label: "Avg Profit", value: `Rp ${Math.round(stats.cashFlowAvgProfit || 0).toLocaleString()}`, icon: DollarSign }
             ]}
           />
           <BalanceCard 
