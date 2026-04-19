@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Download, TrendingUp, Package, Layers, DollarSign, Wallet, ShoppingBag, TrendingDown } from "lucide-react";
+import { Download, TrendingUp, Package, Layers, DollarSign, Wallet, ShoppingBag, TrendingDown, Landmark } from "lucide-react";
 import Link from "next/link";
 import Charts from "@/components/Charts";
 import { calculateDashboardStats } from "@/lib/calculations";
@@ -87,12 +87,11 @@ export default async function DashboardPage() {
           icon={Layers}
           color="bg-indigo-600"
         />
-        <StatCard 
-          title="Total Aset Liquid" 
-          value={`Rp ${(stats.cashFlowTotalLiquidAssets || 0).toLocaleString()}`}
-          subtitle="Saldo Rekening + Saldo Cash"
-          icon={Wallet}
-          color="bg-rose-600"
+        <BalanceCard 
+          title="Saldo Keuangan"
+          total={stats.cashFlowTotalLiquidAssets || 0}
+          rekening={stats.cashFlowSaldoRekening || 0}
+          cash={stats.cashFlowSaldoCash || 0}
         />
       </div>
 
@@ -155,6 +154,46 @@ function StatCard({ title, value, subtitle, icon: Icon, color, trend }: any) {
         <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{title}</p>
         <h4 className="text-3xl font-black text-slate-900 tracking-tight">{value}</h4>
         <p className="text-xs font-bold text-slate-400 mt-2 italic">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
+function BalanceCard({ title, total, rekening, cash }: any) {
+  return (
+    <div className="group bg-slate-900 p-8 rounded-[40px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 transition-all duration-300 text-white overflow-hidden relative">
+      {/* Decorative background element */}
+      <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-600/10 rounded-full blur-3xl group-hover:bg-blue-600/20 transition-all"></div>
+      
+      <div className="flex items-start justify-between mb-6">
+        <div className="bg-blue-600 p-4 rounded-3xl shadow-lg ring-4 ring-slate-800">
+          <Wallet className="w-7 h-7 text-white" />
+        </div>
+        <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1.5 rounded-full ring-1 ring-blue-500/20">
+          Live Balance
+        </span>
+      </div>
+      
+      <div className="mb-6">
+        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">{title}</p>
+        <h4 className="text-3xl font-black text-white tracking-tight">Rp {Math.round(total).toLocaleString()}</h4>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 pt-6 border-t border-slate-800">
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5 text-slate-500">
+            <Landmark className="w-3 h-3" />
+            <span className="text-[9px] font-black uppercase tracking-widest">Rekening</span>
+          </div>
+          <p className="text-sm font-black text-white">Rp {Math.round(rekening).toLocaleString()}</p>
+        </div>
+        <div className="space-y-1 border-l border-slate-800 pl-4">
+          <div className="flex items-center gap-1.5 text-slate-500">
+            <DollarSign className="w-3 h-3" />
+            <span className="text-[9px] font-black uppercase tracking-widest">Cash</span>
+          </div>
+          <p className="text-sm font-black text-white">Rp {Math.round(cash).toLocaleString()}</p>
+        </div>
       </div>
     </div>
   );
