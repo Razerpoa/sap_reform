@@ -2,6 +2,7 @@
  * Calculation utilities for SAP Reform
  * Centralizes all math logic for Production, Sales, and CashFlow
  */
+import { getWIBDateString } from "@/lib/date-utils";
 
 // ==================== PRODUCTION CALCULATIONS ====================
 
@@ -68,9 +69,9 @@ export function calculateSalesStats(entries: any[]) {
   const totalRevenue = entries.reduce((sum, e) => sum + (e.subTotal || 0), 0);
   const totalPeti = entries.reduce((sum, e) => sum + (e.jmlPeti || 0), 0);
   
-  const today = new Date().toISOString().split('T')[0];
+  const today = getWIBDateString();
   const todayKg = entries
-    .filter(e => e.date && e.date.toISOString().split('T')[0] === today)
+    .filter(e => e.date && getWIBDateString(e.date) === today)
     .reduce((sum, e) => sum + (e.totalKg || 0), 0);
     
   return { totalKg, totalRevenue, totalPeti, todayKg };

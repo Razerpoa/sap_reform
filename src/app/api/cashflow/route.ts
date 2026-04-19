@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { startOfDay, isToday } from "date-fns";
+import { startOfDay } from "date-fns";
+import { isTodayWIB } from "@/lib/date-utils";
 
 const cashFlowSchema = z.object({
   id: z.string().optional(),
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = cashFlowSchema.parse(body);
     
-    if (!isToday(validatedData.date)) {
+    if (!isTodayWIB(validatedData.date)) {
       return NextResponse.json({ error: "Modification of past entries is forbidden." }, { status: 403 });
     }
 

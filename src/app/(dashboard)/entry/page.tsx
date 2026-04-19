@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { format, isToday, startOfDay } from "date-fns";
+import { format, startOfDay } from "date-fns";
+import { getWIBDateString } from "@/lib/date-utils";
 import { 
   Save, 
   AlertCircle, 
@@ -41,8 +42,10 @@ export default function EntryPage() {
   const [newSale, setNewSale] = useState<any>({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0 });
 
   const isEditable = useMemo(() => {
-    if (activeTab === "master") return true; // Master info is always editable by design choice (rarely changes)
-    return isToday(selectedDate);
+    if (activeTab === "master") return true;
+    // Use consistent WIB-based today check
+    const dateStr = format(selectedDate, "yyyy-MM-dd");
+    return getWIBDateString(new Date(dateStr)) === getWIBDateString();
   }, [selectedDate, activeTab]);
 
   useEffect(() => {
