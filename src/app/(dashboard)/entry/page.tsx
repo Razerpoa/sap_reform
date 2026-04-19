@@ -25,6 +25,39 @@ const CATEGORY_MAP: Record<string, string> = {
   b1: "B1", b1p: "B1+", b2: "B2", b2p: "B2+", b3: "B3", b3p: "B3+"
 };
 
+interface ProductionData {
+  [key: string]: number;
+  hargaSentral?: number;
+  up?: number;
+  operasional?: number;
+  profitDaily?: number;
+}
+
+interface CashFlowData {
+  date: Date | string;
+  totalPenjualan?: number;
+  biayaPakan?: number;
+  biayaOperasional?: number;
+  gajiBepuk?: number;
+  gajiBarman?: number;
+  gajiAgung?: number;
+  gajiEki?: number;
+  gajiAdi?: number;
+  devidenA?: number;
+  devidenB?: number;
+  saldoKas?: number;
+  saldoCash?: number;
+}
+
+interface SaleData {
+  id?: string;
+  customerName: string;
+  jmlPeti: number;
+  totalKg: number;
+  hargaJual: number;
+  subTotal: number;
+}
+
 export default function EntryPage() {
   const [activeTab, setActiveTab] = useState<Tab>("production");
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -36,11 +69,11 @@ export default function EntryPage() {
   const [success, setSuccess] = useState(false);
 
   // Form States
-  const [productionData, setProductionData] = useState<any>({});
+  const [productionData, setProductionData] = useState<ProductionData>({});
   const [masterData, setMasterData] = useState<any[]>([]);
-  const [cashFlowData, setCashFlowData] = useState<any>({ date: new Date() });
-  const [salesData, setSalesData] = useState<any[]>([]);
-  const [newSale, setNewSale] = useState<any>({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0 });
+  const [cashFlowData, setCashFlowData] = useState<CashFlowData>({ date: new Date() });
+  const [salesData, setSalesData] = useState<SaleData[]>([]);
+  const [newSale, setNewSale] = useState<Partial<SaleData>>({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0 });
 
   const isEditable = useMemo(() => {
     if (activeTab === "master") return true;
@@ -52,12 +85,7 @@ export default function EntryPage() {
     return Array.from({ length: 7 }).map((_, i) => subDays(new Date(), i)).reverse();
   }, []);
 
-  useEffect(() => {
-    fetchData();
-    setIsDirty(false);
-  }, [selectedDate, activeTab]);
-
-  async function fetchData() {
+  const fetchData = async () => {
     setLoading(true);
     setError(null);
     const dateStr = format(selectedDate, "yyyy-MM-dd");
@@ -85,7 +113,12 @@ export default function EntryPage() {
     } finally {
       setLoading(false);
     }
-  }
+  };
+
+  useEffect(() => {
+    fetchData();
+    setIsDirty(false);
+  }, [selectedDate, activeTab]);
 
   async function handleSave() {
     if (!isEditable) return;
@@ -117,6 +150,7 @@ export default function EntryPage() {
           navigator.vibrate(10);
         }
         if (activeTab === "sales") setNewSale({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0 });
+
         fetchData();
 
         setTimeout(() => {
@@ -239,7 +273,7 @@ export default function EntryPage() {
           {activeTab === "production" && (
             <ProductionForm
               data={productionData}
-              setData={(d: any) => { setProductionData(d); setIsDirty(true); }}
+              setData={(d: ProductionData) => { setProductionData(d); setIsDirty(true); }}
               isEditable={isEditable}
               showDetails={showFinancialDetails}
               setShowDetails={setShowFinancialDetails}
@@ -248,7 +282,7 @@ export default function EntryPage() {
           {activeTab === "cashflow" && (
             <CashFlowForm
               data={cashFlowData}
-              setData={(d: any) => { setCashFlowData(d); setIsDirty(true); }}
+              setData={(d: CashFlowData) => { setCashFlowData(d); setIsDirty(true); }}
               isEditable={isEditable}
             />
           )}
@@ -300,7 +334,18 @@ export default function EntryPage() {
   );
 }
 
-function ProductionForm({ data, setData, isEditable, showDetails, setShowDetails }: any) {
+interface FormProps<T> {
+  data: T;
+  setData: (data: T) => void;
+  isEditable: boolean;
+}
+
+interface ProductionFormProps extends FormProps<ProductionData> {
+  showDetails: boolean;
+  setShowDetails: (show: boolean) => void;
+}
+
+function ProductionForm({ data, setData, isEditable, showDetails, setShowDetails }: ProductionFormProps) {
   const updateField = (field: string, val: string) => {
     if (!isEditable) return;
     setData({ ...data, [field]: parseFloat(val) || 0 });
@@ -368,14 +413,21 @@ function ProductionForm({ data, setData, isEditable, showDetails, setShowDetails
   );
 }
 
-function CageCard({ cat, data, updateField, isEditable }: any) {
+interface CageCardProps {
+  cat: string;
+  data: ProductionData;
+  updateField: (field: string, val: string) => void;
+  isEditable: boolean;
+}
+
+function CageCard({ cat, data, updateField, isEditable }: CageCardProps) {
   const fields = ["JmlTelur", "Kg", "Pct", "Fc"];
   const labels = ["Jml Telur", "Kg", "%", "FC"];
 
   const filledCount = fields.filter(f => data[`${cat}${f}`]).length;
   const progress = (filledCount / fields.length) * 100;
 
-  const inputRefs = useRef<any>([]);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleNext = (index: number) => {
     if (index < fields.length - 1) {
@@ -401,7 +453,7 @@ function CageCard({ cat, data, updateField, isEditable }: any) {
 
         {/* Progress Ring */}
         <div className="relative w-10 h-10">
-          <svg className="w-full h-full -rotate-90">
+          <svg className="w-full h-full -rotate-90" viewBox="0 0 40 40">
             <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeWidth="4" className="text-slate-100" />
             <circle
               cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeWidth="4"
@@ -423,12 +475,12 @@ function CageCard({ cat, data, updateField, isEditable }: any) {
         {fields.map((f, i) => (
           <InputField
             key={f}
-            ref={(el: any) => inputRefs.current[i] = el}
+            ref={(el: HTMLInputElement | null) => { inputRefs.current[i] = el; }}
             label={labels[i]}
             value={data[`${cat}${f}`]}
             onChange={(v: string) => updateField(`${cat}${f}`, v)}
             readOnly={!isEditable}
-            onKeyDown={(e: any) => {
+            onKeyDown={(e: React.KeyboardEvent) => {
               if (e.key === 'Enter') handleNext(i);
             }}
           />
@@ -438,8 +490,8 @@ function CageCard({ cat, data, updateField, isEditable }: any) {
   );
 }
 
-function CashFlowForm({ data, setData, isEditable }: any) {
-  const updateField = (field: string, val: string) => {
+function CashFlowForm({ data, setData, isEditable }: FormProps<CashFlowData>) {
+  const updateField = (field: keyof CashFlowData, val: string) => {
     if (!isEditable) return;
     setData({ ...data, [field]: parseFloat(val) || 0 });
   };
@@ -482,7 +534,15 @@ function CashFlowForm({ data, setData, isEditable }: any) {
   );
 }
 
-function SalesSection({ data, newSale, setNewSale, isEditable, onSave }: any) {
+interface SalesSectionProps {
+  data: SaleData[];
+  newSale: Partial<SaleData>;
+  setNewSale: (sale: Partial<SaleData>) => void;
+  isEditable: boolean;
+  onSave: () => void;
+}
+
+function SalesSection({ data, newSale, setNewSale, isEditable, onSave }: SalesSectionProps) {
   return (
     <div className="space-y-6">
       {isEditable && (
@@ -522,7 +582,7 @@ function SalesSection({ data, newSale, setNewSale, isEditable, onSave }: any) {
             </span>
           </div>
           <div className="divide-y divide-slate-50">
-            {data.map((sale: any) => (
+            {data.map((sale) => (
               <div key={sale.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
                 <div>
                   <h4 className="font-black text-slate-900 uppercase tracking-tight">{sale.customerName}</h4>
@@ -546,7 +606,12 @@ function SalesSection({ data, newSale, setNewSale, isEditable, onSave }: any) {
   );
 }
 
-function MasterForm({ data, onSave }: any) {
+interface MasterFormProps {
+  data: any[];
+  onSave: () => void;
+}
+
+function MasterForm({ data, onSave }: MasterFormProps) {
   const [editing, setEditing] = useState<any>(null);
 
   const handleEdit = (item: any) => {
@@ -615,7 +680,16 @@ function MasterForm({ data, onSave }: any) {
   );
 }
 
-const InputField = forwardRef(({ label, value, onChange, readOnly, dark, onKeyDown }: any, ref: any) => {
+interface InputFieldProps {
+  label: string;
+  value: any;
+  onChange: (val: string) => void;
+  readOnly?: boolean;
+  dark?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+}
+
+const InputField = forwardRef<HTMLInputElement, InputFieldProps>(({ label, value, onChange, readOnly, dark, onKeyDown }, ref) => {
   const displayValue = useMemo(() => {
     if (value == null || value === "") return "";
     const strVal = String(value).replace(/,/g, "");
