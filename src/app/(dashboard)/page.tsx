@@ -3,6 +3,7 @@ import { Download, TrendingUp, Package, Layers, DollarSign, Wallet, ShoppingBag,
 import Link from "next/link";
 import Charts from "@/components/Charts";
 import { calculateDashboardStats } from "@/lib/calculations";
+import { cn } from "@/lib/utils";
 
 export const dynamic = 'force-dynamic';
 
@@ -55,44 +56,54 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Stats Section */}
+      <div className="space-y-6">
+        {/* Hero Card: Sales Performance */}
         <PremiumStatCard 
-          title="Produksi Telur"
-          value={`${(stats.productionLatestKg || 0).toLocaleString()} KG`}
-          subtitle="Produksi Terakhir"
-          icon={Layers}
-          color="bg-indigo-600"
-          breakdown={[
-            { label: "Rata-rata (30h)", value: `${Math.round(stats.productionAvgKg || 0).toLocaleString()} KG`, icon: Package }
-          ]}
-        />
-        <PremiumStatCard 
+          variant="hero"
           title="Kinerja Penjualan"
           value={`Rp ${Math.round(stats.salesTotalRevenue || 0).toLocaleString()}`}
           subtitle="Total Pendapatan (30h)"
           icon={DollarSign}
           color="bg-amber-500"
           breakdown={[
-            { label: "Total Volume", value: `${(stats.salesTotalKg || 0).toLocaleString()} KG`, icon: ShoppingBag }
+            { label: "Total Volume", value: `${(stats.salesTotalKg || 0).toLocaleString()} KG`, icon: ShoppingBag },
+            { label: "Total Peti", value: `${(stats.salesTotalPeti || 0).toLocaleString()} Peti`, icon: Layers }
           ]}
         />
-        <PremiumStatCard 
-          title="Aktivitas Hari Ini"
-          value={`${(stats.salesTodayKg || 0).toLocaleString()} KG`}
-          subtitle="Total Terjual"
-          icon={TrendingUp}
-          color="bg-emerald-600"
-          breakdown={[
-            { label: "Jumlah Peti", value: `${(stats.salesTodayPeti || 0).toLocaleString()} Peti`, icon: Layers }
-          ]}
-        />
-        <BalanceCard 
-          title="Saldo Keuangan"
-          total={stats.cashFlowTotalLiquidAssets || 0}
-          rekening={stats.cashFlowSaldoRekening || 0}
-          cash={stats.cashFlowSaldoCash || 0}
-        />
+
+        {/* Triple Grid Cards */}
+        <div className="grid grid-cols-3 gap-3 sm:gap-6">
+          <PremiumStatCard 
+            variant="compact"
+            title="Produksi Hari ini"
+            value={`${(stats.productionLatestKg || 0).toLocaleString()} KG`}
+            subtitle="Produksi"
+            icon={Layers}
+            color="bg-indigo-600"
+            breakdown={[
+              { label: "Avg (30h)", value: `${Math.round(stats.productionAvgKg || 0).toLocaleString()} KG`, icon: Package }
+            ]}
+          />
+          <PremiumStatCard 
+            variant="compact"
+            title="Aktivitas"
+            value={`${(stats.salesTodayKg || 0).toLocaleString()} KG`}
+            subtitle="Terjual"
+            icon={TrendingUp}
+            color="bg-emerald-600"
+            breakdown={[
+              { label: "Peti", value: `${(stats.salesTodayPeti || 0).toLocaleString()} Peti`, icon: Layers }
+            ]}
+          />
+          <BalanceCard 
+            variant="compact"
+            title="Saldo"
+            total={stats.cashFlowTotalLiquidAssets || 0}
+            rekening={stats.cashFlowSaldoRekening || 0}
+            cash={stats.cashFlowSaldoCash || 0}
+          />
+        </div>
       </div>
 
       {/* Charts Section */}
@@ -137,35 +148,50 @@ function format(date: Date, str: string) {
   return new Date(date).toLocaleDateString();
 }
 
-function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown }: any) {
+function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown, variant }: any) {
+  const isHero = variant === "hero";
+  const isCompact = variant === "compact";
+
   return (
-    <div className="group bg-slate-900 p-8 rounded-[40px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 transition-all duration-300 text-white overflow-hidden relative">
-      {/* Decorative background element */}
+    <div className={cn(
+      "group bg-slate-900 rounded-[40px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 transition-all duration-300 text-white overflow-hidden relative",
+      isHero ? "p-6 sm:p-10" : isCompact ? "p-3 sm:p-8" : "p-8"
+    )}>
       <div className={`absolute -top-10 -right-10 w-40 h-40 ${color.replace('bg-', 'bg-')}/10 rounded-full blur-3xl group-hover:opacity-40 transition-all opacity-20`}></div>
       
-      <div className="flex items-start justify-between mb-6">
-        <div className={`${color} p-4 rounded-3xl shadow-lg ring-4 ring-slate-800`}>
-          <Icon className="w-7 h-7 text-white" />
+      <div className={cn("flex items-start justify-between", isCompact ? "mb-4" : "mb-6")}>
+        <div className={cn(
+          color, 
+          "rounded-3xl shadow-lg ring-4 ring-slate-800",
+          isCompact ? "p-2.5 sm:p-4" : "p-4"
+        )}>
+          <Icon className={cn("text-white", isCompact ? "w-4 h-4 sm:w-7 sm:h-7" : "w-7 h-7")} />
         </div>
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-800/50 px-3 py-1.5 rounded-full ring-1 ring-white/5">
+        <span className={cn(
+          "font-black uppercase tracking-widest text-slate-500 bg-slate-800/50 rounded-full ring-1 ring-white/5",
+          isCompact ? "text-[8px] px-2 py-1" : "text-[10px] px-3 py-1.5"
+        )}>
           {subtitle}
         </span>
       </div>
       
-      <div className="mb-6">
-        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">{title}</p>
-        <h4 className="text-3xl font-black text-white tracking-tight">{value}</h4>
+      <div className={cn(isCompact ? "mb-4" : "mb-6")}>
+        <p className={cn("font-black uppercase tracking-[0.2em] text-slate-500 mb-1", isCompact ? "text-[8px] sm:text-[11px]" : "text-[11px]")}>{title}</p>
+        <h4 className={cn("font-black text-white tracking-tight", isHero ? "text-5xl" : isCompact ? "text-lg sm:text-3xl" : "text-3xl")}>{value}</h4>
       </div>
 
       {breakdown && breakdown.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 pt-6 border-t border-slate-800">
+        <div className={cn(
+          "grid gap-2 sm:gap-4 pt-4 sm:pt-6 border-t border-slate-800",
+          isHero ? "grid-cols-2" : "grid-cols-1"
+        )}>
           {breakdown.map((item: any, idx: number) => (
             <div key={idx} className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-slate-500">
-                <item.icon className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500">
+                <item.icon className={cn(isCompact ? "w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" : "w-3.5 h-3.5")} />
+                <span className={cn("font-black uppercase tracking-widest text-[7px] sm:text-[10px]")}>{item.label}</span>
               </div>
-              <p className="text-sm font-black text-white">{item.value}</p>
+              <p className={cn("font-black text-white", isCompact ? "text-[9px] sm:text-sm" : "text-sm")}>{item.value}</p>
             </div>
           ))}
         </div>
@@ -174,40 +200,54 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown 
   );
 }
 
-function BalanceCard({ title, total, rekening, cash }: any) {
+function BalanceCard({ title, total, rekening, cash, variant }: any) {
+  const isCompact = variant === "compact";
+  
   return (
-    <div className="group bg-slate-900 p-8 rounded-[40px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 transition-all duration-300 text-white overflow-hidden relative">
+    <div className={cn(
+      "group bg-slate-900 rounded-[40px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 transition-all duration-300 text-white overflow-hidden relative",
+      isCompact ? "p-4 sm:p-8" : "p-8"
+    )}>
       {/* Decorative background element */}
       <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-600/10 rounded-full blur-3xl group-hover:bg-blue-600/20 transition-all"></div>
       
-      <div className="flex items-start justify-between mb-6">
-        <div className="bg-blue-600 p-4 rounded-3xl shadow-lg ring-4 ring-slate-800">
-          <Wallet className="w-7 h-7 text-white" />
+      <div className={cn("flex items-start justify-between", isCompact ? "mb-4" : "mb-6")}>
+        <div className={cn(
+          "bg-blue-600 rounded-3xl shadow-lg ring-4 ring-slate-800",
+          isCompact ? "p-2.5 sm:p-4" : "p-4"
+        )}>
+          <Wallet className={cn("text-white", isCompact ? "w-4 h-4 sm:w-7 sm:h-7" : "w-7 h-7")} />
         </div>
-        <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1.5 rounded-full ring-1 ring-blue-500/20">
+        <span className={cn(
+          "font-black uppercase tracking-widest text-blue-400 bg-blue-500/10 rounded-full ring-1 ring-blue-500/20",
+          isCompact ? "text-[8px] px-2 py-1" : "text-[10px] px-3 py-1.5"
+        )}>
           Live Balance
         </span>
       </div>
       
-      <div className="mb-6">
-        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">{title}</p>
-        <h4 className="text-3xl font-black text-white tracking-tight">Rp {Math.round(total).toLocaleString()}</h4>
+      <div className={cn(isCompact ? "mb-4" : "mb-6")}>
+        <p className={cn("font-black uppercase tracking-[0.2em] text-slate-500 mb-1", isCompact ? "text-[8px] sm:text-[11px]" : "text-[11px]")}>{title}</p>
+        <h4 className={cn("font-black text-white tracking-tight", isCompact ? "text-lg sm:text-3xl" : "text-3xl")}>Rp {Math.round(total).toLocaleString()}</h4>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 pt-6 border-t border-slate-800">
+      <div className={cn(
+          "grid gap-2 sm:gap-4 pt-4 sm:pt-6 border-t border-slate-800",
+          isCompact ? "grid-cols-1" : "grid-cols-2"
+        )}>
         <div className="space-y-1">
-          <div className="flex items-center gap-1.5 text-slate-500">
-            <Landmark className="w-3 h-3" />
-            <span className="text-[9px] font-black uppercase tracking-widest">Rekening</span>
+          <div className="flex items-center gap-1 sm:gap-1.5 text-slate-500">
+            <Landmark className={cn(isCompact ? "w-2.5 h-2.5 sm:w-3 sm:h-3" : "w-3 h-3")} />
+            <span className={cn("font-black uppercase tracking-widest text-[7px] sm:text-[9px]")}>Rekening</span>
           </div>
-          <p className="text-sm font-black text-white">Rp {Math.round(rekening).toLocaleString()}</p>
+          <p className={cn("font-black text-white", isCompact ? "text-[9px] sm:text-sm" : "text-sm")}>Rp {Math.round(rekening).toLocaleString()}</p>
         </div>
-        <div className="space-y-1 border-l border-slate-800 pl-4">
-          <div className="flex items-center gap-1.5 text-slate-500">
-            <DollarSign className="w-3 h-3" />
-            <span className="text-[9px] font-black uppercase tracking-widest">Cash</span>
+        <div className={cn("space-y-1", !isCompact && "border-l border-slate-800 pl-4")}>
+          <div className="flex items-center gap-1 sm:gap-1.5 text-slate-500">
+            <DollarSign className={cn(isCompact ? "w-2.5 h-2.5 sm:w-3 sm:h-3" : "w-3 h-3")} />
+            <span className={cn("font-black uppercase tracking-widest text-[7px] sm:text-[9px]")}>Cash</span>
           </div>
-          <p className="text-sm font-black text-white">Rp {Math.round(cash).toLocaleString()}</p>
+          <p className={cn("font-black text-white", isCompact ? "text-[9px] sm:text-sm" : "text-sm")}>Rp {Math.round(cash).toLocaleString()}</p>
         </div>
       </div>
     </div>
