@@ -88,9 +88,9 @@ export default async function DashboardPage() {
           color="bg-indigo-600"
         />
         <StatCard 
-          title="Saldo Kas" 
-          value={`Rp ${(stats.cashFlowLatestCash || 0).toLocaleString()}`}
-          subtitle="Aset liquid saat ini"
+          title="Total Aset Liquid" 
+          value={`Rp ${(stats.cashFlowTotalLiquidAssets || 0).toLocaleString()}`}
+          subtitle="Saldo Rekening + Saldo Cash"
           icon={Wallet}
           color="bg-rose-600"
         />

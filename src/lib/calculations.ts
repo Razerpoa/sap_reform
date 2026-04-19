@@ -91,8 +91,12 @@ export function calculateCashFlowStats(entries: any[]) {
   const totalProfit = entries.reduce((sum, e) => 
     sum + calculateCashFlowProfit(e), 0);
   const avgProfit = entries.length > 0 ? totalProfit / entries.length : 0;
-  const latestCash = entries[0]?.saldoCash || 0;
-  return { totalProfit, avgProfit, latestCash };
+  
+  // Total Liquid Assets = saldoRekening (saldoKas in DB) + saldoCash
+  const latest = entries[0] || {};
+  const totalLiquidAssets = (latest.saldoKas || 0) + (latest.saldoCash || 0);
+  
+  return { totalProfit, avgProfit, totalLiquidAssets };
 }
 
 // ==================== COMBINED DASHBOARD STATS ====================
@@ -119,6 +123,6 @@ export function calculateDashboardStats(
     // CashFlow
     cashFlowTotalProfit: cashStats.totalProfit,
     cashFlowAvgProfit: cashStats.avgProfit,
-    cashFlowLatestCash: cashStats.latestCash,
+    cashFlowTotalLiquidAssets: cashStats.totalLiquidAssets,
   };
 }

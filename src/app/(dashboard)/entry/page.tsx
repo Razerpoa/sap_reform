@@ -301,7 +301,7 @@ function CashFlowForm({ data, setData, isEditable }: any) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
           <InputField label="Deviden A" value={data.devidenA} onChange={(v: string) => updateField(`devidenA`, v)} readOnly={!isEditable} />
           <InputField label="Deviden B" value={data.devidenB} onChange={(v: string) => updateField(`devidenB`, v)} readOnly={!isEditable} />
-          <InputField label="Saldo Kas" value={data.saldoKas} onChange={(v: string) => updateField(`saldoKas`, v)} readOnly={!isEditable} />
+          <InputField label="Saldo Rekening" value={data.saldoKas} onChange={(v: string) => updateField(`saldoKas`, v)} readOnly={!isEditable} />
           <InputField label="Saldo Cash" value={data.saldoCash} onChange={(v: string) => updateField(`saldoCash`, v)} readOnly={!isEditable} />
         </div>
       </div>
