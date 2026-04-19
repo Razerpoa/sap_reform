@@ -35,8 +35,13 @@ export function calculateProductionTotals(data: {
 export function calculateProductionStats(entries: any[]) {
   const totalKg = entries.reduce((sum, e) => sum + (e.totalKg || 0), 0);
   const avgKg = entries.length > 0 ? totalKg / entries.length : 0;
-  const latestKg = entries[0]?.totalKg || 0;
-  return { totalKg, avgKg, latestKg };
+  
+  // Filter for today's production (00:00-23:59 WIB)
+  const today = getWIBDateString();
+  const todayEntry = entries.find(e => getWIBDateString(e.date) === today);
+  const todayKg = todayEntry?.totalKg || 0;
+  
+  return { totalKg, avgKg, todayKg };
 }
 
 // ==================== SALES CALCULATIONS ====================
@@ -116,7 +121,7 @@ export function calculateDashboardStats(
     // Production
     productionTotalKg: prodStats.totalKg,
     productionAvgKg: prodStats.avgKg,
-    productionLatestKg: prodStats.latestKg,
+    productionLatestKg: prodStats.todayKg,
     // Sales
     salesTotalKg: salesStats.totalKg,
     salesTotalRevenue: salesStats.totalRevenue,

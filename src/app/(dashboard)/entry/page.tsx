@@ -56,27 +56,36 @@ export default function EntryPage() {
     setLoading(true);
     setError(null);
     const dateStr = format(selectedDate, "yyyy-MM-dd");
+    // Cache buster - proper URL construction
+    const ts = Date.now();
 
     try {
       if (activeTab === "production") {
-        const res = await fetch(`/api/production?date=${dateStr}`);
+        const res = await fetch(`/api/production?date=${dateStr}&_t=${ts}`);
+        if (!res.ok) throw new Error("production failed");
         const data = await res.json();
         setProductionData(data || {});
       } else if (activeTab === "master") {
-        const res = await fetch(`/api/master`);
-        const data = await res.json();
-        setMasterData(data || []);
+        // Master doesn't require auth in same way - just try to load
+        try {
+          const res = await fetch(`/api/master?_t=${ts}`);
+          const data = await res.json();
+          setMasterData(Array.isArray(data) ? data : []);
+        } catch {
+          setMasterData([]); // Show empty form on error
+        }
       } else if (activeTab === "cashflow") {
-        const res = await fetch(`/api/cashflow?date=${dateStr}`);
+        const res = await fetch(`/api/cashflow?date=${dateStr}&_t=${ts}`);
         const data = await res.json();
         setCashFlowData(data[0] || { date: selectedDate });
       } else if (activeTab === "sales") {
-        const res = await fetch(`/api/sales?date=${dateStr}`);
+        const res = await fetch(`/api/sales?date=${dateStr}&_t=${ts}`);
         const data = await res.json();
         setSalesData(data || []);
       }
-    } catch (err) {
-      setError("Failed to load data");
+    } catch (err: any) {
+      console.error("[fetchData] error:", err);
+      setError(err.message || "Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -110,7 +119,11 @@ export default function EntryPage() {
       if (res.ok) {
         setSuccess(true);
         if (activeTab === "sales") setNewSale({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0 });
+        
+        // Small delay to ensure server revalidates, then refresh form data
+        await new Promise(r => setTimeout(r, 100));
         fetchData();
+        
         setTimeout(() => setSuccess(false), 3000);
       } else {
         const data = await res.json();
@@ -462,7 +475,8 @@ function InputField({ label, value, onChange, readOnly, dark }: any) {
         inputMode="numeric"
         value={displayValue}
         onChange={(e) => {
-          const cleaned = e.target.value.replace(/,/g, "");
+          // Only allow digits and decimal point
+          const cleaned = e.target.value.replace(/[^\d.]/g, "");
           onChange(cleaned);
         }}
         readOnly={readOnly}

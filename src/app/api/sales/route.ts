@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSalesData } from "@/lib/data";
 import { z } from "zod";
 import { startOfDay } from "date-fns";
 import { isTodayWIB } from "@/lib/date-utils";
 import { calculateSalesRevenue, calculateSalesTotals } from "@/lib/calculations";
+import { revalidatePath } from "next/cache";
 
 const salesSchema = z.object({
   id: z.string().optional(),
@@ -31,16 +33,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const dateStr = searchParams.get("date");
 
+  // Use centralized data fetching
   if (dateStr) {
-    const date = startOfDay(new Date(dateStr));
-    const entries = await prisma.sales.findMany({ where: { date } });
+    const entries = await getSalesData({ date: dateStr });
     return NextResponse.json(entries);
   }
 
-  const entries = await prisma.sales.findMany({
-    orderBy: { date: "desc" },
-    take: 100,
-  });
+  const entries = await getSalesData({ take: 100 });
   return NextResponse.json(entries);
 }
 
@@ -80,6 +79,9 @@ export async function POST(request: Request) {
           data: { ...data, subTotal, ...dailyTotals } as any 
         });
 
+    // Revalidate dashboard to show fresh data
+    revalidatePath("/");
+    
     return NextResponse.json(entry);
   } catch (error) {
     if (error instanceof z.ZodError) {

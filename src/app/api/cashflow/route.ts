@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getCashFlowData } from "@/lib/data";
 import { z } from "zod";
 import { startOfDay } from "date-fns";
 import { isTodayWIB } from "@/lib/date-utils";
+import { revalidatePath } from "next/cache";
 
 const cashFlowSchema = z.object({
   id: z.string().optional(),
@@ -33,16 +35,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const dateStr = searchParams.get("date");
 
+  // Use centralized data fetching
   if (dateStr) {
-    const date = startOfDay(new Date(dateStr));
-    const entries = await prisma.cashFlow.findMany({ where: { date } });
+    const entries = await getCashFlowData({ date: dateStr });
     return NextResponse.json(entries);
   }
 
-  const entries = await prisma.cashFlow.findMany({
-    orderBy: { date: "desc" },
-    take: 50,
-  });
+  const entries = await getCashFlowData({ take: 50 });
   return NextResponse.json(entries);
 }
 
@@ -85,6 +84,9 @@ export async function POST(request: Request) {
       })
       : await prisma.cashFlow.create({ data: { ...data } });
 
+    // Revalidate dashboard to show fresh data
+    revalidatePath("/");
+    
     console.log("[CASHFLOW] Saved:", entry.id, "date:", entry.date);
     return NextResponse.json(entry);
   } catch (error) {

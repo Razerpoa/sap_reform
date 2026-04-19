@@ -1,28 +1,16 @@
-import { prisma } from "@/lib/prisma";
 import { Download, TrendingUp, Package, Layers, DollarSign, Wallet, ShoppingBag, TrendingDown, Landmark } from "lucide-react";
 import Link from "next/link";
 import Charts from "@/components/Charts";
 import { PlusCircle, RefreshCw, BarChart2, Clock, CheckCircle2 } from "lucide-react";
 import { calculateDashboardStats } from "@/lib/calculations";
+import { getDashboardData } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  const [productionEntries, cashFlowEntries, salesEntries] = await Promise.all([
-    prisma.production.findMany({
-      orderBy: { date: "desc" },
-      take: 30,
-    }),
-    prisma.cashFlow.findMany({
-      orderBy: { date: "desc" },
-      take: 30,
-    }),
-    prisma.sales.findMany({
-      orderBy: { date: "desc" },
-      take: 30,
-    })
-  ]);
+  // Use centralized data fetching
+  const { productionEntries, cashFlowEntries, salesEntries } = await getDashboardData({ take: 30 });
 
   // Use centralized calculation functions
   const stats = calculateDashboardStats(productionEntries, cashFlowEntries, salesEntries);

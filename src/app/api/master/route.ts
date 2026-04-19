@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getMasterData } from "@/lib/data";
 import { z } from "zod";
 
 const cageMasterSchema = z.object({
@@ -19,9 +20,8 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const data = await prisma.cageMaster.findMany({
-    orderBy: { kandang: "asc" },
-  });
+  // Use centralized data fetching
+  const data = await getMasterData();
   return NextResponse.json(data);
 }
 

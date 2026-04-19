@@ -6,6 +6,8 @@ import { z } from "zod";
 import { startOfDay } from "date-fns";
 import { isTodayWIB } from "@/lib/date-utils";
 import { calculateProductionTotals } from "@/lib/calculations";
+import { getProductionData } from "@/lib/data";
+import { revalidatePath } from "next/cache";
 
 const productionSchema = z.object({
   date: z.string().transform((str) => startOfDay(new Date(str))),
@@ -66,16 +68,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const dateStr = searchParams.get("date");
 
+  // Use centralized data fetching
   if (dateStr) {
-    const date = startOfDay(new Date(dateStr));
-    const entry = await prisma.production.findUnique({ where: { date } });
-    return NextResponse.json(entry || {});
+    const entries = await getProductionData({ date: dateStr });
+    return NextResponse.json(entries[0] || {});
   }
 
-  const entries = await prisma.production.findMany({
-    orderBy: { date: "desc" },
-    take: 30,
-  });
+  const entries = await getProductionData({ take: 30 });
   return NextResponse.json(entries);
 }
 
@@ -107,6 +106,9 @@ export async function POST(request: Request) {
       create: dataWithTotals,
     });
 
+    // Revalidate dashboard to show fresh data
+    revalidatePath("/");
+    
     return NextResponse.json(entry);
   } catch (error) {
     if (error instanceof z.ZodError) {
