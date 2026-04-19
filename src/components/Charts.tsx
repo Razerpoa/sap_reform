@@ -23,15 +23,15 @@ export default function Charts({ data, type = "production" }: { data: any[], typ
   }
 
   const chartData = data.map((entry) => ({
-    name: format(new Date(entry.date), "dd MMM"),
-    kg: entry.totalKg,
-    profit: entry.profit,
-    expenses: entry.expenses,
+    name: entry.date ? format(new Date(entry.date), "dd MMM") : "Unknown",
+    kg: Number(entry.totalKg) || 0,
+    profit: Number(entry.profit) || 0,
+    expenses: Number(entry.expenses) || 0,
   }));
 
   if (type === "finance") {
     return (
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
           <XAxis 
@@ -66,7 +66,7 @@ export default function Charts({ data, type = "production" }: { data: any[], typ
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
       <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
         <defs>
           <linearGradient id="colorKg" x1="0" y1="0" x2="0" y2="1">
