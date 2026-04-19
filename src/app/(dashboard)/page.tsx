@@ -41,61 +41,7 @@ export default async function DashboardPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-10">
       {/* Welcome Hub Header */}
-      <div className="animate-in fade-in slide-in-from-top-4 duration-1000">
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 bg-slate-900 p-8 sm:p-12 rounded-[32px] border border-slate-800 shadow-2xl relative overflow-hidden group">
-          {/* Animated Background Blobs for Header */}
-          <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-600/10 rounded-full blur-[80px] group-hover:bg-blue-600/20 transition-all duration-1000"></div>
-          <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-600/10 rounded-full blur-[80px] group-hover:bg-indigo-600/20 transition-all duration-1000 delay-300"></div>
 
-          <div className="relative z-10 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">System Live</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-full">
-                <Clock className="w-3 h-3 text-slate-400" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}
-                </span>
-              </div>
-            </div>
-            
-            <div>
-              <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight mb-2">
-                Selamat Datang, 
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 px-3">
-                  Executive
-                </span>
-              </h1>
-              <p className="text-slate-400 font-medium italic text-lg max-w-xl">
-                Operasi peternakan Anda berjalan optimal dengan efisiensi <span className="text-emerald-400 font-bold not-italic">98.4%</span> hari ini.
-              </p>
-            </div>
-          </div>
-
-          <div className="relative z-10 flex flex-wrap gap-3">
-            <Link
-              href="/entry"
-              className="group/btn flex items-center gap-3 px-6 py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl text-xs font-black uppercase tracking-widest text-white transition-all shadow-lg shadow-blue-600/20 active:scale-95"
-            >
-              <PlusCircle className="w-5 h-5 group-hover/btn:rotate-90 transition-transform duration-300" />
-              Entri Baru
-            </Link>
-            <button className="flex items-center gap-3 px-6 py-4 bg-slate-800 hover:bg-slate-700 rounded-2xl text-xs font-black uppercase tracking-widest text-white transition-all border border-slate-700 active:scale-95">
-              <RefreshCw className="w-5 h-5" />
-              Sync
-            </button>
-            <Link
-              href="/api/export"
-              className="flex items-center gap-3 px-6 py-4 bg-slate-800 hover:bg-slate-700 rounded-2xl text-xs font-black uppercase tracking-widest text-white transition-all border border-slate-700 active:scale-95"
-            >
-              <Download className="w-5 h-5" />
-              Laporan
-            </Link>
-          </div>
-        </div>
-      </div>
 
       {/* Stats Section */}
       <div className="space-y-6">
@@ -107,6 +53,7 @@ export default async function DashboardPage() {
           subtitle="Total Pendapatan (30h)"
           icon={DollarSign}
           color="bg-amber-500"
+          trendData={salesEntries.slice(0, 7).reverse().map(e => e.subTotal)}
           breakdown={[
             { label: "Total Volume", value: `${(stats.salesTotalKg || 0).toLocaleString()} KG`, icon: ShoppingBag },
             { label: "Total Peti", value: `${(stats.salesTotalPeti || 0).toLocaleString()} Peti`, icon: Layers }
@@ -169,7 +116,7 @@ export default async function DashboardPage() {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        <div className="bg-white p-8 rounded-[16px] border border-slate-200 shadow-sm">
+        <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Tren Produksi</h3>
             <div className="flex items-center gap-2">
@@ -228,22 +175,22 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
 
   return (
     <div className={cn(
-      "group bg-slate-900 rounded-[16px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-2 hover:border-slate-700 transition-all duration-500 text-white overflow-hidden relative animate-in fade-in zoom-in-95 duration-1000",
+      "group bg-slate-900 rounded-[32px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-2 hover:border-slate-700 transition-all duration-300 text-white overflow-hidden relative animate-in fade-in zoom-in-95 duration-500",
       isHero ? "p-8 sm:p-12 mb-2" : isCompact ? "p-3 sm:p-8" : "p-8"
     )}>
       {/* Dynamic Glow Ornament */}
-      <div className={`absolute -top-10 -right-10 w-48 h-48 ${color.replace('bg-', 'bg-')}/10 rounded-full blur-[60px] group-hover:blur-[80px] group-hover:scale-125 transition-all duration-700 opacity-20`}></div>
+      <div className={`absolute -top-10 -right-10 w-48 h-48 ${color.replace('bg-', 'bg-')}/10 rounded-full blur-[60px] group-hover:blur-[80px] group-hover:scale-125 transition-all duration-500 opacity-20`}></div>
       
       <div className={cn("flex items-start justify-between relative z-10", isCompact ? "mb-4" : "mb-8")}>
         <div className={cn(
           color, 
-          "rounded-[32px] shadow-lg ring-4 ring-slate-800 group-hover:scale-110 transition-transform duration-500",
+          "rounded-[16px] shadow-lg ring-4 ring-slate-800 group-hover:scale-110 transition-transform duration-300",
           isCompact ? "p-2.5 sm:p-4" : "p-5"
         )}>
           <Icon className={cn("text-white", isCompact ? "w-4 h-4 sm:w-7 sm:h-7" : "w-8 h-8")} />
         </div>
         <span className={cn(
-          "font-black uppercase tracking-widest rounded-full ring-1 transition-all duration-500",
+          "font-black uppercase tracking-widest rounded-full ring-1 transition-all duration-300",
           badgeText, badgeBg, badgeRing,
           isCompact ? "text-[8px] px-2 py-1" : "text-[10px] px-4 py-2"
         )}>
@@ -257,8 +204,11 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
       </div>
 
       {/* Trend Sparkline Integration */}
-      {!isHero && trendData && (
-        <div className="mb-4 opacity-40 group-hover:opacity-100 transition-opacity duration-700 relative z-10">
+      {trendData && (
+        <div className={cn(
+          "mb-6 transition-opacity duration-300 relative z-10",
+          isHero ? "opacity-20 h-16" : "opacity-40 group-hover:opacity-100"
+        )}>
           <Sparkline data={trendData} color={trendColor} />
         </div>
       )}
