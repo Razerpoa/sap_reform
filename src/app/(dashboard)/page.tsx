@@ -119,7 +119,7 @@ export default async function DashboardPage() {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        <div className="bg-white p-8 rounded-[40px] border border-slate-200 shadow-sm">
+        <div className="bg-white p-8 rounded-[64px] border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Tren Produksi</h3>
             <div className="flex items-center gap-2">
@@ -165,15 +165,15 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
 
   return (
     <div className={cn(
-      "group bg-slate-900 rounded-[40px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 transition-all duration-300 text-white overflow-hidden relative",
-      isHero ? "p-6 sm:p-10" : isCompact ? "p-3 sm:p-8" : "p-8"
+      "group bg-slate-900 rounded-[64px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 transition-all duration-300 text-white overflow-hidden relative",
+      isHero ? "p-8 sm:p-12" : isCompact ? "p-3 sm:p-8" : "p-8"
     )}>
       <div className={`absolute -top-10 -right-10 w-40 h-40 ${color.replace('bg-', 'bg-')}/10 rounded-full blur-3xl group-hover:opacity-40 transition-all opacity-20`}></div>
       
       <div className={cn("flex items-start justify-between", isCompact ? "mb-4" : "mb-6")}>
         <div className={cn(
           color, 
-          "rounded-3xl shadow-lg ring-4 ring-slate-800",
+          "rounded-[32px] shadow-lg ring-4 ring-slate-800",
           isCompact ? "p-2.5 sm:p-4" : "p-4"
         )}>
           <Icon className={cn("text-white", isCompact ? "w-4 h-4 sm:w-7 sm:h-7" : "w-7 h-7")} />
@@ -216,7 +216,7 @@ function BalanceCard({ title, total, rekening, cash, variant }: any) {
   
   return (
     <div className={cn(
-      "group bg-slate-900 rounded-[40px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 transition-all duration-300 text-white overflow-hidden relative",
+      "group bg-slate-900 rounded-[64px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 transition-all duration-300 text-white overflow-hidden relative",
       isCompact ? "p-4 sm:p-8" : "p-8"
     )}>
       {/* Decorative background element */}
@@ -224,7 +224,7 @@ function BalanceCard({ title, total, rekening, cash, variant }: any) {
       
       <div className={cn("flex items-start justify-between", isCompact ? "mb-4" : "mb-6")}>
         <div className={cn(
-          "bg-blue-600 rounded-3xl shadow-lg ring-4 ring-slate-800",
+          "bg-blue-600 rounded-[32px] shadow-lg ring-4 ring-slate-800",
           isCompact ? "p-2.5 sm:p-4" : "p-4"
         )}>
           <Wallet className={cn("text-white", isCompact ? "w-4 h-4 sm:w-7 sm:h-7" : "w-7 h-7")} />
