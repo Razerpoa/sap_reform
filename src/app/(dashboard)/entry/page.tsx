@@ -443,23 +443,36 @@ function MasterForm({ data, onSave }: any) {
 }
 
 function InputField({ label, value, onChange, readOnly, dark }: any) {
+  // Format number with comma thousand separators for display
+  const displayValue = useMemo(() => {
+    if (value == null || value === "") return "";
+    const strVal = String(value).replace(/,/g, "");
+    const num = parseFloat(strVal);
+    if (isNaN(num)) return value;
+    return num.toLocaleString("en-US");
+  }, [value]);
+
   return (
     <div className="space-y-1.5 flex-1">
       <label className={cn("text-[9px] uppercase font-black tracking-[0.2em] px-1", dark ? "text-blue-200/50" : "text-slate-400")}>
         {label}
       </label>
       <input
-        type="number"
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value)}
+        type="text"
+        inputMode="numeric"
+        value={displayValue}
+        onChange={(e) => {
+          const cleaned = e.target.value.replace(/,/g, "");
+          onChange(cleaned);
+        }}
         readOnly={readOnly}
         className={cn(
           "w-full px-5 py-4 rounded-2xl text-lg font-black outline-none transition-all",
-          dark 
-            ? "bg-white/10 border-white/5 text-white placeholder-white/20 focus:bg-white/20" 
+          dark
+            ? "bg-white/10 border-white/5 text-white placeholder-white/20 focus:bg-white/20"
             : "bg-slate-50 border-slate-100 text-slate-900 focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-200"
         )}
-        placeholder="0.0"
+        placeholder="0"
       />
     </div>
   );
