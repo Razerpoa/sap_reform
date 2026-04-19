@@ -70,11 +70,11 @@ export function calculateSalesStats(entries: any[]) {
   const totalPeti = entries.reduce((sum, e) => sum + (e.jmlPeti || 0), 0);
   
   const today = getWIBDateString();
-  const todayKg = entries
-    .filter(e => e.date && getWIBDateString(e.date) === today)
-    .reduce((sum, e) => sum + (e.totalKg || 0), 0);
+  const todayEntries = entries.filter(e => e.date && getWIBDateString(e.date) === today);
+  const todayKg = todayEntries.reduce((sum, e) => sum + (e.totalKg || 0), 0);
+  const todayPeti = todayEntries.reduce((sum, e) => sum + (e.jmlPeti || 0), 0);
     
-  return { totalKg, totalRevenue, totalPeti, todayKg };
+  return { totalKg, totalRevenue, totalPeti, todayKg, todayPeti };
 }
 
 // ==================== CASHFLOW CALCULATIONS ====================
@@ -122,6 +122,7 @@ export function calculateDashboardStats(
     salesTotalRevenue: salesStats.totalRevenue,
     salesTotalPeti: salesStats.totalPeti,
     salesTodayKg: salesStats.todayKg,
+    salesTodayPeti: salesStats.todayPeti,
     // CashFlow
     cashFlowTotalProfit: cashStats.totalProfit,
     cashFlowAvgProfit: cashStats.avgProfit,

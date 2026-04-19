@@ -56,36 +56,36 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <StatCard 
-          title="Total Penjualan (30h)" 
-          value={`${(stats.salesTotalKg || 0).toLocaleString()} KG`}
-          subtitle="Total telur terjual"
-          icon={ShoppingBag}
-          color="bg-blue-600"
-          trend={`${(stats.salesTotalPeti || 0).toLocaleString()} peti terjual`}
-        />
-        <StatCard 
-          title="Penjualan Hari Ini" 
-          value={`${(stats.salesTodayKg || 0).toLocaleString()} KG`}
-          subtitle="Terjual hari ini"
-          icon={TrendingUp}
-          color="bg-emerald-600"
-          trend="Hari ini"
-        />
-        <StatCard 
-          title="Total Pendapatan (30h)" 
-          value={`Rp ${Math.round(stats.salesTotalRevenue || 0).toLocaleString()}`}
-          subtitle="Total pendapatan penjualan"
-          icon={DollarSign}
-          color="bg-amber-500"
-        />
-        <StatCard 
-          title="Produksi Terakhir" 
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <PremiumStatCard 
+          title="Produksi Telur"
           value={`${(stats.productionLatestKg || 0).toLocaleString()} KG`}
-          subtitle={productionEntries[0] ? format(productionEntries[0].date, "PPP") : "Tidak ada data"}
+          subtitle="Produksi Terakhir"
           icon={Layers}
           color="bg-indigo-600"
+          breakdown={[
+            { label: "Rata-rata (30h)", value: `${Math.round(stats.productionAvgKg || 0).toLocaleString()} KG`, icon: Package }
+          ]}
+        />
+        <PremiumStatCard 
+          title="Kinerja Penjualan"
+          value={`Rp ${Math.round(stats.salesTotalRevenue || 0).toLocaleString()}`}
+          subtitle="Total Pendapatan (30h)"
+          icon={DollarSign}
+          color="bg-amber-500"
+          breakdown={[
+            { label: "Total Volume", value: `${(stats.salesTotalKg || 0).toLocaleString()} KG`, icon: ShoppingBag }
+          ]}
+        />
+        <PremiumStatCard 
+          title="Aktivitas Hari Ini"
+          value={`${(stats.salesTodayKg || 0).toLocaleString()} KG`}
+          subtitle="Total Terjual"
+          icon={TrendingUp}
+          color="bg-emerald-600"
+          breakdown={[
+            { label: "Jumlah Peti", value: `${(stats.salesTodayPeti || 0).toLocaleString()} Peti`, icon: Layers }
+          ]}
         />
         <BalanceCard 
           title="Saldo Keuangan"
@@ -137,24 +137,39 @@ function format(date: Date, str: string) {
   return new Date(date).toLocaleDateString();
 }
 
-function StatCard({ title, value, subtitle, icon: Icon, color, trend }: any) {
+function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown }: any) {
   return (
-    <div className="group bg-white p-8 rounded-[40px] border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-      <div className="flex items-start justify-between mb-4">
-        <div className={`${color} p-4 rounded-3xl shadow-lg ring-4 ring-white`}>
+    <div className="group bg-slate-900 p-8 rounded-[40px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 transition-all duration-300 text-white overflow-hidden relative">
+      {/* Decorative background element */}
+      <div className={`absolute -top-10 -right-10 w-40 h-40 ${color.replace('bg-', 'bg-')}/10 rounded-full blur-3xl group-hover:opacity-40 transition-all opacity-20`}></div>
+      
+      <div className="flex items-start justify-between mb-6">
+        <div className={`${color} p-4 rounded-3xl shadow-lg ring-4 ring-slate-800`}>
           <Icon className="w-7 h-7 text-white" />
         </div>
-        {trend && (
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full ring-1 ring-slate-100">
-            {trend}
-          </span>
-        )}
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-800/50 px-3 py-1.5 rounded-full ring-1 ring-white/5">
+          {subtitle}
+        </span>
       </div>
-      <div>
-        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{title}</p>
-        <h4 className="text-3xl font-black text-slate-900 tracking-tight">{value}</h4>
-        <p className="text-xs font-bold text-slate-400 mt-2 italic">{subtitle}</p>
+      
+      <div className="mb-6">
+        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">{title}</p>
+        <h4 className="text-3xl font-black text-white tracking-tight">{value}</h4>
       </div>
+
+      {breakdown && breakdown.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 pt-6 border-t border-slate-800">
+          {breakdown.map((item: any, idx: number) => (
+            <div key={idx} className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-slate-500">
+                <item.icon className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
+              </div>
+              <p className="text-sm font-black text-white">{item.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
