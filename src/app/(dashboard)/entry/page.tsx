@@ -241,7 +241,7 @@ function ProductionForm({ data, setData, isEditable }: any) {
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black">
                 {CATEGORY_MAP[cat]}
               </div>
-              <h3 className="text-lg font-black text-slate-900">Cage {CATEGORY_MAP[cat]}</h3>
+              <h3 className="text-lg font-black text-slate-900">Kandang {CATEGORY_MAP[cat]}</h3>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -401,7 +401,7 @@ function MasterForm({ data, onSave }: any) {
               {item.kandang}
             </div>
             <div>
-              <h4 className="font-black text-slate-900">Cage {item.kandang}</h4>
+              <h4 className="font-black text-slate-900">Kandang {item.kandang}</h4>
               <p className="text-xs text-slate-400 font-bold">{item.jmlAyam.toLocaleString()} Chickens</p>
             </div>
           </div>

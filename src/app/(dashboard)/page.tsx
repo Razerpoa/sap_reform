@@ -39,7 +39,7 @@ export default async function DashboardPage() {
   });
 
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-10">
       {/* Welcome Hub Header */}
 
 
@@ -129,7 +129,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm">
+        <div className="bg-white p-8 rounded-[40px] border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Kinerja Keuangan</h3>
             <div className="flex items-center gap-4">
@@ -160,29 +160,6 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
   const isHero = variant === "hero";
   const isCompact = variant === "compact";
 
-  /* 
-     ADJUSTMENT VALUES
-     You can change the feel of the card here.
-  */
-  const cardPadding = isHero ? "p-10 sm:p-14" : "p-5 sm:p-9";
-  const outerRounding = "rounded-[32px]";
-  const innerRounding = "rounded-[16px]";
-  const sparklineHeight = isHero ? "h-16" : "h-10";
-  const animationDuration = "duration-300";
-
-  // Dynamic Typography Logic: Scales font size down as content length increases
-  const getValueFontSize = (val: string) => {
-    const len = val.length;
-    if (isHero) {
-      if (len > 22) return "text-3xl sm:text-5xl";
-      if (len > 18) return "text-4xl sm:text-6xl";
-      return "text-5xl sm:text-7xl";
-    }
-    if (len > 15) return "text-lg sm:text-2xl";
-    if (len > 12) return "text-xl sm:text-3xl";
-    return "text-2xl sm:text-4xl";
-  };
-
   // Derive colors for subtitle to match "Live Balance" style
   const colorMatch = color.match(/bg-([a-z]+)-/);
   const colorName = colorMatch ? colorMatch[1] : "slate";
@@ -198,11 +175,8 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
 
   return (
     <div className={cn(
-      "group bg-slate-900 border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-2 hover:border-slate-700 transition-all text-white overflow-hidden relative animate-in fade-in zoom-in-95",
-      outerRounding,
-      cardPadding,
-      animationDuration,
-      isHero ? "mb-2" : ""
+      "group bg-slate-900 rounded-[32px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-2 hover:border-slate-700 transition-all duration-300 text-white overflow-hidden relative animate-in fade-in zoom-in-95 duration-500",
+      isHero ? "p-8 sm:p-12 mb-2" : isCompact ? "p-3 sm:p-8" : "p-8"
     )}>
       {/* Dynamic Glow Ornament */}
       <div className={`absolute -top-10 -right-10 w-48 h-48 ${color.replace('bg-', 'bg-')}/10 rounded-full blur-[60px] group-hover:blur-[80px] group-hover:scale-125 transition-all duration-500 opacity-20`}></div>
@@ -210,11 +184,10 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
       <div className={cn("flex items-start justify-between relative z-10", isCompact ? "mb-4" : "mb-8")}>
         <div className={cn(
           color, 
-          innerRounding,
-          "shadow-lg ring-4 ring-slate-800 group-hover:scale-110 transition-transform duration-300",
-          isCompact ? "p-3 sm:p-5" : "p-6"
+          "rounded-[16px] shadow-lg ring-4 ring-slate-800 group-hover:scale-110 transition-transform duration-300",
+          isCompact ? "p-2.5 sm:p-4" : "p-5"
         )}>
-          <Icon className={cn("text-white", isCompact ? "w-5 h-5 sm:w-8 sm:h-8" : "w-10 h-10")} />
+          <Icon className={cn("text-white", isCompact ? "w-4 h-4 sm:w-7 sm:h-7" : "w-8 h-8")} />
         </div>
         <span className={cn(
           "font-black uppercase tracking-widest rounded-full ring-1 transition-all duration-300",
@@ -227,15 +200,14 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
       
       <div className={cn("relative z-10", isCompact ? "mb-6" : "mb-8")}>
         <p className={cn("font-black uppercase tracking-[0.2em] text-slate-500 mb-1", isCompact ? "text-[8px] sm:text-[11px]" : "text-[11px]")}>{title}</p>
-        <h4 className={cn("font-black text-white tracking-tight leading-none", getValueFontSize(value))}>{value}</h4>
+        <h4 className={cn("font-black text-white tracking-tight leading-none", isHero ? "text-5xl sm:text-7xl" : isCompact ? "text-xl sm:text-4xl" : "text-4xl")}>{value}</h4>
       </div>
 
       {/* Trend Sparkline Integration */}
       {trendData && (
         <div className={cn(
           "mb-6 transition-opacity duration-300 relative z-10",
-          sparklineHeight,
-          isHero ? "opacity-20" : "opacity-40 group-hover:opacity-100"
+          isHero ? "opacity-20 h-16" : "opacity-40 group-hover:opacity-100"
         )}>
           <Sparkline data={trendData} color={trendColor} />
         </div>
