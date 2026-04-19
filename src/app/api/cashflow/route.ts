@@ -52,19 +52,43 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const validatedData = cashFlowSchema.parse(body);
+    console.log("[CASHFLOW] Raw body:", JSON.stringify(body));
+    console.log("[CASHFLOW] selectedDate from body:", body.date);
     
-    if (!isTodayWIB(validatedData.date)) {
+    const validatedData = cashFlowSchema.parse(body);
+    console.log("[CASHFLOW] Validated date:", validatedData.date?.toISOString?.() || validatedData.date);
+    
+    // Use date from body directly, not from validated (transformed) data
+    const dateStr = body.date || new Date().toISOString().split('T')[0];
+    console.log("[CASHFLOW] Date string:", dateStr);
+    
+    // Convert to date object for isTodayWIB check
+    const checkDate = new Date(dateStr);
+    if (!isTodayWIB(checkDate)) {
+      console.log("[CASHFLOW] Rejected: not today. Date =", dateStr);
       return NextResponse.json({ error: "Modification of past entries is forbidden." }, { status: 403 });
     }
 
-    const { id, ...data } = validatedData;
-    const entry = id 
-      ? await prisma.cashFlow.update({ where: { id }, data })
-      : await prisma.cashFlow.create({ data });
+    // Find existing entry for today
+    const existing = await prisma.cashFlow.findFirst({
+      where: { date: checkDate }
+    });
+    console.log("[CASHFLOW] Existing entry:", existing?.id);
 
+    const { id, ...data } = validatedData;
+    
+    // Update or create
+    const entry = existing
+      ? await prisma.cashFlow.update({ 
+        where: { id: existing.id }, 
+        data: { ...data } 
+      })
+      : await prisma.cashFlow.create({ data: { ...data } });
+
+    console.log("[CASHFLOW] Saved:", entry.id, "date:", entry.date);
     return NextResponse.json(entry);
   } catch (error) {
+    console.log("[CASHFLOW] Error:", error);
     if (error instanceof z.ZodError) {
       const messages = error.issues.map((e) => `${e.path.join(".")}: ${e.message}`);
       return NextResponse.json({ error: messages.join(", ") }, { status: 400 });
