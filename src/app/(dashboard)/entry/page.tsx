@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { format, startOfDay } from "date-fns";
+import { useState, useMemo, useEffect, useRef, forwardRef } from "react";
+import { format, subDays, isSameDay } from "date-fns";
 import { getWIBDateString } from "@/lib/date-utils";
 import { 
   Save, 
@@ -10,12 +9,12 @@ import {
   CheckCircle2, 
   Loader2, 
   Calendar,
-  Layers,
   ShoppingBag,
   Wallet,
   Settings2,
   TrendingUp,
-  ChevronRight
+  ChevronDown,
+  Eye
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +28,8 @@ const CATEGORY_MAP: Record<string, string> = {
 export default function EntryPage() {
   const [activeTab, setActiveTab] = useState<Tab>("production");
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showFinancialDetails, setShowFinancialDetails] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,13 +44,17 @@ export default function EntryPage() {
 
   const isEditable = useMemo(() => {
     if (activeTab === "master") return true;
-    // Use consistent WIB-based today check
     const dateStr = format(selectedDate, "yyyy-MM-dd");
     return getWIBDateString(new Date(dateStr)) === getWIBDateString();
   }, [selectedDate, activeTab]);
 
+  const last7Days = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => subDays(new Date(), i)).reverse();
+  }, []);
+
   useEffect(() => {
     fetchData();
+    setIsDirty(false);
   }, [selectedDate, activeTab]);
 
   async function fetchData() {
@@ -89,7 +94,7 @@ export default function EntryPage() {
     setSuccess(false);
 
     try {
-      let endpoint = `/api/${activeTab}`;
+      const endpoint = `/api/${activeTab}`;
       let body: any = {};
 
       if (activeTab === "production") {
@@ -97,7 +102,6 @@ export default function EntryPage() {
       } else if (activeTab === "cashflow") {
         body = { ...cashFlowData, date: format(selectedDate, "yyyy-MM-dd") };
       } else if (activeTab === "sales") {
-        // Sales are usually handled per-entry, but for simplicity we can add/edit
         body = { ...newSale, date: format(selectedDate, "yyyy-MM-dd") };
       }
 
@@ -109,15 +113,28 @@ export default function EntryPage() {
 
       if (res.ok) {
         setSuccess(true);
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(10);
+        }
         if (activeTab === "sales") setNewSale({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0 });
         fetchData();
-        setTimeout(() => setSuccess(false), 3000);
+
+        setTimeout(() => {
+          setIsDirty(false);
+          setSuccess(false);
+        }, 1500);
       } else {
         const data = await res.json();
         setError(data.error || "Failed to save");
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate([50, 50, 50]);
+        }
       }
     } catch (err) {
       setError("Network error");
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([50, 50, 50]);
+      }
     } finally {
       setSaving(false);
     }
@@ -126,25 +143,49 @@ export default function EntryPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 pb-32">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight capitalize">
-            {activeTab === "production" ? "Entri Produksi" : activeTab === "cashflow" ? "Arus Kas" : activeTab === "sales" ? "Penjualan" : "Data Master"}
-          </h1>
-          <p className={cn("text-sm", isEditable ? "text-slate-500" : "text-amber-600 font-bold flex items-center gap-1")}>
-            {isEditable ? "Update catatan harian" : <><AlertCircle className="w-4 h-4" /> Baca-saja: Riwayat</>}
-          </p>
+      <div className="space-y-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight capitalize">
+              {activeTab === "production" ? "Entri Produksi" : activeTab === "cashflow" ? "Arus Kas" : activeTab === "sales" ? "Penjualan" : "Data Master"}
+            </h1>
+            <p className={cn("text-sm", isEditable ? "text-slate-500" : "text-amber-600 font-bold flex items-center gap-1")}>
+              {isEditable ? "Update catatan harian" : <><AlertCircle className="w-4 h-4" /> Baca-saja: Riwayat</>}
+            </p>
+          </div>
         </div>
-        
+
         {activeTab !== "master" && (
-          <div className="flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-2xl shadow-sm self-start sm:self-auto">
-            <Calendar className="w-5 h-5 text-blue-500" />
-            <input 
-              type="date" 
-              value={format(selectedDate, "yyyy-MM-dd")}
-              onChange={(e) => setSelectedDate(new Date(e.target.value))}
-              className="text-sm font-bold outline-none bg-transparent"
-            />
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+            {last7Days.map((date) => {
+              const isActive = isSameDay(date, selectedDate);
+              return (
+                <button
+                  key={date.toISOString()}
+                  onClick={() => setSelectedDate(date)}
+                  className={cn(
+                    "flex flex-col items-center min-w-[64px] py-3 rounded-2xl transition-all active:scale-90",
+                    isActive
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
+                      : "bg-white border border-slate-100 text-slate-500"
+                  )}
+                >
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">{format(date, "EEE")}</span>
+                  <span className="text-lg font-black">{format(date, "d")}</span>
+                </button>
+              );
+            })}
+            <div className="relative group">
+              <input
+                type="date"
+                value={format(selectedDate, "yyyy-MM-dd")}
+                onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                className="absolute inset-0 opacity-0 cursor-pointer z-10"
+              />
+              <div className="w-16 h-[72px] flex items-center justify-center bg-slate-100 rounded-2xl text-slate-400 group-hover:text-blue-500 transition-colors">
+                <Calendar className="w-6 h-6" />
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -195,30 +236,63 @@ export default function EntryPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {activeTab === "production" && <ProductionForm data={productionData} setData={setProductionData} isEditable={isEditable} />}
-          {activeTab === "cashflow" && <CashFlowForm data={cashFlowData} setData={setCashFlowData} isEditable={isEditable} />}
-          {activeTab === "sales" && <SalesSection data={salesData} newSale={newSale} setNewSale={setNewSale} isEditable={isEditable} onSave={handleSave} />}
+          {activeTab === "production" && (
+            <ProductionForm
+              data={productionData}
+              setData={(d: any) => { setProductionData(d); setIsDirty(true); }}
+              isEditable={isEditable}
+              showDetails={showFinancialDetails}
+              setShowDetails={setShowFinancialDetails}
+            />
+          )}
+          {activeTab === "cashflow" && (
+            <CashFlowForm
+              data={cashFlowData}
+              setData={(d: any) => { setCashFlowData(d); setIsDirty(true); }}
+              isEditable={isEditable}
+            />
+          )}
+          {activeTab === "sales" && (
+            <SalesSection
+              data={salesData}
+              newSale={newSale}
+              setNewSale={setNewSale}
+              isEditable={isEditable}
+              onSave={handleSave}
+            />
+          )}
           {activeTab === "master" && <MasterForm data={masterData} onSave={fetchData} />}
         </div>
       )}
 
       {/* Persistent Save Bar for non-transactional tabs */}
       {isEditable && (activeTab === "production" || activeTab === "cashflow") && (
-        <div className="fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 w-[90%] max-w-4xl bg-slate-900 text-white rounded-3xl shadow-2xl p-5 flex items-center justify-between z-40">
-          <div className="hidden sm:block">
-            <p className="text-[10px] uppercase font-black text-slate-400">Status</p>
-            <h4 className="text-sm font-bold flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              Drafting {activeTab}
-            </h4>
+        <div className={cn(
+          "fixed left-1/2 -translate-x-1/2 w-[92%] max-w-4xl bg-slate-900 text-white rounded-[32px] shadow-2xl p-4 flex items-center justify-between z-40 transition-all duration-500",
+          isDirty ? "bottom-24 sm:bottom-10 opacity-100" : "-bottom-40 opacity-0"
+        )}>
+          <div className="hidden sm:flex items-center gap-4 pl-4">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+              <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Status</p>
+              <h4 className="text-sm font-black italic">Ada perubahan yang belum disimpan</h4>
+            </div>
           </div>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full sm:w-auto flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+            className="w-full sm:w-auto flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white px-10 py-5 rounded-[24px] font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-blue-500/20"
           >
-            {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-            Simpan Informasi
+            {success ? (
+              <CheckCircle2 className="w-5 h-5 animate-in zoom-in" />
+            ) : saving ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Save className="w-5 h-5" />
+            )}
+            {success ? "Berhasil Disimpan!" : "Simpan Perubahan"}
           </button>
         </div>
       )}
@@ -226,40 +300,139 @@ export default function EntryPage() {
   );
 }
 
-function ProductionForm({ data, setData, isEditable }: any) {
+function ProductionForm({ data, setData, isEditable, showDetails, setShowDetails }: any) {
   const updateField = (field: string, val: string) => {
     if (!isEditable) return;
     setData({ ...data, [field]: parseFloat(val) || 0 });
   };
 
+  const isAtLeastOneCageDone = CATS.some(cat =>
+    data[`${cat}JmlTelur`] || data[`${cat}Kg`] || data[`${cat}Pct`] || data[`${cat}Fc`]
+  );
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {CATS.map((cat) => (
-        <div key={cat} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm overflow-hidden group">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black">
-                {CATEGORY_MAP[cat]}
-              </div>
-              <h3 className="text-lg font-black text-slate-900">Cage {CATEGORY_MAP[cat]}</h3>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <InputField label="Jml Telur" value={data[`${cat}JmlTelur`]} onChange={(v: string) => updateField(`${cat}JmlTelur`, v)} readOnly={!isEditable} />
-            <InputField label="Kg" value={data[`${cat}Kg`]} onChange={(v: string) => updateField(`${cat}Kg`, v)} readOnly={!isEditable} />
-            <InputField label="%" value={data[`${cat}Pct`]} onChange={(v: string) => updateField(`${cat}Pct`, v)} readOnly={!isEditable} />
-            <InputField label="FC" value={data[`${cat}Fc`]} onChange={(v: string) => updateField(`${cat}Fc`, v)} readOnly={!isEditable} />
-          </div>
-        </div>
+        <CageCard
+          key={cat}
+          cat={cat}
+          data={data}
+          updateField={updateField}
+          isEditable={isEditable}
+        />
       ))}
-      <div className="bg-blue-600 p-8 rounded-3xl text-white md:col-span-2">
-        <h3 className="text-xl font-black mb-6">Daily Financial Summary</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-          <InputField dark label="Harga Sentral" value={data.hargaSentral} onChange={(v: string) => updateField(`hargaSentral`, v)} readOnly={!isEditable} />
-          <InputField dark label="UP" value={data.up} onChange={(v: string) => updateField(`up`, v)} readOnly={!isEditable} />
-          <InputField dark label="Operasional" value={data.operasional} onChange={(v: string) => updateField(`operasional`, v)} readOnly={!isEditable} />
-          <InputField dark label="Daily Profit" value={data.profitDaily} onChange={(v: string) => updateField(`profitDaily`, v)} readOnly={!isEditable} />
+
+      {isAtLeastOneCageDone && (
+        <div className={cn(
+          "md:col-span-2 transition-all duration-500",
+          showDetails ? "bg-blue-600 p-8 rounded-[32px]" : "bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm"
+        )}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center",
+                showDetails ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600"
+              )}>
+                <Wallet className="w-5 h-5" />
+              </div>
+              <h3 className={cn("text-xl font-black tracking-tight", showDetails ? "text-white" : "text-slate-900")}>Daily Financial Summary</h3>
+            </div>
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all",
+                showDetails ? "bg-white text-blue-600" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              )}
+            >
+              {showDetails ? "Sembunyikan" : "Lihat Detail"}
+              {showDetails ? <ChevronDown className="w-4 h-4 rotate-180 transition-transform" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {showDetails && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 animate-in fade-in slide-in-from-top-4 duration-300">
+              <InputField dark label="Harga Sentral" value={data.hargaSentral} onChange={(v: string) => updateField(`hargaSentral`, v)} readOnly={!isEditable} />
+              <InputField dark label="UP" value={data.up} onChange={(v: string) => updateField(`up`, v)} readOnly={!isEditable} />
+              <InputField dark label="Operasional" value={data.operasional} onChange={(v: string) => updateField(`operasional`, v)} readOnly={!isEditable} />
+              <div className="space-y-1.5 flex-1">
+                <label className="text-[9px] uppercase font-black tracking-[0.2em] px-1 text-white/50">Daily Profit</label>
+                <div className="w-full px-5 py-4 rounded-2xl bg-white/10 border border-white/5 text-white text-lg font-black font-jetbrains">
+                  Rp {Math.round(data.profitDaily || 0).toLocaleString()}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+      )}
+    </div>
+  );
+}
+
+function CageCard({ cat, data, updateField, isEditable }: any) {
+  const fields = ["JmlTelur", "Kg", "Pct", "Fc"];
+  const labels = ["Jml Telur", "Kg", "%", "FC"];
+
+  const filledCount = fields.filter(f => data[`${cat}${f}`]).length;
+  const progress = (filledCount / fields.length) * 100;
+
+  const inputRefs = useRef<any>([]);
+
+  const handleNext = (index: number) => {
+    if (index < fields.length - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  return (
+    <div className={cn(
+      "p-6 rounded-[32px] border transition-all duration-500 relative overflow-hidden group active-scale",
+      !isEditable ? "bg-slate-50 border-slate-200 opacity-60 grayscale-[0.5]" : "bg-white border-slate-200 shadow-sm hover:shadow-xl hover:scale-[1.02] hover:border-blue-200"
+    )}>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "w-10 h-10 rounded-xl flex items-center justify-center font-black transition-colors",
+            progress === 100 ? "bg-emerald-500 text-white" : "bg-blue-50 text-blue-600"
+          )}>
+            {CATEGORY_MAP[cat]}
+          </div>
+          <h3 className="text-lg font-black text-slate-900">Cage {CATEGORY_MAP[cat]}</h3>
+        </div>
+
+        {/* Progress Ring */}
+        <div className="relative w-10 h-10">
+          <svg className="w-full h-full -rotate-90">
+            <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeWidth="4" className="text-slate-100" />
+            <circle
+              cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeWidth="4"
+              strokeDasharray={100}
+              strokeDashoffset={100 - progress}
+              className={cn("transition-all duration-700", progress === 100 ? "text-emerald-500" : "text-blue-500")}
+              style={{ strokeDashoffset: `${100 - progress}` }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className={cn("text-[8px] font-black", progress === 100 ? "text-emerald-500" : "text-slate-400")}>
+              {progress === 100 ? "✓" : `${progress}%`}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        {fields.map((f, i) => (
+          <InputField
+            key={f}
+            ref={(el: any) => inputRefs.current[i] = el}
+            label={labels[i]}
+            value={data[`${cat}${f}`]}
+            onChange={(v: string) => updateField(`${cat}${f}`, v)}
+            readOnly={!isEditable}
+            onKeyDown={(e: any) => {
+              if (e.key === 'Enter') handleNext(i);
+            }}
+          />
+        ))}
       </div>
     </div>
   );
@@ -442,8 +615,7 @@ function MasterForm({ data, onSave }: any) {
   );
 }
 
-function InputField({ label, value, onChange, readOnly, dark }: any) {
-  // Format number with comma thousand separators for display
+const InputField = forwardRef(({ label, value, onChange, readOnly, dark, onKeyDown }: any, ref: any) => {
   const displayValue = useMemo(() => {
     if (value == null || value === "") return "";
     const strVal = String(value).replace(/,/g, "");
@@ -458,16 +630,18 @@ function InputField({ label, value, onChange, readOnly, dark }: any) {
         {label}
       </label>
       <input
+        ref={ref}
         type="text"
-        inputMode="numeric"
+        inputMode="decimal"
         value={displayValue}
         onChange={(e) => {
           const cleaned = e.target.value.replace(/,/g, "");
           onChange(cleaned);
         }}
+        onKeyDown={onKeyDown}
         readOnly={readOnly}
         className={cn(
-          "w-full px-5 py-4 rounded-2xl text-lg font-black outline-none transition-all",
+          "w-full px-5 py-4 rounded-2xl text-lg font-black outline-none transition-all font-jetbrains",
           dark
             ? "bg-white/10 border-white/5 text-white placeholder-white/20 focus:bg-white/20"
             : "bg-slate-50 border-slate-100 text-slate-900 focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-200"
@@ -476,4 +650,6 @@ function InputField({ label, value, onChange, readOnly, dark }: any) {
       />
     </div>
   );
-}
+});
+
+InputField.displayName = "InputField";

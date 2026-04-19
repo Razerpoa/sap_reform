@@ -111,14 +111,25 @@ export default function Charts({ data, type = "production" }: { data: any[], typ
   );
 }
 
-export function Sparkline({ data, color }: { data: any[], color: string }) {
+export function Sparkline({ data, color, onHover }: { data: number[], color: string, onHover?: (val: number | null) => void }) {
   if (!data || data.length === 0) return null;
   
   const chartData = data.map((val, i) => ({ val: Number(val) || 0, i }));
   
   return (
     <ResponsiveContainer width="100%" height={50} minWidth={0}>
-      <AreaChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+      <AreaChart
+        data={chartData}
+        margin={{ top: 5, right: 0, left: 0, bottom: 0 }}
+        onMouseMove={(e) => {
+          if (onHover && (e as any).activePayload) {
+            onHover((e as any).activePayload[0].value as number);
+          }
+        }}
+        onMouseLeave={() => {
+          if (onHover) onHover(null);
+        }}
+      >
         <defs>
           <linearGradient id={`grad-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor={color} stopOpacity={0.3} />

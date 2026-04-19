@@ -37,22 +37,26 @@ export default function Navigation({ user }: NavigationProps) {
             </Link>
           </div>
 
-          <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-            {navItems.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors",
-                  pathname === item.href
-                    ? "border-blue-600 text-slate-900"
-                    : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                )}
-              >
-                <item.icon className="w-4 h-4 mr-2" />
-                {item.name}
-              </Link>
-            ))}
+          <div className="hidden sm:ml-6 sm:flex sm:items-center bg-slate-100 p-1 rounded-xl relative">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "relative z-10 flex items-center px-4 py-2 text-sm font-bold transition-all duration-300 rounded-lg",
+                    isActive ? "text-blue-600" : "text-slate-500 hover:text-slate-700"
+                  )}
+                >
+                  {isActive && (
+                    <div className="absolute inset-0 bg-white rounded-lg shadow-sm animate-in fade-in zoom-in-95 duration-300 -z-10" />
+                  )}
+                  <item.icon className="w-4 h-4 mr-2" />
+                  {item.name}
+                </Link>
+              );
+            })}
           </div>
 
           <div className="flex items-center gap-4">
@@ -74,20 +78,43 @@ export default function Navigation({ user }: NavigationProps) {
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <div className="sm:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-white/80 backdrop-blur-lg border border-slate-200 rounded-2xl shadow-2xl p-2 flex justify-around items-center z-50">
+      <div className="sm:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-[32px] shadow-2xl p-2 flex justify-between items-center z-50 overflow-hidden">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
+          const isEntry = item.href === "/entry";
+
+          if (isEntry) {
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "relative flex flex-col items-center justify-center w-16 h-16 rounded-full transition-all active:scale-90",
+                  isActive
+                    ? "bg-blue-600 text-white shadow-xl shadow-blue-500/40 -translate-y-4 ring-8 ring-slate-50"
+                    : "bg-blue-500 text-white shadow-lg shadow-blue-500/20 -translate-y-2"
+                )}
+              >
+                <item.icon className="w-8 h-8" />
+                <span className="sr-only">{item.name}</span>
+              </Link>
+            );
+          }
+
           return (
             <Link
               key={item.name}
               href={item.href}
               className={cn(
-                "flex flex-col items-center gap-1 p-2 rounded-xl transition-all",
-                isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "text-slate-500"
+                "flex-1 flex flex-col items-center gap-1 py-3 transition-all relative",
+                isActive ? "text-white" : "text-slate-400"
               )}
             >
-              <item.icon className="w-6 h-6" />
-              <span className="text-[10px] font-bold">{item.name}</span>
+              {isActive && (
+                <div className="absolute inset-x-4 inset-y-2 bg-white/10 rounded-2xl animate-in fade-in zoom-in-95 duration-300" />
+              )}
+              <item.icon className={cn("w-6 h-6 relative z-10 transition-transform", isActive && "scale-110")} />
+              <span className="text-[10px] font-black uppercase tracking-widest relative z-10">{item.name}</span>
             </Link>
           );
         })}
