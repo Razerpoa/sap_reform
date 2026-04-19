@@ -186,7 +186,12 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
       
       <div className={cn("relative z-10", isCompact ? "mb-2" : "mb-4")}>
         <p className={cn("font-black uppercase tracking-[0.2em] text-slate-500 mb-1", isCompact ? "text-[8px] sm:text-[10px]" : "text-[11px]")}>{title}</p>
-        <h4 className={cn("font-black text-white tracking-tight leading-none", isHero ? "text-4xl sm:text-5xl" : isCompact ? "text-lg sm:text-2xl" : "text-3xl")}>{value}</h4>
+        <h4 className={cn(
+          "font-black text-white tracking-tight leading-tight break-all sm:break-words", 
+          isHero ? "text-3xl sm:text-5xl lg:text-7xl" : isCompact ? "text-xl sm:text-2xl" : "text-3xl"
+        )}>
+          {value}
+        </h4>
       </div>
 
       {breakdown && breakdown.length > 0 && (
