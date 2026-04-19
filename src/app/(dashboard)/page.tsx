@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Download, TrendingUp, Package, Layers, DollarSign, Wallet, ShoppingBag, TrendingDown, Landmark } from "lucide-react";
 import Link from "next/link";
-import Charts, { Sparkline } from "@/components/Charts";
+import Charts from "@/components/Charts";
 import { PlusCircle, RefreshCw, BarChart2, Clock, CheckCircle2 } from "lucide-react";
 import { calculateDashboardStats } from "@/lib/calculations";
 import { cn } from "@/lib/utils";
@@ -40,9 +40,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-      {/* Welcome Hub Header */}
-
-
       {/* Stats Section */}
       <div className="space-y-6">
         {/* Hero Card: Sales Performance */}
@@ -53,7 +50,6 @@ export default async function DashboardPage() {
           subtitle="Total Pendapatan (30h)"
           icon={DollarSign}
           color="bg-amber-500"
-          trendData={salesEntries.slice(0, 7).reverse().map(e => e.subTotal)}
           breakdown={[
             { label: "Total Volume", value: `${(stats.salesTotalKg || 0).toLocaleString()} KG`, icon: ShoppingBag },
             { label: "Total Peti", value: `${(stats.salesTotalPeti || 0).toLocaleString()} Peti`, icon: Layers }
@@ -61,7 +57,7 @@ export default async function DashboardPage() {
         />
 
         {/* Quad Grid Cards (4 in desktop, 2x2 in mobile) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <PremiumStatCard 
             variant="compact"
             title="Produksi Hari ini"
@@ -69,7 +65,6 @@ export default async function DashboardPage() {
             subtitle="Produksi"
             icon={Layers}
             color="bg-indigo-600"
-            trendData={productionEntries.slice(0, 7).reverse().map(e => e.totalKg)}
             breakdown={[
               { label: "Avg (30h)", value: `${Math.round(stats.productionAvgKg || 0).toLocaleString()} KG`, icon: Package }
             ]}
@@ -81,7 +76,6 @@ export default async function DashboardPage() {
             subtitle="Terjual"
             icon={TrendingUp}
             color="bg-emerald-600"
-            trendData={salesEntries.slice(0, 7).reverse().map(e => e.totalKgHariIni)}
             breakdown={[
               { label: "Peti Hari Ini", value: `${(stats.salesTodayPeti || 0).toLocaleString()} Peti`, icon: Layers }
             ]}
@@ -93,7 +87,6 @@ export default async function DashboardPage() {
             subtitle="Profit (30h)"
             icon={TrendingDown}
             color="bg-rose-600"
-            trendData={cashFlowEntries.slice(0, 7).reverse().map(e => e.totalPenjualan - e.biayaPakan - e.biayaOperasional)}
             breakdown={[
               { label: "Avg Profit", value: `Rp ${Math.round(stats.cashFlowAvgProfit || 0).toLocaleString()}`, icon: DollarSign }
             ]}
@@ -105,7 +98,6 @@ export default async function DashboardPage() {
             subtitle="Live Balance"
             icon={Wallet}
             color="bg-blue-600"
-            trendData={cashFlowEntries.slice(0, 7).reverse().map(e => e.saldoRekening + e.saldoCash)}
             breakdown={[
               { label: "Rekening", value: `Rp ${Math.round(stats.cashFlowSaldoRekening || 0).toLocaleString()}`, icon: Landmark },
               { label: "Cash", value: `Rp ${Math.round(stats.cashFlowSaldoCash || 0).toLocaleString()}`, icon: DollarSign }
@@ -115,8 +107,8 @@ export default async function DashboardPage() {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Tren Produksi</h3>
             <div className="flex items-center gap-2">
@@ -129,7 +121,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white p-8 rounded-[40px] border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Kinerja Keuangan</h3>
             <div className="flex items-center gap-4">
@@ -156,7 +148,7 @@ function format(date: Date, str: string) {
   return new Date(date).toLocaleDateString();
 }
 
-function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown, variant, trendData }: any) {
+function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown, variant }: any) {
   const isHero = variant === "hero";
   const isCompact = variant === "compact";
 
@@ -166,28 +158,22 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
   const badgeText = colorName === "slate" ? "text-slate-400" : `text-${colorName}-400`;
   const badgeBg = colorName === "slate" ? "bg-slate-800/50" : `bg-${colorName}-500/10`;
   const badgeRing = colorName === "slate" ? "ring-white/5" : `ring-${colorName}-500/20`;
-  const trendColor = colorName === "slate" ? "#94a3b8" : 
-                     colorName === "amber" ? "#f59e0b" :
-                     colorName === "indigo" ? "#6366f1" :
-                     colorName === "emerald" ? "#10b981" :
-                     colorName === "rose" ? "#f43f5e" :
-                     colorName === "blue" ? "#3b82f6" : "#3b82f6";
 
   return (
     <div className={cn(
-      "group bg-slate-900 rounded-[32px] border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-2 hover:border-slate-700 transition-all duration-300 text-white overflow-hidden relative animate-in fade-in zoom-in-95 duration-500",
-      isHero ? "p-8 sm:p-12 mb-2" : isCompact ? "p-3 sm:p-8" : "p-8"
+      "group bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 hover:border-slate-700 transition-all duration-300 text-white overflow-hidden relative animate-in fade-in zoom-in-95 duration-500",
+      isHero ? "p-6 sm:p-8 mb-4" : isCompact ? "p-3 sm:p-5" : "p-6"
     )}>
       {/* Dynamic Glow Ornament */}
       <div className={`absolute -top-10 -right-10 w-48 h-48 ${color.replace('bg-', 'bg-')}/10 rounded-full blur-[60px] group-hover:blur-[80px] group-hover:scale-125 transition-all duration-500 opacity-20`}></div>
       
-      <div className={cn("flex items-start justify-between relative z-10", isCompact ? "mb-4" : "mb-8")}>
+      <div className={cn("flex items-start justify-between relative z-10", isCompact ? "mb-3" : "mb-6")}>
         <div className={cn(
           color, 
-          "rounded-[16px] shadow-lg ring-4 ring-slate-800 group-hover:scale-110 transition-transform duration-300",
-          isCompact ? "p-2.5 sm:p-4" : "p-5"
+          "rounded-xl shadow-lg ring-4 ring-slate-800 group-hover:scale-110 transition-transform duration-300",
+          isCompact ? "p-2 sm:p-3" : "p-4"
         )}>
-          <Icon className={cn("text-white", isCompact ? "w-4 h-4 sm:w-7 sm:h-7" : "w-8 h-8")} />
+          <Icon className={cn("text-white", isCompact ? "w-4 h-4 sm:w-6 sm:h-6" : "w-7 h-7")} />
         </div>
         <span className={cn(
           "font-black uppercase tracking-widest rounded-full ring-1 transition-all duration-300",
@@ -198,24 +184,14 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
         </span>
       </div>
       
-      <div className={cn("relative z-10", isCompact ? "mb-6" : "mb-8")}>
-        <p className={cn("font-black uppercase tracking-[0.2em] text-slate-500 mb-1", isCompact ? "text-[8px] sm:text-[11px]" : "text-[11px]")}>{title}</p>
-        <h4 className={cn("font-black text-white tracking-tight leading-none", isHero ? "text-5xl sm:text-7xl" : isCompact ? "text-xl sm:text-4xl" : "text-4xl")}>{value}</h4>
+      <div className={cn("relative z-10", isCompact ? "mb-2" : "mb-4")}>
+        <p className={cn("font-black uppercase tracking-[0.2em] text-slate-500 mb-1", isCompact ? "text-[8px] sm:text-[10px]" : "text-[11px]")}>{title}</p>
+        <h4 className={cn("font-black text-white tracking-tight leading-none", isHero ? "text-4xl sm:text-5xl" : isCompact ? "text-lg sm:text-2xl" : "text-3xl")}>{value}</h4>
       </div>
-
-      {/* Trend Sparkline Integration */}
-      {trendData && (
-        <div className={cn(
-          "mb-6 transition-opacity duration-300 relative z-10",
-          isHero ? "opacity-20 h-16" : "opacity-40 group-hover:opacity-100"
-        )}>
-          <Sparkline data={trendData} color={trendColor} />
-        </div>
-      )}
 
       {breakdown && breakdown.length > 0 && (
         <div className={cn(
-          "grid gap-3 sm:gap-4 pt-4 sm:pt-6 border-t border-slate-800 relative z-10",
+          "grid gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-slate-800 relative z-10",
           isHero ? "grid-cols-2 lg:grid-cols-3" : "grid-cols-1"
         )}>
           {breakdown.map((item: any, idx: number) => (

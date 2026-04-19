@@ -235,7 +235,7 @@ function ProductionForm({ data, setData, isEditable }: any) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {CATS.map((cat) => (
-        <div key={cat} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm overflow-hidden group">
+        <div key={cat} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm overflow-hidden group">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black">
@@ -252,7 +252,7 @@ function ProductionForm({ data, setData, isEditable }: any) {
           </div>
         </div>
       ))}
-      <div className="bg-blue-600 p-8 rounded-3xl text-white md:col-span-2">
+      <div className="bg-blue-600 p-6 sm:p-8 rounded-2xl text-white md:col-span-2">
         <h3 className="text-xl font-black mb-6">Daily Financial Summary</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
           <InputField dark label="Harga Sentral" value={data.hargaSentral} onChange={(v: string) => updateField(`hargaSentral`, v)} readOnly={!isEditable} />
@@ -273,7 +273,7 @@ function CashFlowForm({ data, setData, isEditable }: any) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
         <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
           <Wallet className="w-6 h-6 text-blue-500" />
           Primary Expenses
@@ -285,7 +285,7 @@ function CashFlowForm({ data, setData, isEditable }: any) {
         </div>
       </div>
 
-      <div className="bg-slate-900 p-8 rounded-3xl text-white">
+      <div className="bg-slate-900 p-6 sm:p-8 rounded-2xl text-white">
         <h3 className="text-xl font-black mb-6">Salaries (Gaji)</h3>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <InputField dark label="Bepuk" value={data.gajiBepuk} onChange={(v: string) => updateField(`gajiBepuk`, v)} readOnly={!isEditable} />
@@ -296,7 +296,7 @@ function CashFlowForm({ data, setData, isEditable }: any) {
         </div>
       </div>
 
-      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
         <h3 className="text-xl font-black text-slate-900 mb-6">Balances & Dividends</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
           <InputField label="Deviden A" value={data.devidenA} onChange={(v: string) => updateField(`devidenA`, v)} readOnly={!isEditable} />
@@ -313,7 +313,7 @@ function SalesSection({ data, newSale, setNewSale, isEditable, onSave }: any) {
   return (
     <div className="space-y-6">
       {isEditable && (
-        <div className="bg-blue-50 p-8 rounded-3xl border border-blue-100">
+        <div className="bg-blue-50 p-6 sm:p-8 rounded-2xl border border-blue-100">
           <h3 className="text-xl font-black text-blue-900 mb-6">Entri Penjualan Baru</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="space-y-2">
@@ -341,7 +341,7 @@ function SalesSection({ data, newSale, setNewSale, isEditable, onSave }: any) {
       )}
 
       {data.length > 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
             <h3 className="font-black text-slate-900">Transaksi Hari Ini</h3>
             <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
@@ -395,7 +395,7 @@ function MasterForm({ data, onSave }: any) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {data.map((item: any) => (
-        <div key={item.kandang} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div key={item.kandang} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black">
               {item.kandang}
@@ -467,7 +467,7 @@ function InputField({ label, value, onChange, readOnly, dark }: any) {
         }}
         readOnly={readOnly}
         className={cn(
-          "w-full px-5 py-4 rounded-2xl text-lg font-black outline-none transition-all",
+          "w-full px-4 py-3 rounded-xl text-base font-black outline-none transition-all",
           dark
             ? "bg-white/10 border-white/5 text-white placeholder-white/20 focus:bg-white/20"
             : "bg-slate-50 border-slate-100 text-slate-900 focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-200"
