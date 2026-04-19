@@ -38,8 +38,8 @@ export function calculateProductionStats(entries: any[]) {
   
   // Filter for today's production (00:00-23:59 WIB)
   const today = getWIBDateString();
-  const todayEntry = entries.find(e => getWIBDateString(e.date) === today);
-  const todayKg = todayEntry?.totalKg || 0;
+  const todayEntries = entries.filter(e => e.date && getWIBDateString(e.date) === today);
+  const todayKg = todayEntries.reduce((sum, e) => sum + (e.totalKg || 0), 0);
   
   return { totalKg, avgKg, todayKg };
 }
@@ -88,8 +88,27 @@ export function calculateCashFlowProfit(data: {
   totalPenjualan?: number;
   biayaPakan?: number;
   biayaOperasional?: number;
+  gajiBepuk?: number;
+  gajiBarman?: number;
+  gajiAgung?: number;
+  gajiEki?: number;
+  gajiAdi?: number;
+  devidenA?: number;
+  devidenB?: number;
 }) {
-  return (data.totalPenjualan || 0) - (data.biayaPakan || 0) - (data.biayaOperasional || 0);
+  const revenue = data.totalPenjualan || 0;
+  const expenses = 
+    (data.biayaPakan || 0) + 
+    (data.biayaOperasional || 0) + 
+    (data.gajiBepuk || 0) + 
+    (data.gajiBarman || 0) + 
+    (data.gajiAgung || 0) + 
+    (data.gajiEki || 0) + 
+    (data.gajiAdi || 0) + 
+    (data.devidenA || 0) + 
+    (data.devidenB || 0);
+
+  return revenue - expenses;
 }
 
 export function calculateCashFlowStats(entries: any[]) {
