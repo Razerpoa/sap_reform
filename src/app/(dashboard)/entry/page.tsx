@@ -155,6 +155,13 @@ export default function EntryPage() {
               type="date" 
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
+              onClick={(e) => {
+                try {
+                  (e.target as HTMLInputElement).showPicker();
+                } catch (error) {
+                  console.log("Browser does not support showPicker");
+                }
+              }}
               className="text-sm font-bold outline-none bg-transparent"
             />
           </div>
@@ -278,9 +285,48 @@ function ProductionForm({ data, setData, isEditable }: any) {
 }
 
 function CashFlowForm({ data, setData, isEditable }: any) {
+  const [workers, setWorkers] = useState<any[]>([]);
+  const [workersLoading, setWorkersLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchWorkers() {
+      try {
+        const res = await fetch("/api/workers", {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const workerList = await res.json();
+          setWorkers(workerList);
+        } else {
+          console.error("Failed to fetch workers:", res.status);
+        }
+      } catch (err) {
+        console.error("Failed to fetch workers:", err);
+      } finally {
+        setWorkersLoading(false);
+      }
+    }
+    fetchWorkers();
+  }, []);
+
   const updateField = (field: string, val: string) => {
     if (!isEditable) return;
     setData({ ...data, [field]: parseFloat(val) || 0 });
+  };
+
+  const updateSalary = (workerId: string, val: string) => {
+    if (!isEditable) return;
+    const salary = parseFloat(val) || 0;
+    const currentSalaries = data.salaries || {};
+    const newSalaries = { ...currentSalaries };
+    
+    if (salary > 0) {
+      newSalaries[workerId] = salary;
+    } else {
+      delete newSalaries[workerId];
+    }
+    
+    setData({ ...data, salaries: newSalaries });
   };
 
   return (
@@ -299,13 +345,26 @@ function CashFlowForm({ data, setData, isEditable }: any) {
 
       <div className="bg-slate-900 p-6 sm:p-8 rounded-2xl text-white">
         <h3 className="text-xl font-black mb-6">Salaries (Gaji)</h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <InputField dark label="Bepuk" value={data.gajiBepuk} onChange={(v: string) => updateField(`gajiBepuk`, v)} readOnly={!isEditable} />
-          <InputField dark label="Barman" value={data.gajiBarman} onChange={(v: string) => updateField(`gajiBarman`, v)} readOnly={!isEditable} />
-          <InputField dark label="Agung" value={data.gajiAgung} onChange={(v: string) => updateField(`gajiAgung`, v)} readOnly={!isEditable} />
-          <InputField dark label="Eki" value={data.gajiEki} onChange={(v: string) => updateField(`gajiEki`, v)} readOnly={!isEditable} />
-          <InputField dark label="Adi" value={data.gajiAdi} onChange={(v: string) => updateField(`gajiAdi`, v)} readOnly={!isEditable} />
-        </div>
+        {workersLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-white" />
+          </div>
+        ) : workers.length > 0 ? (
+          <div className={`grid gap-4 ${workers.length <= 3 ? 'grid-cols-1 sm:grid-cols-3' : workers.length <= 5 ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
+            {workers.map((worker) => (
+              <InputField 
+                key={worker.id}
+                dark 
+                label={worker.name} 
+                value={data.salaries?.[worker.id] || 0} 
+                onChange={(v: string) => updateSalary(worker.id, v)} 
+                readOnly={!isEditable} 
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-slate-300 text-sm">No workers configured</p>
+        )}
       </div>
 
       <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
@@ -405,29 +464,50 @@ function MasterForm({ data, onSave }: any) {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {data.map((item: any) => (
-        <div key={item.kandang} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black">
-              {item.kandang}
+        <div key={item.kandang} className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all group">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-lg group-hover:bg-blue-600 transition-colors">
+                {item.kandang}
+              </div>
+              <div>
+                <h4 className="font-black text-slate-900 text-lg">Kandang {item.kandang}</h4>
+                {/* <p className="text-xs text-slate-400 font-bold uppercase tracking-wide">Master Data</p> */}
+              </div>
             </div>
-            <div>
-              <h4 className="font-black text-slate-900">Kandang {item.kandang}</h4>
-              <p className="text-xs text-slate-400 font-bold">{item.jmlAyam.toLocaleString()} Chickens</p>
+            <button 
+              onClick={() => handleEdit(item)}
+              className="p-2 hover:bg-blue-50 rounded-xl transition-colors text-blue-600 hover:text-blue-700 group-hover:scale-110"
+            >
+              <Settings2 className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Jumlah Ayam</p>
+              <p className="text-2xl font-black text-slate-900">{item.jmlAyam.toLocaleString()}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Gram/Ekor</p>
+              <p className="text-2xl font-black text-slate-900">{item.gramEkor.toLocaleString()}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Jml Ember</p>
+              <p className="text-2xl font-black text-slate-900">{item.jmlEmber.toLocaleString()}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Jml Pakan</p>
+              <p className="text-2xl font-black text-slate-900">{item.jmlPakan.toLocaleString()}</p>
             </div>
           </div>
-          <button 
-            onClick={() => handleEdit(item)}
-            className="p-3 hover:bg-slate-50 rounded-2xl transition-colors text-blue-600"
-          >
-            <Settings2 className="w-5 h-5" />
-          </button>
         </div>
       ))}
       
       {editing && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-100 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="bg-slate-50 px-10 py-8 flex items-center justify-between border-b border-slate-100">
               <h3 className="text-2xl font-black text-slate-900">Edit {editing.kandang}</h3>

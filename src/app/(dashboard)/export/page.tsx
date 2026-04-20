@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { Download, FileSpreadsheet, Archive, Calendar, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getWIBDateString } from "@/lib/date-utils";
 
 export default function ExportPage() {
   const [formatType, setFormatType] = useState<"xlsx" | "csv">("xlsx");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(getWIBDateString());
+  const [endDate, setEndDate] = useState(getWIBDateString());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -107,7 +108,6 @@ export default function ExportPage() {
             <label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Start Date</label>
             <div className="relative flex">
               <input
-
                 type="date"
                 value={startDate}
                 // This triggers the native calendar UI on click
@@ -119,7 +119,7 @@ export default function ExportPage() {
                   }
                 }}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-200 transition-all cursor-pointer"
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-200 transition-all cursor-pointer"
               />
             </div>
           </div>
@@ -138,7 +138,7 @@ export default function ExportPage() {
                   }
                 }}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-200 transition-all cursor-pointer"
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-200 transition-all cursor-pointer"
               />
             </div>
           </div>
@@ -187,14 +187,17 @@ export default function ExportPage() {
         <h4 className="font-black text-slate-900 mb-4">Included Sheets</h4>
         <div className="space-y-2">
           {[
-            { name: "Production", desc: "Daily production data per cage (B1-B3, B1+-B3+)" },
-            { name: "Sales", desc: "Customer sales transactions" },
-            { name: "CashFlow", desc: "Financial flow and salaries" },
-            { name: "User", desc: "Registered users" },
+            { name: "Production", desc: "Produksi harian per kandang" },
+            { name: "Sales", desc: "Transaksi penjualan" },
+            { name: "CashFlow", desc: "Gaji dan CashFlow" },
+            { name: "User", desc: "Data user" },
           ].map((sheet) => (
-            <div key={sheet.name} className="flex items-center justify-between text-sm">
-              <span className="font-bold text-slate-700">{sheet.name}</span>
-              <span className="text-slate-400">{sheet.desc}</span>
+            <div key={sheet.name} className="flex items-center justify-between text-sm w-64">
+              {/* shrink-0 ensures the name doesn't get squashed */}
+              <span className="font-bold text-slate-700 shrink-0 mr-4">{sheet.name}</span>
+              
+              {/* truncate requires a defined width or min-width-0 in a flex container */}
+              <span className="text-slate-400 truncate min-w-0">{sheet.desc}</span>
             </div>
           ))}
         </div>

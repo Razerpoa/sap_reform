@@ -5,6 +5,7 @@
 import { prisma } from "@/lib/prisma";
 import { getWIBDateString } from "@/lib/date-utils";
 import { startOfDay } from "date-fns";
+import type { Prisma } from "@prisma/client";
 
 // ==================== PRODUCTION DATA ====================
 
@@ -241,6 +242,9 @@ export type CashFlowSaveInput = {
   totalPenjualan?: number;
   biayaPakan?: number;
   biayaOperasional?: number;
+  // New dynamic salaries field
+  salaries?: Record<string, number>;
+  // Legacy fields - kept for backward compatibility
   gajiBepuk?: number;
   gajiBarman?: number;
   gajiAgung?: number;
@@ -265,12 +269,28 @@ export async function saveCashFlowData(data: CashFlowSaveInput) {
     where: { date: data.date }
   });
   
+  // Prepare data for saving - only include non-legacy fields and new salaries
+  const saveData: any = {
+    date: data.date,
+    totalPenjualan: data.totalPenjualan,
+    biayaPakan: data.biayaPakan,
+    biayaOperasional: data.biayaOperasional,
+    salaries: data.salaries || {},
+    devidenA: data.devidenA,
+    devidenB: data.devidenB,
+    saldoKas: data.saldoKas,
+    saldoPemasukan: data.saldoPemasukan,
+    saldoKewajiban: data.saldoKewajiban,
+    saldoRekening: data.saldoRekening,
+    saldoCash: data.saldoCash,
+  };
+  
   const entry = existing
     ? await prisma.cashFlow.update({
         where: { id: existing.id },
-        data,
+        data: saveData,
       })
-    : await prisma.cashFlow.create({ data });
+    : await prisma.cashFlow.create({ data: saveData });
 
   revalidatePath("/");
   return entry;
@@ -366,10 +386,15 @@ export type MasterSaveInput = {
  * Returns the saved entry
  */
 export async function saveMasterData(data: MasterSaveInput) {
+  // Filter out undefined values for Prisma operations
+  const cleanData = Object.fromEntries(
+    Object.entries(data).filter(([_, v]) => v !== undefined && v !== null)
+  ) as Prisma.CageMasterUpdateInput & Prisma.CageMasterCreateInput;
+
   const entry = await prisma.cageMaster.upsert({
     where: { kandang: data.kandang },
-    update: data,
-    create: data,
+    update: cleanData,
+    create: cleanData,
   });
 
   revalidatePath("/");

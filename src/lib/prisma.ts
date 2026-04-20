@@ -3,14 +3,15 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { withAccelerate } from "@prisma/extension-accelerate";
 
-const globalForPrisma = global as unknown as { prisma: any };
+const globalForPrisma = global as unknown as { prisma?: PrismaClient };
 
-const createPrismaClient = () => {
+const createPrismaClient = (): PrismaClient => {
   const url = process.env.DATABASE_URL || "";
   const isProxy = url.startsWith("prisma://") || url.startsWith("prisma+postgres://");
 
   if (isProxy) {
     // Proxy/Accelerate flow
+    // @ts-ignore - Accelerate extension has type compatibility issues
     return new PrismaClient({
       // @ts-ignore
       accelerateUrl: url,
@@ -28,6 +29,15 @@ const createPrismaClient = () => {
   });
 };
 
-export const prisma = globalForPrisma.prisma || createPrismaClient();
+let prisma: PrismaClient;
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV === "production") {
+  prisma = createPrismaClient();
+} else {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+  prisma = globalForPrisma.prisma;
+}
+
+export { prisma };

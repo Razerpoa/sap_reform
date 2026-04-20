@@ -88,6 +88,8 @@ export function calculateCashFlowProfit(data: {
   totalPenjualan?: number;
   biayaPakan?: number;
   biayaOperasional?: number;
+  salaries?: Record<string, number>;
+  // Legacy fields - kept for backward compatibility
   gajiBepuk?: number;
   gajiBarman?: number;
   gajiAgung?: number;
@@ -97,14 +99,26 @@ export function calculateCashFlowProfit(data: {
   devidenB?: number;
 }) {
   const revenue = data.totalPenjualan || 0;
-  const expenses = 
-    (data.biayaPakan || 0) + 
-    (data.biayaOperasional || 0) + 
+  
+  // Calculate total salaries from new dynamic structure
+  const salariesTotal = data.salaries 
+    ? Object.values(data.salaries).reduce((sum, salary) => sum + (salary || 0), 0)
+    : 0;
+  
+  // Fall back to legacy fields if no new salaries provided
+  const legacySalaries = 
     (data.gajiBepuk || 0) + 
     (data.gajiBarman || 0) + 
     (data.gajiAgung || 0) + 
     (data.gajiEki || 0) + 
-    (data.gajiAdi || 0) + 
+    (data.gajiAdi || 0);
+  
+  const totalSalaries = salariesTotal > 0 ? salariesTotal : legacySalaries;
+  
+  const expenses = 
+    (data.biayaPakan || 0) + 
+    (data.biayaOperasional || 0) + 
+    totalSalaries +
     (data.devidenA || 0) + 
     (data.devidenB || 0);
 

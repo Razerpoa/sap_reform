@@ -31,6 +31,11 @@ export default async function DashboardPage() {
       {/* Stats Section */}
       <div className="space-y-6">
         {/* Hero Card: Sales Performance */}
+        {/* TODO, Make Profit card a Hero, Cards arrangements
+                      Profit
+        Total produksi      Total penjualan
+        Total pengeluaran   Balance
+        */}
         <PremiumStatCard 
           variant="hero"
           title="Kinerja Penjualan"
@@ -59,13 +64,13 @@ export default async function DashboardPage() {
           />
           <PremiumStatCard 
             variant="compact"
-            title="Aktivitas"
+            title="Terjual Hari Ini"
             value={`${(stats.salesTodayKg || 0).toLocaleString()} KG`}
             subtitle="Terjual"
-            icon={TrendingUp}
+            icon={stats.salesTodayKg >= 0 ? TrendingUp : TrendingDown}
             color="bg-emerald-600"
             breakdown={[
-              { label: "Peti Hari Ini", value: `${(stats.salesTodayPeti || 0).toLocaleString()} Peti`, icon: Layers }
+              { label: "Peti", value: `${(stats.salesTodayPeti || 0).toLocaleString()} Peti`, icon: Layers }
             ]}
           />
           <PremiumStatCard 
@@ -200,9 +205,10 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
              <div className="flex items-center justify-between group/item border-l border-slate-800 pl-6 hidden lg:flex">
                <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500 group-hover/item:text-slate-300 transition-colors">
                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                 <span className="font-black uppercase tracking-widest text-[10px]">Status Operasional</span>
+               {/* TODO, Profitabillity check */}
+                 <span className="font-black uppercase tracking-widest text-[10px]">Status Profit</span>
                </div>
-               <p className="font-black text-emerald-400 text-base">STABLE</p>
+               <p className="font-black text-emerald-400 text-base">PROFIT</p> 
              </div>
           )}
         </div>

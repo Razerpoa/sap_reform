@@ -123,17 +123,38 @@ test.describe('API: Cash Flow Entry Flow', () => {
   });
 
   test('POST /api/cashflow saves cash flow data', async ({ request }) => {
+    // First, create test workers
+    const workersRes = await request.get('/api/workers');
+    const workers = await workersRes.json();
+    
+    // Build salaries object from workers (if workers exist)
+    const salaries: Record<string, number> = {};
+    if (workers && workers.length > 0) {
+      // Get all worker IDs (they should be our migration workers)
+      const workerMap: Record<string, string> = {};
+      workers.forEach((w: any) => {
+        if (w.name === 'Bepuk') workerMap['Bepuk'] = w.id;
+        if (w.name === 'Barman') workerMap['Barman'] = w.id;
+        if (w.name === 'Agung') workerMap['Agung'] = w.id;
+        if (w.name === 'Eki') workerMap['Eki'] = w.id;
+        if (w.name === 'Adi') workerMap['Adi'] = w.id;
+      });
+      
+      // Assign salaries using new format
+      if (workerMap['Bepuk']) salaries[workerMap['Bepuk']] = 300000;
+      if (workerMap['Barman']) salaries[workerMap['Barman']] = 300000;
+      if (workerMap['Agung']) salaries[workerMap['Agung']] = 400000;
+      if (workerMap['Eki']) salaries[workerMap['Eki']] = 350000;
+      if (workerMap['Adi']) salaries[workerMap['Adi']] = 350000;
+    }
+    
     const response = await request.post('/api/cashflow', {
       data: {
         date: today,
         totalPenjualan: 5000000,
         biayaPakan: 1500000,
         biayaOperasional: 500000,
-        gajiBepuk: 300000,
-        gajiBarman: 300000,
-        gajiAgung: 400000,
-        gajiEki: 350000,
-        gajiAdi: 350000,
+        salaries,
         devidenA: 500000,
         devidenB: 500000,
         saldoKas: 10000000,

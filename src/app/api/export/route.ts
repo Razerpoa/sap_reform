@@ -6,6 +6,23 @@ import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
 
+// Helper function to build dynamic salary headers and values
+async function buildSalaryColumnsForCashFlow(cashflowEntries: any[]) {
+  // Get all workers sorted by name
+  const workers = await prisma.worker.findMany({
+    orderBy: { name: "asc" },
+  });
+
+  const salaryHeaders = workers.map((w: any) => `Gaji ${w.name}`);
+  
+  const salaryRows = cashflowEntries.map((entry: any) => {
+    const salaries = entry.salaries || {};
+    return workers.map((w: any) => salaries[w.id] || 0);
+  });
+
+  return { salaryHeaders, salaryRows, workers };
+}
+
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
@@ -96,19 +113,23 @@ export async function GET(request: Request) {
 
     // CashFlow sheet
     if (cashflow.length > 0) {
+      const { salaryHeaders, salaryRows } = await buildSalaryColumnsForCashFlow(cashflow);
+      
       const cfHeaders = [
         "Date", "Total Penjualan", "Biaya Pakan", "Biaya Operasional",
-        "Gaji Bepuk", "Gaji Barman", "Gaji Agung", "Gaji Eki", "Gaji Adi",
+        ...salaryHeaders,
         "Dividen A", "Dividen B", "Saldo Kas", "Saldo Pemasukan",
         "Saldo Kewajiban", "Saldo Rekening", "Saldo Cash"
       ];
-      const cfRows = cashflow.map((entry: any) => [
+      
+      const cfRows = cashflow.map((entry: any, idx: number) => [
         format(entry.date, "yyyy-MM-dd"),
         entry.totalPenjualan, entry.biayaPakan, entry.biayaOperasional,
-        entry.gajiBepuk, entry.gajiBarman, entry.gajiAgung, entry.gajiEki, entry.gajiAdi,
+        ...salaryRows[idx],
         entry.devidenA, entry.devidenB, entry.saldoKas, entry.saldoPemasukan,
         entry.saldoKewajiban, entry.saldoRekening, entry.saldoCash
       ]);
+      
       const cfCsv = [cfHeaders.join(","), ...cfRows.map((row: any[]) => row.join(","))].join("\n");
       zip.file("CashFlow.csv", cfCsv);
     }
@@ -177,17 +198,19 @@ export async function GET(request: Request) {
 
   // CashFlow sheet
   if (cashflow.length > 0) {
+    const { salaryHeaders, salaryRows } = await buildSalaryColumnsForCashFlow(cashflow);
+    
     const cfData = [
       [
         "Date", "Total Penjualan", "Biaya Pakan", "Biaya Operasional",
-        "Gaji Bepuk", "Gaji Barman", "Gaji Agung", "Gaji Eki", "Gaji Adi",
+        ...salaryHeaders,
         "Dividen A", "Dividen B", "Saldo Kas", "Saldo Pemasukan",
         "Saldo Kewajiban", "Saldo Rekening", "Saldo Cash"
       ],
-      ...cashflow.map((entry: any) => [
+      ...cashflow.map((entry: any, idx: number) => [
         format(entry.date, "yyyy-MM-dd"),
         entry.totalPenjualan, entry.biayaPakan, entry.biayaOperasional,
-        entry.gajiBepuk, entry.gajiBarman, entry.gajiAgung, entry.gajiEki, entry.gajiAdi,
+        ...salaryRows[idx],
         entry.devidenA, entry.devidenB, entry.saldoKas, entry.saldoPemasukan,
         entry.saldoKewajiban, entry.saldoRekening, entry.saldoCash
       ])

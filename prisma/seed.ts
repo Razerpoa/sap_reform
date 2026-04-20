@@ -28,7 +28,7 @@ const prisma = createPrismaClient();
 async function main() {
   const envEmails = process.env.ALLOWED_EMAILS?.split(",") || [];
   const emails = [
-    "admin@example.com",
+    "fathandwipayana@gmail.com",
     ...envEmails,
   ];
 
