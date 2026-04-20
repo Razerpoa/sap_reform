@@ -109,7 +109,7 @@ export default async function DashboardPage() {
                <span className="text-xs font-bold text-slate-400">Total KG</span>
             </div>
           </div>
-          <div className="h-80 w-full min-h-[320px]">
+          <div className="h-80 w-full min-h-80">
             <Charts data={chartData} type="production" />
           </div>
         </div>
@@ -128,7 +128,7 @@ export default async function DashboardPage() {
                </div>
             </div>
           </div>
-          <div className="h-80 w-full min-h-[320px]">
+          <div className="h-80 w-full min-h-80">
             <Charts data={chartData} type="finance" />
           </div>
         </div>
@@ -154,7 +154,7 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
 
   return (
     <div className={cn(
-      "group bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 hover:border-slate-700 transition-all duration-300 text-white overflow-hidden relative animate-in fade-in zoom-in-95 duration-500",
+      "group bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 hover:border-slate-700 transition-all duration-300 text-white overflow-hidden relative animate-in fade-in zoom-in-95",
       isHero ? "p-6 sm:p-8 mb-4" : isCompact ? "p-3 sm:p-5" : "p-6"
     )}>
       {/* Dynamic Glow Ornament */}
@@ -180,7 +180,7 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
       <div className={cn("relative z-10", isCompact ? "mb-2" : "mb-4")}>
         <p className={cn("font-black uppercase tracking-[0.2em] text-slate-500 mb-1", isCompact ? "text-[8px] sm:text-[10px]" : "text-[11px]")}>{title}</p>
         <h4 className={cn(
-          "font-black text-white tracking-tight leading-tight break-all sm:break-words", 
+          "font-black text-white tracking-tight leading-tight break-all sm:wrap-break-word", 
           isHero ? "text-3xl sm:text-5xl lg:text-7xl" : isCompact ? "text-xl sm:text-2xl" : "text-3xl"
         )}>
           {value}
@@ -202,7 +202,7 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
             </div>
           ))}
           {isHero && (
-             <div className="flex items-center justify-between group/item border-l border-slate-800 pl-6 hidden lg:flex">
+             <div className="flex items-center justify-between group/item border-l border-slate-800 pl-6 lg:flex">
                <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500 group-hover/item:text-slate-300 transition-colors">
                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                {/* TODO, Profitabillity check */}
