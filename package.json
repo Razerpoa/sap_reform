@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:api": "NODE_ENV=test node tests/api-data-flow.js"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",

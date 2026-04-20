@@ -28,7 +28,7 @@ const CATEGORY_MAP: Record<string, string> = {
 
 export default function EntryPage() {
   const [activeTab, setActiveTab] = useState<Tab>("production");
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(getWIBDateString());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +44,8 @@ export default function EntryPage() {
   const isEditable = useMemo(() => {
     if (activeTab === "master") return true;
     // Use consistent WIB-based today check
-    const dateStr = format(selectedDate, "yyyy-MM-dd");
-    return getWIBDateString(new Date(dateStr)) === getWIBDateString();
+    const dateStr = selectedDate;
+    return dateStr === getWIBDateString();
   }, [selectedDate, activeTab]);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function EntryPage() {
   async function fetchData() {
     setLoading(true);
     setError(null);
-    const dateStr = format(selectedDate, "yyyy-MM-dd");
+    const dateStr = selectedDate;
     // Cache buster - proper URL construction
     const ts = Date.now();
 
@@ -77,7 +77,7 @@ export default function EntryPage() {
       } else if (activeTab === "cashflow") {
         const res = await fetch(`/api/cashflow?date=${dateStr}&_t=${ts}`);
         const data = await res.json();
-        setCashFlowData(data[0] || { date: selectedDate });
+        setCashFlowData(data[0] || { date: new Date(selectedDate) });
       } else if (activeTab === "sales") {
         const res = await fetch(`/api/sales?date=${dateStr}&_t=${ts}`);
         const data = await res.json();
@@ -102,12 +102,11 @@ export default function EntryPage() {
       let body: any = {};
 
       if (activeTab === "production") {
-        body = { ...productionData, date: format(selectedDate, "yyyy-MM-dd") };
+        body = { ...productionData, date: selectedDate };
       } else if (activeTab === "cashflow") {
-        body = { ...cashFlowData, date: format(selectedDate, "yyyy-MM-dd") };
+        body = { ...cashFlowData, date: selectedDate };
       } else if (activeTab === "sales") {
-        // Sales are usually handled per-entry, but for simplicity we can add/edit
-        body = { ...newSale, date: format(selectedDate, "yyyy-MM-dd") };
+        body = { ...newSale, date: selectedDate };
       }
 
       const res = await fetch(endpoint, {
@@ -154,8 +153,8 @@ export default function EntryPage() {
             <Calendar className="w-5 h-5 text-blue-500" />
             <input 
               type="date" 
-              value={format(selectedDate, "yyyy-MM-dd")}
-              onChange={(e) => setSelectedDate(new Date(e.target.value))}
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
               className="text-sm font-bold outline-none bg-transparent"
             />
           </div>
@@ -289,7 +288,7 @@ function CashFlowForm({ data, setData, isEditable }: any) {
       <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
         <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
           <Wallet className="w-6 h-6 text-blue-500" />
-          Primary Expenses
+          Pengeluaran Utama
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <InputField label="Total Penjualan" value={data.totalPenjualan} onChange={(v: string) => updateField(`totalPenjualan`, v)} readOnly={!isEditable} />

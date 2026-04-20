@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,124 +7,97 @@ datasource db {
 }
 
 model User {
-  id    String @id @default(cuid())
-  email String @unique
+  id    String  @id @default(cuid())
+  email String  @unique
   name  String?
 }
 
-// From: SAP REFORM - MASTER.csv
 model CageMaster {
-  kandang    String   @id // e.g., "B1", "B1+"
+  kandang    String   @id
   jmlAyam    Int      @default(0)
   jmlEmber   Float    @default(0)
   jmlPakan   Float    @default(0)
-  gramEkor   Float    @default(0) // G/Ekor
-  beratPakan Float    @default(0) // B Pakan
+  gramEkor   Float    @default(0)
+  beratPakan Float    @default(0)
   volEmber   Float?   @default(0)
   hargaPakan Float?   @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
 
-// From: SAP REFORM - PRODUKSI.csv
 model Production {
-  date           DateTime @id @db.Date
-  
-  // Cage B1
-  b1JmlTelur     Int      @default(0)
-  b1Kg           Float    @default(0)
-  b1Pct          Float    @default(0) // %
-  b1Fc           Float    @default(0)
-  b1Hpp          Float    @default(0)
-
-  // Cage B1+
-  b1pJmlTelur    Int      @default(0)
-  b1pKg          Float    @default(0)
-  b1pPct         Float    @default(0)
-  b1pFc          Float    @default(0)
-  b1pHpp         Float    @default(0)
-
-  // Cage B2
-  b2JmlTelur     Int      @default(0)
-  b2Kg           Float    @default(0)
-  b2Pct          Float    @default(0)
-  b2Fc           Float    @default(0)
-  b2Hpp          Float    @default(0)
-
-  // Cage B2+
-  b2pJmlTelur    Int      @default(0)
-  b2pKg          Float    @default(0)
-  b2pPct         Float    @default(0)
-  b2pFc          Float    @default(0)
-  b2pHpp         Float    @default(0)
-
-  // Cage B3
-  b3JmlTelur     Int      @default(0)
-  b3Kg           Float    @default(0)
-  b3Pct          Float    @default(0)
-  b3Fc           Float    @default(0)
-  b3Hpp          Float    @default(0)
-
-  // Cage B3+
-  b3pJmlTelur    Int      @default(0)
-  b3pKg          Float    @default(0)
-  b3pPct         Float    @default(0)
-  b3pFc          Float    @default(0)
-  b3pHpp         Float    @default(0)
-
-  // Totals & Financials
-  totalJmlTelur  Int      @default(0)
-  totalKg        Float    @default(0)
-  totalPct       Float    @default(0)
-  totalFc        Float    @default(0)
-  totalHpp       Float    @default(0)
-  
-  hargaSentral   Float    @default(0)
-  up             Float    @default(0)
-  hargaKandang   Float    @default(0)
-  profitDaily    Float    @default(0) // Profit/H
-  operasional    Float    @default(0)
-  profitMonthly  Float    @default(0) // Profit/B
-
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  date          DateTime @id @db.Date
+  b1JmlTelur    Int      @default(0)
+  b1Kg          Float    @default(0)
+  b1Pct         Float    @default(0)
+  b1Fc          Float    @default(0)
+  b1Hpp         Float    @default(0)
+  b1pJmlTelur   Int      @default(0)
+  b1pKg         Float    @default(0)
+  b1pPct        Float    @default(0)
+  b1pFc         Float    @default(0)
+  b1pHpp        Float    @default(0)
+  b2JmlTelur    Int      @default(0)
+  b2Kg          Float    @default(0)
+  b2Pct         Float    @default(0)
+  b2Fc          Float    @default(0)
+  b2Hpp         Float    @default(0)
+  b2pJmlTelur   Int      @default(0)
+  b2pKg         Float    @default(0)
+  b2pPct        Float    @default(0)
+  b2pFc         Float    @default(0)
+  b2pHpp        Float    @default(0)
+  b3JmlTelur    Int      @default(0)
+  b3Kg          Float    @default(0)
+  b3Pct         Float    @default(0)
+  b3Fc          Float    @default(0)
+  b3Hpp         Float    @default(0)
+  b3pJmlTelur   Int      @default(0)
+  b3pKg         Float    @default(0)
+  b3pPct        Float    @default(0)
+  b3pFc         Float    @default(0)
+  b3pHpp        Float    @default(0)
+  totalJmlTelur Int      @default(0)
+  totalKg       Float    @default(0)
+  totalPct      Float    @default(0)
+  totalFc       Float    @default(0)
+  totalHpp      Float    @default(0)
+  hargaSentral  Float    @default(0)
+  up            Float    @default(0)
+  hargaKandang  Float    @default(0)
+  profitDaily   Float    @default(0)
+  operasional   Float    @default(0)
+  profitMonthly Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([date])
 }
 
-// From: SAP REFORM - KAS.csv
 model CashFlow {
-  id              String   @id @default(cuid())
-  date            DateTime @db.Date
-  totalPenjualan  Float    @default(0)
-  biayaPakan      Float    @default(0)
-  biayaOperasional Float   @default(0)
-  
-  // Salary / Gaji
-  gajiBepuk       Float    @default(0)
-  gajiBarman      Float    @default(0)
-  gajiAgung       Float    @default(0)
-  gajiEki         Float    @default(0)
-  gajiAdi         Float    @default(0)
-  
-  // Deviden
-  devidenA        Float    @default(0)
-  devidenB        Float    @default(0)
-  
-  // Balances
-  saldoKas        Float    @default(0)
-  saldoPemasukan  Float    @default(0)
-  saldoKewajiban  Float    @default(0)
-  saldoRekening   Float    @default(0)
-  saldoCash       Float    @default(0)
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(cuid())
+  date             DateTime @db.Date
+  totalPenjualan   Float    @default(0)
+  biayaPakan       Float    @default(0)
+  biayaOperasional Float    @default(0)
+  gajiBepuk        Float    @default(0)
+  gajiBarman       Float    @default(0)
+  gajiAgung        Float    @default(0)
+  gajiEki          Float    @default(0)
+  gajiAdi          Float    @default(0)
+  devidenA         Float    @default(0)
+  devidenB         Float    @default(0)
+  saldoKas         Float    @default(0)
+  saldoPemasukan   Float    @default(0)
+  saldoKewajiban   Float    @default(0)
+  saldoRekening    Float    @default(0)
+  saldoCash        Float    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@index([date])
 }
 
-// From: SAP REFORM - PENJUALAN.csv
 model Sales {
   id               String   @id @default(cuid())
   date             DateTime @db.Date
@@ -137,15 +107,12 @@ model Sales {
   hargaCentral     Float    @default(0)
   up               Float    @default(0)
   hargaJual        Float    @default(0)
-  subTotal         Float    @default(0) // The "=" column
-  
-  // Daily Summary (often repeated in rows)
+  subTotal         Float    @default(0)
   totalKgHariIni   Float?   @default(0)
   totalPetiHariIni Float?   @default(0)
   penjualanHariIni Float?   @default(0)
   totalProduksi    Float?   @default(0)
   stockAkhir       Float?   @default(0)
-
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

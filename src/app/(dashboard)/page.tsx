@@ -73,8 +73,8 @@ export default async function DashboardPage() {
             title="Ringkasan Profit"
             value={`Rp ${Math.round(stats.cashFlowTotalProfit || 0).toLocaleString()}`}
             subtitle="Profit (30h)"
-            icon={TrendingDown}
-            color="bg-rose-600"
+            icon={stats.cashFlowTotalProfit >= 0 ? TrendingUp : TrendingDown}
+            color={stats.cashFlowTotalProfit >= 0 ? "bg-emerald-600" : "bg-rose-600"}
             breakdown={[
               { label: "Avg Profit", value: `Rp ${Math.round(stats.cashFlowAvgProfit || 0).toLocaleString()}`, icon: DollarSign }
             ]}
