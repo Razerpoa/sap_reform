@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, PlusCircle, LogOut, User } from "lucide-react";
+import { LayoutDashboard, PlusCircle, LogOut, User, DownloadIcon } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,7 @@ export default function Navigation({ user }: NavigationProps) {
   const navItems = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Entri Baru", href: "/entry", icon: PlusCircle },
+    { name: "Export Data", href: "/export", icon: DownloadIcon },
   ];
 
   return (
