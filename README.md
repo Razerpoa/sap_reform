@@ -48,14 +48,16 @@ SAP REFORM is a premium, real-time management dashboard for layer egg farms. It 
    ```
 
 2. **Setup Environment**:
-   Create a `.env` file from `.env.example`:
+   Create a `.env` file:
    ```env
-   DATABASE_URL="postgresql://postgres:password@localhost:5432/sap_reform?schema=public"
-   GOOGLE_ID="your_google_id"
-   GOOGLE_SECRET="your_google_secret"
-   NEXTAUTH_URL="http://localhost:3000"
-   NEXTAUTH_SECRET="your_secret"
-   ALLOWED_EMAILS="user1@example.com,user2@example.com"
+   DATABASE_HOST=localhost
+   DATABASE_USERNAME=postgres
+   DATABASE_PASSWORD=password
+   NEXTAUTH_URL=http://localhost:3000
+   NEXTAUTH_SECRET=<generate-a-secure-secret>
+   GOOGLE_CLIENT_ID=<from Google Console>
+   GOOGLE_CLIENT_SECRET=<from Google Console>
+   ALLOWED_EMAILS=user@example.com
    ```
 
 3. **Spin up Database**:
@@ -69,11 +71,23 @@ SAP REFORM is a premium, real-time management dashboard for layer egg farms. It 
    npm run dev
    ```
 
+## 🐳 Docker Production
+
+```bash
+# Build and run
+docker compose up -d --build
+
+# View logs
+docker compose logs -f app
+```
+
+The app runs on `http://localhost:3000`.
+
 ## 🧪 Development & Testing
 
 - **API Tests**: `npm run test:api`
+- **Prisma Studio**: `npx prisma studio`
 - **Math Logic**: Centralized in `src/lib/calculations.ts`
-- **Data Layer**: Centralized in `src/lib/data.ts`
 
 ## 📄 License
 This project is private and intended for internal use at SAP Farm.

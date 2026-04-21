@@ -27,7 +27,7 @@ services:
              node node_modules/prisma/build/index.js db seed && 
              node server.js"
     environment:
-      DATABASE_HOST: ${DATABASE_HOST:-db}
+      DATABASE_HOST: db
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}
       DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://0.0.0.0:3000}

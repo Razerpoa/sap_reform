@@ -6,7 +6,7 @@ import { withAccelerate } from "@prisma/extension-accelerate";
 const globalForPrisma = global as unknown as { prisma?: PrismaClient };
 
 const createPrismaClient = (): PrismaClient => {
-  const url = process.env.DATABASE_URL || "";
+  const url = "postgresql://" + process.env.DATABASE_USERNAME + ":" + process.env.DATABASE_PASSWORD + "@" + process.env.DATABASE_HOST + "/sap_reform?schema=public";
   const isProxy = url.startsWith("prisma://") || url.startsWith("prisma+postgres://");
 
   if (isProxy) {
