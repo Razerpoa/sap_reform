@@ -16,9 +16,9 @@ services:
 
   app:
     container_name: sap
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: razorcut777/sap-reform:v1.0
     restart: always
     networks:
