@@ -1,6 +1,9 @@
 services:
   db:
+    container_name: db
     image: postgres:15-alpine
+    networks:
+      - default
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -12,12 +15,21 @@ services:
       - "5432:5432"
 
   app:
+    container_name: app
     build:
       context: .
       dockerfile: Dockerfile
     restart: always
+    networks:
+      - default
+    command: >
+      sh -c "node node_modules/prisma/build/index.js db push && 
+             node node_modules/prisma/build/index.js db seed && 
+             node server.js"
     environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-sap_reform}?schema=public"
+      DATABASE_HOST: ${DATABASE_HOST:-db}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://0.0.0.0:3000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
@@ -28,12 +40,12 @@ services:
     depends_on:
       - db
 
-  adminer:
-    image: adminer
-    ports:
-      - "8080:8080"
-    depends_on:
-      - db
+  # adminer:
+  #   image: adminer
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - db
 
 volumes:
   postgres_data:

@@ -3,6 +3,8 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+const dbUrl = "postgresql://" + process.env.DATABASE_USERNAME + ":" + process.env.DATABASE_PASSWORD + "@" + process.env.DATABASE_HOST + "/sap_reform?schema=public";
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
@@ -10,6 +12,6 @@ export default defineConfig({
     seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: dbUrl,
   },
 });

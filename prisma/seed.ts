@@ -5,7 +5,7 @@ import { withAccelerate } from "@prisma/extension-accelerate";
 import "dotenv/config";
 
 const createPrismaClient = () => {
-  const url = process.env.DATABASE_URL || "";
+  const url = "postgresql://" + process.env.DATABASE_USERNAME + ":" + process.env.DATABASE_PASSWORD + "@" + process.env.DATABASE_HOST + "/sap_reform?schema=public";
   const isProxy = url.startsWith("prisma://") || url.startsWith("prisma+postgres://");
 
   if (isProxy) {
@@ -27,14 +27,10 @@ const prisma = createPrismaClient();
 
 async function main() {
   const envEmails = process.env.ALLOWED_EMAILS?.split(",") || [];
-  const emails = [
-    "fathandwipayana@gmail.com",
-    ...envEmails,
-  ];
 
   console.log("Seeding whitelisted users...");
 
-  for (const email of emails) {
+  for (const email of envEmails) {
     // @ts-ignore
     await prisma.user.upsert({
       where: { email },
