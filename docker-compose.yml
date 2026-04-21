@@ -23,6 +23,7 @@ services:
     restart: always
     networks:
       - default
+      - cloudflare-network
     command: >
       sh -c "if [ ! -d 'postgres_data' ]; then
         node node_modules/prisma/build/index.js db push && 
@@ -40,8 +41,8 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       ALLOWED_EMAILS: ${ALLOWED_EMAILS}
-    ports:
-      - "3000:3000"
+    # ports:
+    #   - "3000:3000"
     depends_on:
       - db
 
@@ -54,3 +55,6 @@ services:
 
 volumes:
   postgres_data:
+networks:
+  cloudflare-network:
+    external: true

@@ -91,9 +91,15 @@ export function calculateCashFlowExpenses(data: {
   devidenA?: number;
   devidenB?: number;
 }) {
+  // Calculate total salaries from the salaries object
+  const salariesTotal = data.salaries 
+    ? Object.values(data.salaries).reduce((sum, salary) => sum + (salary || 0), 0)
+    : 0;
+  
   const expenses = 
     (data.biayaPakan || 0) + 
     (data.biayaOperasional || 0) + 
+    salariesTotal +
     (data.devidenA || 0) + 
     (data.devidenB || 0);
     

@@ -18,11 +18,15 @@ export default async function DashboardPage() {
   // Prepare data for charts
   const chartData = productionEntries.slice().reverse().map((p: any) => {
     const cf = cashFlowEntries.find((c: any) => c.date.toISOString().split('T')[0] === p.date.toISOString().split('T')[0]);
+    // Calculate total salaries from the salaries object
+    const salariesTotal = cf && cf.salaries 
+      ? Object.values(cf.salaries).reduce((sum: number, salary: any) => sum + (salary || 0), 0)
+      : 0;
     return {
       date: p.date,
       totalKg: p.totalKg,
-      profit: cf ? (cf.totalPenjualan - cf.biayaPakan - cf.biayaOperasional) : 0,
-      expenses: cf ? (cf.biayaPakan + cf.biayaOperasional) : 0,
+      profit: cf ? (cf.totalPenjualan - cf.biayaPakan - cf.biayaOperasional - salariesTotal) : 0,
+      expenses: cf ? (cf.biayaPakan + cf.biayaOperasional + salariesTotal) : 0,
     };
   });
 
