@@ -11,15 +11,15 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-sap_reform}
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"
 
   app:
-    container_name: app
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: sap-reform
+    container_name: sap
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    image: razorcut777/sap-reform:v1.0
     restart: always
     networks:
       - default
@@ -40,8 +40,8 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       ALLOWED_EMAILS: ${ALLOWED_EMAILS}
-    ports:
-      - "3000:3000"
+    # ports:
+    #   - "3000:3000"
     depends_on:
       - db
 
