@@ -13,9 +13,10 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user }) {
       if (!user.email) return false;
       
+      const email = user.email.trim();
       // Check environment variable whitelist first
-      const envWhitelist = process.env.ALLOWED_EMAILS?.split(",") || [];
-      if (envWhitelist.includes(user.email)) return true;
+      const envWhitelist = process.env.ALLOWED_EMAILS?.split(",").map(e => e.trim()) || [];
+      if (envWhitelist.includes(email)) return true;
 
       // Check database whitelist
       const whitelistedUser = await prisma.user.findUnique({

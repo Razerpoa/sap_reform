@@ -26,7 +26,7 @@ const createPrismaClient = () => {
 const prisma = createPrismaClient();
 
 async function main() {
-  const envEmails = process.env.ALLOWED_EMAILS?.split(",") || [];
+  const envEmails = process.env.ALLOWED_EMAILS?.split(",").map(e => e.trim()) || [];
 
   console.log("Seeding whitelisted users...");
 
