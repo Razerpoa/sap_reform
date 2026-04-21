@@ -19,13 +19,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: sap-reform
     restart: always
     networks:
       - default
     command: >
-      sh -c "node node_modules/prisma/build/index.js db push && 
-             node node_modules/prisma/build/index.js db seed && 
-             node server.js"
+      sh -c "if [ ! -d 'postgres_data' ]; then
+        node node_modules/prisma/build/index.js db push && 
+        node node_modules/prisma/build/index.js db seed && 
+        node server.js;
+      else
+        echo 'Folder exists, skipping command';
+      fi"
     environment:
       DATABASE_HOST: db
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}

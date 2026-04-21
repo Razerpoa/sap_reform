@@ -53,7 +53,7 @@ export default function LoginPage() {
         </div>
         
         <p className="mt-10 text-center text-xs text-slate-400">
-          &copy; 2026 SAP REFORM Team. All rights reserved.
+          &copy; 2026 SAP Team. All rights reserved.
         </p>
       </div>
     </div>
