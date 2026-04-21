@@ -1,4 +1,4 @@
-import { Download, TrendingUp, Package, Layers, DollarSign, Wallet, ShoppingBag, TrendingDown, Landmark } from "lucide-react";
+import { Download, TrendingUp, Package, Layers, DollarSign, Wallet, ShoppingBag, TrendingDown, Landmark, Receipt } from "lucide-react";
 import Link from "next/link";
 import Charts from "@/components/Charts";
 import { PlusCircle, RefreshCw, BarChart2, Clock, CheckCircle2 } from "lucide-react";
@@ -31,24 +31,17 @@ export default async function DashboardPage() {
       {/* Stats Section */}
       <div className="space-y-6">
         {/* Hero Card: Sales Performance */}
-        {/* TODO, Make Profit card a Hero, Cards arrangements
-                      Profit
-        Total produksi      Total penjualan
-        Total pengeluaran   Balance
-        */}
         <PremiumStatCard 
           variant="hero"
-          title="Kinerja Penjualan"
-          value={`Rp ${Math.round(stats.salesTotalRevenue || 0).toLocaleString()}`}
-          subtitle="Total Pendapatan (30h)"
-          icon={DollarSign}
-          color="bg-amber-500"
+          title="Ringkasan Profit"
+          value={`Rp ${Math.round(stats.cashFlowTotalProfit || 0).toLocaleString()}`}
+          subtitle="Profit (30h)"
+          icon={stats.cashFlowTotalProfit >= 0 ? TrendingUp : TrendingDown}
+          color={stats.cashFlowTotalProfit >= 0 ? "bg-emerald-600" : "bg-rose-600"}
           breakdown={[
-            { label: "Total Volume", value: `${(stats.salesTotalKg || 0).toLocaleString()} KG`, icon: ShoppingBag },
-            { label: "Total Peti", value: `${(stats.salesTotalPeti || 0).toLocaleString()} Peti`, icon: Layers }
+            { label: "Avg Profit", value: `Rp ${Math.round(stats.cashFlowAvgProfit || 0).toLocaleString()}`, icon: DollarSign }
           ]}
         />
-
         {/* Quad Grid Cards (4 in desktop, 2x2 in mobile) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <PremiumStatCard 
@@ -75,13 +68,13 @@ export default async function DashboardPage() {
           />
           <PremiumStatCard 
             variant="compact"
-            title="Ringkasan Profit"
-            value={`Rp ${Math.round(stats.cashFlowTotalProfit || 0).toLocaleString()}`}
-            subtitle="Profit (30h)"
-            icon={stats.cashFlowTotalProfit >= 0 ? TrendingUp : TrendingDown}
-            color={stats.cashFlowTotalProfit >= 0 ? "bg-emerald-600" : "bg-rose-600"}
+            title="Total Pengeluaran"
+            value={`Rp ${Math.round(stats.cashFlowTotalExpenses || 0).toLocaleString()}`}
+            subtitle={`biaya beban`}
+            icon={Receipt}
+            color="bg-rose-500"
             breakdown={[
-              { label: "Avg Profit", value: `Rp ${Math.round(stats.cashFlowAvgProfit || 0).toLocaleString()}`, icon: DollarSign }
+              { label: "Sebulan ini", value: `Rp ${Math.round(stats.cashFlowMonthExpenses || 0).toLocaleString()}`, icon: ShoppingBag },
             ]}
           />
           <PremiumStatCard 
@@ -124,7 +117,7 @@ export default async function DashboardPage() {
                </div>
                <div className="flex items-center gap-2">
                  <div className="w-3 h-3 rounded-full bg-rose-500"></div>
-                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Expenses</span>
+                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Biaya</span>
                </div>
             </div>
           </div>
@@ -201,16 +194,6 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
               <p className={cn("font-black text-white", isCompact ? "text-[10px] sm:text-sm" : "text-base")}>{item.value}</p>
             </div>
           ))}
-          {isHero && (
-             <div className="flex items-center justify-between group/item border-l border-slate-800 pl-6 lg:flex">
-               <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500 group-hover/item:text-slate-300 transition-colors">
-                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-               {/* TODO, Profitabillity check */}
-                 <span className="font-black uppercase tracking-widest text-[10px]">Status Profit</span>
-               </div>
-               <p className="font-black text-emerald-400 text-base">PROFIT</p> 
-             </div>
-          )}
         </div>
       )}
     </div>

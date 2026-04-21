@@ -26,7 +26,7 @@ export default function Charts({ data, type = "production" }: { data: any[], typ
     name: entry.date ? format(new Date(entry.date), "dd MMM") : "Unknown",
     kg: Number(entry.totalKg) || 0,
     profit: Number(entry.profit) || 0,
-    expenses: Number(entry.expenses) || 0,
+    biaya: Number(entry.expenses) || 0,
   }));
 
   if (type === "finance") {
@@ -45,7 +45,7 @@ export default function Charts({ data, type = "production" }: { data: any[], typ
             axisLine={false} 
             tickLine={false} 
             tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
-            tickFormatter={(val) => `Rp${(val / 1000).toLocaleString()}k`}
+            tickFormatter={(val) => `${(val / 1000).toLocaleString()}k`}
           />
           <Tooltip
             cursor={{ fill: '#f8fafc' }}
@@ -57,9 +57,10 @@ export default function Charts({ data, type = "production" }: { data: any[], typ
               padding: '12px 16px',
             }}
             itemStyle={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase' }}
+            formatter={(value) => `Rp ${Number(value).toLocaleString()}`}
           />
           <Bar dataKey="profit" fill="#10b981" radius={[6, 6, 0, 0]} barSize={20} />
-          <Bar dataKey="expenses" fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={20} />
+          <Bar dataKey="biaya" fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={20} />
         </BarChart>
       </ResponsiveContainer>
     );
@@ -86,6 +87,7 @@ export default function Charts({ data, type = "production" }: { data: any[], typ
           axisLine={false} 
           tickLine={false} 
           tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+          tickFormatter={(val) => Number(val).toLocaleString()}
         />
         <Tooltip
           contentStyle={{
@@ -96,6 +98,7 @@ export default function Charts({ data, type = "production" }: { data: any[], typ
             padding: '12px 16px',
           }}
           itemStyle={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase' }}
+          formatter={(value) => Number(value).toLocaleString()}
         />
         <Area
           type="monotone"

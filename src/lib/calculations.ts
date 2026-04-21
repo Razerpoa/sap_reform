@@ -84,17 +84,33 @@ export function calculateSalesStats(entries: any[]) {
 
 // ==================== CASHFLOW CALCULATIONS ====================
 
+export function calculateCashFlowExpenses(data: {
+  biayaPakan?: number;
+  biayaOperasional?: number;
+  salaries?: Record<string, number>;
+  devidenA?: number;
+  devidenB?: number;
+}) {
+  const expenses = 
+    (data.biayaPakan || 0) + 
+    (data.biayaOperasional || 0) + 
+    (data.devidenA || 0) + 
+    (data.devidenB || 0);
+    
+  return expenses;
+}
+
 export function calculateCashFlowProfit(data: {
   totalPenjualan?: number;
   biayaPakan?: number;
   biayaOperasional?: number;
   salaries?: Record<string, number>;
   // Legacy fields - kept for backward compatibility
-  gajiBepuk?: number;
-  gajiBarman?: number;
-  gajiAgung?: number;
-  gajiEki?: number;
-  gajiAdi?: number;
+  // gajiBepuk?: number;
+  // gajiBarman?: number;
+  // gajiAgung?: number;
+  // gajiEki?: number;
+  // gajiAdi?: number;
   devidenA?: number;
   devidenB?: number;
 }) {
@@ -106,21 +122,22 @@ export function calculateCashFlowProfit(data: {
     : 0;
   
   // Fall back to legacy fields if no new salaries provided
-  const legacySalaries = 
-    (data.gajiBepuk || 0) + 
-    (data.gajiBarman || 0) + 
-    (data.gajiAgung || 0) + 
-    (data.gajiEki || 0) + 
-    (data.gajiAdi || 0);
+  // const legacySalaries = 
+  //   (data.gajiBepuk || 0) + 
+  //   (data.gajiBarman || 0) + 
+  //   (data.gajiAgung || 0) + 
+  //   (data.gajiEki || 0) + 
+  //   (data.gajiAdi || 0);
   
-  const totalSalaries = salariesTotal > 0 ? salariesTotal : legacySalaries;
+  // const totalSalaries = salariesTotal;
   
-  const expenses = 
-    (data.biayaPakan || 0) + 
-    (data.biayaOperasional || 0) + 
-    totalSalaries +
-    (data.devidenA || 0) + 
-    (data.devidenB || 0);
+  const expenses = calculateCashFlowExpenses({
+    biayaPakan: data.biayaPakan,
+    biayaOperasional: data.biayaOperasional,
+    devidenA: data.devidenA,
+    devidenB: data.devidenB,
+    salaries: data.salaries,
+  });
 
   return revenue - expenses;
 }
@@ -128,7 +145,27 @@ export function calculateCashFlowProfit(data: {
 export function calculateCashFlowStats(entries: any[]) {
   const totalProfit = entries.reduce((sum, e) => 
     sum + calculateCashFlowProfit(e), 0);
+  const totalExpenses = entries.reduce((sum, e) => 
+    sum + calculateCashFlowExpenses(e), 0);
   const avgProfit = entries.length > 0 ? totalProfit / entries.length : 0;
+  
+  // Get today's date in WIB
+  const today = getWIBDateString();
+  const todayEntries = entries.filter(e => e.date && getWIBDateString(e.date) === today);
+  const todayExpenses = todayEntries.reduce((sum, e) => 
+    sum + calculateCashFlowExpenses(e), 0);
+  
+  // Get this month's entries (calendar month)
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-11
+  const monthEntries = entries.filter(e => {
+    if (!e.date) return false;
+    const entryDate = new Date(e.date);
+    return entryDate.getFullYear() === currentYear && entryDate.getMonth() === currentMonth;
+  });
+  const monthExpenses = monthEntries.reduce((sum, e) => 
+    sum + calculateCashFlowExpenses(e), 0);
   
   // Total Liquid Assets = saldoRekening (saldoKas in DB) + saldoCash
   const latest = entries[0] || {};
@@ -136,7 +173,7 @@ export function calculateCashFlowStats(entries: any[]) {
   const saldoCash = latest.saldoCash || 0;
   const totalLiquidAssets = saldoRekening + saldoCash;
   
-  return { totalProfit, avgProfit, totalLiquidAssets, saldoRekening, saldoCash };
+  return { totalProfit, totalExpenses, avgProfit, todayExpenses, monthExpenses, totalLiquidAssets, saldoRekening, saldoCash };
 }
 
 // ==================== COMBINED DASHBOARD STATS ====================
@@ -164,6 +201,9 @@ export function calculateDashboardStats(
     // CashFlow
     cashFlowTotalProfit: cashStats.totalProfit,
     cashFlowAvgProfit: cashStats.avgProfit,
+    cashFlowTotalExpenses: cashStats.totalExpenses,
+    cashFlowTodayExpenses: cashStats.todayExpenses,
+    cashFlowMonthExpenses: cashStats.monthExpenses,
     cashFlowTotalLiquidAssets: cashStats.totalLiquidAssets,
     cashFlowSaldoRekening: cashStats.saldoRekening,
     cashFlowSaldoCash: cashStats.saldoCash,
