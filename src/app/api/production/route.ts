@@ -78,7 +78,7 @@ export async function GET(request: Request) {
     return NextResponse.json(entries[0] || {});
   }
 
-  const entries = await getProductionData({ take: 30 });
+  const entries = await getProductionData({ take: 365 * 2 }); // 2 years for graphs
   return NextResponse.json(entries);
 }
 
