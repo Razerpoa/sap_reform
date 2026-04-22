@@ -16,12 +16,12 @@ import { id } from "date-fns/locale";
 type Timeframe = "daily" | "weekly" | "monthly" | "annually";
 
 const CAGE_CONFIG = {
-  b1: { label: "B1", color: "#2563eb" },
-  b1p: { label: "B1+", color: "#7c3aed" },
-  b2: { label: "B2", color: "#059669" },
-  b2p: { label: "B2+", color: "#d97706" },
-  b3: { label: "B3", color: "#dc2626" },
-  b3p: { label: "B3+", color: "#db2777" },
+  b1: { label: "B1", color: "#000000" },
+  b1p: { label: "B1+", color: "#000000" },
+  b2: { label: "B2", color: "#000000" },
+  b2p: { label: "B2+", color: "#000000" },
+  b3: { label: "B3", color: "#000000" },
+  b3p: { label: "B3+", color: "#000000" },
 };
 
 type CageKey = keyof typeof CAGE_CONFIG;
@@ -184,7 +184,7 @@ export default function Produksi() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 pb-32">
       {/* Global Dropdowns */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4 mb-6 sticky top-4 z-10">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4 mb-6 top-4 z-10">
         <div className="grid grid-cols-2 gap-3">
           {/* Timeframe Dropdown */}
           <div>

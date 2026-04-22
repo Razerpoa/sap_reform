@@ -15,7 +15,10 @@ import {
   Wallet,
   Settings2,
   TrendingUp,
-  ChevronRight
+  ChevronRight,
+  Plus,
+  Pencil,
+  Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,7 +42,10 @@ export default function EntryPage() {
   const [masterData, setMasterData] = useState<any[]>([]);
   const [cashFlowData, setCashFlowData] = useState<any>({ date: new Date() });
   const [salesData, setSalesData] = useState<any[]>([]);
+  const [otherExpenses, setOtherExpenses] = useState<any[]>([]);
   const [newSale, setNewSale] = useState<any>({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0 });
+  const [newExpense, setNewExpense] = useState<any>({ amount: 0, description: "" });
+  const [editingExpense, setEditingExpense] = useState<any>(null);
 
   const isEditable = useMemo(() => {
     if (activeTab === "master") return true;
@@ -82,6 +88,16 @@ export default function EntryPage() {
         const res = await fetch(`/api/sales?date=${dateStr}&_t=${ts}`);
         const data = await res.json();
         setSalesData(data || []);
+      } else if (activeTab === "cashflow") {
+        // Fetch both cashflow and other expenses
+        const [cashflowRes, expensesRes] = await Promise.all([
+          fetch(`/api/cashflow?date=${dateStr}&_t=${ts}`),
+          fetch(`/api/expense?date=${dateStr}&_t=${ts}`),
+        ]);
+        const cashflowData = await cashflowRes.json();
+        const expensesData = await expensesRes.json();
+        setCashFlowData(cashflowData[0] || { date: new Date(selectedDate) });
+        setOtherExpenses(Array.isArray(expensesData) ? expensesData : []);
       }
     } catch (err: any) {
       console.error("[fetchData] error:", err);
@@ -215,7 +231,7 @@ export default function EntryPage() {
       ) : (
         <div className="space-y-6">
           {activeTab === "production" && <ProductionForm data={productionData} setData={setProductionData} isEditable={isEditable} />}
-          {activeTab === "cashflow" && <CashFlowForm data={cashFlowData} setData={setCashFlowData} isEditable={isEditable} />}
+          {activeTab === "cashflow" && <CashFlowForm data={cashFlowData} setData={setCashFlowData} isEditable={isEditable} otherExpenses={otherExpenses} setOtherExpenses={setOtherExpenses} newExpense={newExpense} setNewExpense={setNewExpense} editingExpense={editingExpense} setEditingExpense={setEditingExpense} selectedDate={selectedDate} />}
           {activeTab === "sales" && <SalesSection data={salesData} newSale={newSale} setNewSale={setNewSale} isEditable={isEditable} onSave={handleSave} />}
           {activeTab === "master" && <MasterForm data={masterData} onSave={fetchData} />}
         </div>
@@ -284,9 +300,12 @@ function ProductionForm({ data, setData, isEditable }: any) {
   );
 }
 
-function CashFlowForm({ data, setData, isEditable }: any) {
+function CashFlowForm({ data, setData, isEditable, otherExpenses, setOtherExpenses, newExpense, setNewExpense, editingExpense, setEditingExpense, selectedDate }: any) {
   const [workers, setWorkers] = useState<any[]>([]);
   const [workersLoading, setWorkersLoading] = useState(true);
+  const [savingExpense, setSavingExpense] = useState(false);
+  const [expenseError, setExpenseError] = useState<string | null>(null);
+  const [expenseSuccess, setExpenseSuccess] = useState(false);
 
   useEffect(() => {
     async function fetchWorkers() {
@@ -375,6 +394,178 @@ function CashFlowForm({ data, setData, isEditable }: any) {
           <InputField label="Saldo Rekening" value={data.saldoKas} onChange={(v: string) => updateField(`saldoKas`, v)} readOnly={!isEditable} />
           <InputField label="Saldo Cash" value={data.saldoCash} onChange={(v: string) => updateField(`saldoCash`, v)} readOnly={!isEditable} />
         </div>
+      </div>
+
+      {/* Other Expenses Section */}
+      <div className="bg-blue-50 p-6 sm:p-8 rounded-2xl border border-blue-100">
+        <h3 className="text-xl font-black text-blue-900 mb-6 flex items-center gap-2">
+          <Wallet className="w-6 h-6 text-blue-600" />
+          Pengeluaran Lain
+        </h3>
+        
+        {/* Add/Edit Form */}
+        {isEditable && (
+          <div className="bg-white p-4 rounded-xl border border-blue-100 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-blue-600 tracking-widest px-1">Jumlah (Rp)</label>
+                <input 
+                  type="text" 
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={editingExpense ? editingExpense.amount?.toLocaleString("en-US") : newExpense.amount?.toLocaleString("en-US")}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/,/g, "");
+                    const val = parseFloat(cleaned) || 0;
+                    if (editingExpense) {
+                      setEditingExpense({ ...editingExpense, amount: val });
+                    } else {
+                      setNewExpense({ ...newExpense, amount: val });
+                    }
+                  }}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-black outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <label className="text-[10px] font-black uppercase text-blue-600 tracking-widest px-1">Keterangan</label>
+                <input 
+                  type="text" 
+                  placeholder="Deskripsi pengeluaran..."
+                  value={editingExpense ? editingExpense.description : newExpense.description}
+                  onChange={(e) => {
+                    if (editingExpense) {
+                      setEditingExpense({ ...editingExpense, description: e.target.value });
+                    } else {
+                      setNewExpense({ ...newExpense, description: e.target.value });
+                    }
+                  }}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-black outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  const expense = editingExpense || newExpense;
+                  if (!expense.amount || !expense.description) {
+                    setExpenseError("Mohon isi jumlah dan keterangan");
+                    return;
+                  }
+                  setSavingExpense(true);
+                  setExpenseError(null);
+                  try {
+                    const res = await fetch("/api/expense", {
+                      method: editingExpense?.id ? "PUT" : "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        ...expense,
+                        date: selectedDate,
+                      }),
+                    });
+                    if (res.ok) {
+                      setExpenseSuccess(true);
+                      setNewExpense({ amount: 0, description: "" });
+                      setEditingExpense(null);
+                      // Refresh data
+                      const ts = Date.now();
+                      const expRes = await fetch(`/api/expense?date=${selectedDate}&_t=${ts}`);
+                      const expData = await expRes.json();
+                      setOtherExpenses(Array.isArray(expData) ? expData : []);
+                      setTimeout(() => setExpenseSuccess(false), 2000);
+                    } else {
+                      const err = await res.json();
+                      setExpenseError(err.error || "Failed to save");
+                    }
+                  } catch {
+                    setExpenseError("Network error");
+                  } finally {
+                    setSavingExpense(false);
+                  }
+                }}
+                disabled={savingExpense}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-black py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all"
+              >
+                {savingExpense ? <Loader2 className="w-4 h-4 animate-spin" /> : editingExpense ? <CheckCircle2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                {editingExpense ? "Update" : "Tambah Pengeluaran"}
+              </button>
+              {editingExpense && (
+                <button
+                  onClick={() => setEditingExpense(null)}
+                  className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black rounded-xl transition-all"
+                >
+                  Batal
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Error/Success Messages */}
+        {expenseError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm font-medium flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            {expenseError}
+          </div>
+        )}
+        {expenseSuccess && (
+          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-sm font-medium flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4" />
+            Pengeluaran berhasil disimpan
+          </div>
+        )}
+
+        {/* Expenses List */}
+        {otherExpenses.length > 0 ? (
+          <div className="bg-white rounded-xl border border-blue-100 overflow-hidden">
+            <div className="divide-y divide-blue-50">
+              {otherExpenses.map((expense: any) => (
+                <div key={expense.id} className="p-4 flex items-center justify-between hover:bg-blue-50/50 transition-colors">
+                  <div>
+                    <h4 className="font-black text-slate-900">{expense.description}</h4>
+                    <p className="text-xs text-slate-400 font-medium">{new Date(expense.date).toLocaleDateString("id-ID")}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <p className="text-lg font-black text-blue-700 italic">Rp {expense.amount.toLocaleString()}</p>
+                    {isEditable && (
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => setEditingExpense(expense)}
+                          className="p-2 hover:bg-blue-50 rounded-lg text-blue-500 transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!confirm("Hapus pengeluaran ini?")) return;
+                            try {
+                              const res = await fetch(`/api/expense?id=${expense.id}`, { method: "DELETE" });
+                              if (res.ok) {
+                                const ts = Date.now();
+                                const expRes = await fetch(`/api/expense?date=${selectedDate}&_t=${ts}`);
+                                const expData = await expRes.json();
+                                setOtherExpenses(Array.isArray(expData) ? expData : []);
+                              }
+                            } catch (err) {
+                              console.error(err);
+                            }
+                          }}
+                          className="p-2 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="py-8 text-center bg-white rounded-xl border border-dashed border-blue-200">
+            <Wallet className="w-8 h-8 text-blue-200 mx-auto mb-2" />
+            <p className="text-blue-600 font-medium text-sm">Belum ada pengeluaran lain hari ini</p>
+          </div>
+        )}
       </div>
     </div>
   );

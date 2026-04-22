@@ -124,3 +124,14 @@ model Sales {
   @@index([date])
   @@index([customerName])
 }
+
+model OtherExpense {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  amount     Float
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+}

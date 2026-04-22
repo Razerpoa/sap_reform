@@ -400,3 +400,66 @@ export async function saveMasterData(data: MasterSaveInput) {
   revalidatePath("/");
   return entry;
 }
+
+// ==================== OTHER EXPENSES DATA ====================
+
+/**
+ * Fetch other expenses by date
+ */
+export async function getOtherExpensesData(options?: {
+  take?: number;
+  date?: string;
+}) {
+  const { take = 30 } = options || {};
+  
+  if (options?.date) {
+    const date = new Date(options.date);
+    const entries = await prisma.otherExpense.findMany({
+      where: { date },
+      orderBy: { createdAt: "desc" },
+    });
+    return entries;
+  }
+  
+  const entries = await prisma.otherExpense.findMany({
+    orderBy: { date: "desc" },
+    take,
+  });
+  return entries;
+}
+
+export type OtherExpenseSaveInput = {
+  id?: string;
+  date: Date;
+  amount: number;
+  description: string;
+};
+
+/**
+ * Save other expense (create or update)
+ * Returns the saved entry
+ */
+export async function saveOtherExpenseData(data: OtherExpenseSaveInput) {
+  const { id, ...saveData } = data;
+  const entry = id
+    ? await prisma.otherExpense.update({
+        where: { id },
+        data: saveData,
+      })
+    : await prisma.otherExpense.create({
+        data: saveData,
+      });
+
+  revalidatePath("/");
+  return entry;
+}
+
+/**
+ * Delete other expense
+ */
+export async function deleteOtherExpenseData(id: string) {
+  await prisma.otherExpense.delete({
+    where: { id },
+  });
+  revalidatePath("/");
+}
