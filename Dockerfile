@@ -34,7 +34,10 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy all modules (Prisma 7.x needs full node_modules for runtime config)
 COPY --from=builder /app/node_modules ./node_modules
+# Fix permissions for Prisma engines (needed at runtime for user nextjs)
+RUN chown -R nextjs:nodejs /app/node_modules/@prisma/engines 2>/dev/null || true
 
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/prisma ./prisma

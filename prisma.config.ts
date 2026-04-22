@@ -15,3 +15,8 @@ export default defineConfig({
     url: dbUrl,
   },
 });
+
+// Only run prisma commands, not needed at runtime
+if (process.env.NODE_ENV !== "production") {
+  console.log("Prisma config loaded for CLI");
+}

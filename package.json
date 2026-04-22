@@ -7,12 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "npx prisma db push && npx prisma db seed",
+    "seed": "npx tsx prisma/seed.ts",
     "test:api": "NODE_ENV=test node tests/api-data-flow.js"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
+    "@prisma/engines": "^7.7.0",
     "@prisma/extension-accelerate": "^3.0.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -21,7 +22,6 @@
     "next": "16.2.4",
     "next-auth": "^4.24.14",
     "pg": "^8.20.0",
-    "prisma": "^7.7.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
@@ -41,6 +41,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "nodemon": "^3.1.14",
+    "prisma": "^7.7.0",
     "tailwindcss": "^4",
     "typescript": "^5.9.3"
   }

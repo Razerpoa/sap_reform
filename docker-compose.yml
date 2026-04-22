@@ -23,7 +23,6 @@ services:
     restart: always
     networks:
       - default
-      - cloudflare-network
     command: >
       sh -c "if [ ! -d 'postgres_data' ]; then
         node node_modules/prisma/build/index.js db push && 
@@ -55,6 +54,3 @@ services:
 
 volumes:
   postgres_data:
-networks:
-  cloudflare-network:
-    external: true

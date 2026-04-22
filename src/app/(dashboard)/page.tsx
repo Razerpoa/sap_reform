@@ -58,6 +58,7 @@ export default async function DashboardPage() {
             breakdown={[
               { label: "Avg (30h)", value: `${Math.round(stats.productionAvgKg || 0).toLocaleString()} KG`, icon: Package }
             ]}
+            href="/produksi"
           />
           <PremiumStatCard 
             variant="compact"
@@ -138,11 +139,25 @@ function format(date: Date, str: string) {
   return new Date(date).toLocaleDateString();
 }
 
-function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown, variant }: any) {
+// Added 'href' to the props destructuring
+// Default href to '#' so it doesn't break, or leave as undefined
+function PremiumStatCard({ 
+  title, 
+  value, 
+  subtitle, 
+  icon: Icon, 
+  color, 
+  breakdown, 
+  variant, 
+  href = "#" // Defaulting to '#' 
+}: any) {
   const isHero = variant === "hero";
   const isCompact = variant === "compact";
+  
+  // Logic to determine if the card should actually act as a link
+  const isClickable = href && href !== "#";
+  const Wrapper = isClickable ? 'a' : 'div';
 
-  // Derive colors for subtitle to match "Live Balance" style
   const colorMatch = color.match(/bg-([a-z]+)-/);
   const colorName = colorMatch ? colorMatch[1] : "slate";
   const badgeText = colorName === "slate" ? "text-slate-400" : `text-${colorName}-400`;
@@ -150,17 +165,25 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
   const badgeRing = colorName === "slate" ? "ring-white/5" : `ring-${colorName}-500/20`;
 
   return (
-    <div className={cn(
-      "group bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-2xl hover:shadow-slate-500/10 hover:-translate-y-1 hover:border-slate-700 transition-all duration-300 text-white overflow-hidden relative animate-in fade-in zoom-in-95",
-      isHero ? "p-6 sm:p-8 mb-4" : isCompact ? "p-3 sm:p-5" : "p-6"
-    )}>
+    <Wrapper 
+      href={isClickable ? href : undefined}
+      className={cn(
+        "group block bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-2xl transition-all duration-300 text-white overflow-hidden relative animate-in fade-in zoom-in-95 hover:shadow-slate-500/10 hover:-translate-y-1 hover:border-slate-700",
+        // Conditional Interactive Styles
+        isClickable 
+          ? "cursor-pointer" 
+          : "cursor-default",
+        isHero ? "p-6 sm:p-8 mb-4" : isCompact ? "p-3 sm:p-5" : "p-6"
+      )}
+    >
       {/* Dynamic Glow Ornament */}
       <div className={`absolute -top-10 -right-10 w-48 h-48 ${color.replace('bg-', 'bg-')}/10 rounded-full blur-[60px] group-hover:blur-[80px] group-hover:scale-125 transition-all duration-500 opacity-20`}></div>
       
       <div className={cn("flex items-start justify-between relative z-10", isCompact ? "mb-3" : "mb-6")}>
         <div className={cn(
           color, 
-          "rounded-xl shadow-lg ring-4 ring-slate-800 group-hover:scale-110 transition-transform duration-300",
+          "rounded-xl shadow-lg ring-4 ring-slate-800 transition-transform duration-300",
+          isClickable ? "group-hover:scale-110" : "", // Only scale icon if clickable
           isCompact ? "p-2 sm:p-3" : "p-4"
         )}>
           <Icon className={cn("text-white", isCompact ? "w-4 h-4 sm:w-6 sm:h-6" : "w-7 h-7")} />
@@ -200,6 +223,6 @@ function PremiumStatCard({ title, value, subtitle, icon: Icon, color, breakdown,
           ))}
         </div>
       )}
-    </div>
+    </Wrapper>
   );
 }
