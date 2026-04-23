@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getWIBDateString } from "@/lib/date-utils";
 import { startOfDay } from "date-fns";
 import type { Prisma } from "@prisma/client";
+import { calculateCageMasterFields } from "@/lib/calculations";
 
 // ==================== PRODUCTION DATA ====================
 
@@ -371,6 +372,7 @@ export async function saveSalesData(data: SalesSaveInput) {
 }
 
 export type MasterSaveInput = {
+  id?: string;
   kandang: string;
   jmlAyam?: number;
   jmlEmber?: number;
@@ -379,20 +381,41 @@ export type MasterSaveInput = {
   beratPakan?: number | null;
   volEmber?: number | null;
   hargaPakan?: number | null;
+  faktorPakan?: number;
 };
 
 /**
  * Save master data (upsert)
+ * Automatically calculates derived fields from input
  * Returns the saved entry
  */
 export async function saveMasterData(data: MasterSaveInput) {
+  // Calculate derived fields automatically
+  const calculated = calculateCageMasterFields({
+    jmlAyam: data.jmlAyam ?? 0,
+    jmlEmber: data.jmlEmber ?? 0,
+    jmlPakan: data.jmlPakan ?? 0,
+    hargaPakan: data.hargaPakan ?? undefined,
+  });
+
+  // Merge input with calculated fields (input takes precedence over defaults)
+  const mergedData = {
+    ...data,
+    ...calculated,
+  };
+
   // Filter out undefined values for Prisma operations
   const cleanData = Object.fromEntries(
-    Object.entries(data).filter(([_, v]) => v !== undefined && v !== null)
-  ) as Prisma.CageMasterUpdateInput & Prisma.CageMasterCreateInput;
+    Object.entries(mergedData).filter(([_, v]) => v !== undefined && v !== null)
+  ) as unknown as Prisma.CageMasterUpdateInput & Prisma.CageMasterCreateInput;
+
+  // Use cuid-based ID for upsert (new schema uses @id @default(cuid()))
+  const where = data.id 
+    ? { id: data.id } 
+    : { kandang: data.kandang };
 
   const entry = await prisma.cageMaster.upsert({
-    where: { kandang: data.kandang },
+    where,
     update: cleanData,
     create: cleanData,
   });

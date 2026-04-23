@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getMasterData, saveMasterData } from "@/lib/data";
+import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const cageMasterSchema = z.object({
+  id: z.string().optional(),
   kandang: z.string().min(1),
   jmlAyam: z.number().int().default(0),
   jmlEmber: z.number().default(0),
@@ -17,10 +19,25 @@ const cageMasterSchema = z.object({
   faktorPakan: z.number().default(13),
 });
 
-export async function GET() {
+// Helper to bypass auth in test environment
+function getTestSession() {
+  return { user: { email: "test@test.com" } };
+}
+
+export async function GET(request: Request) {
   const isTest = process.env.NODE_ENV === "test" || process.env.TESTING_MODE === "true";
-  const session = isTest ? { user: { email: "test@test.com" } } : await getServerSession(authOptions);
+  const session = isTest ? getTestSession() : await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  const kandang = searchParams.get("kandang");
+
+  if (kandang) {
+    const data = await prisma.cageMaster.findUnique({
+      where: { kandang },
+    });
+    return NextResponse.json(data || {});
+  }
 
   // Use centralized data fetching
   const data = await getMasterData();
@@ -29,7 +46,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const isTest = process.env.NODE_ENV === "test" || process.env.TESTING_MODE === "true";
-  const session = isTest ? { user: { email: "test@test.com" } } : await getServerSession(authOptions);
+  const session = isTest ? getTestSession() : await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -49,5 +66,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: messages.join(", ") }, { status: 400 });
     }
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const isTest = process.env.NODE_ENV === "test" || process.env.TESTING_MODE === "true";
+  const session = isTest ? getTestSession() : await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const kandang = searchParams.get("kandang");
+
+    if (!kandang) {
+      return NextResponse.json({ error: "kandang required" }, { status: 400 });
+    }
+
+    await prisma.cageMaster.delete({
+      where: { kandang },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('[MASTER DELETE] Error:', error);
+    return NextResponse.json({ error: "Not found or already deleted" }, { status: 404 });
   }
 }

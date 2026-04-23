@@ -14,22 +14,24 @@ model User {
 }
 
 model CageMaster {
-  kandang    String   @id
-  jmlAyam    Int      @default(0)
-  jmlEmber   Float    @default(0)
-  jmlPakan   Float    @default(0)
-  gramEkor   Float    @default(0)
-  beratPakan Float   @default(0)
-  volEmber   Float?   @default(0)
-  hargaPakan Float?  @default(0)
-  mortality Int      @default(0)
-  faktorPakan Float  @default(13)
-  createdAt  DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  kandang     String   @unique
+  jmlAyam     Int      @default(0)
+  jmlEmber    Float    @default(0)
+  jmlPakan    Float    @default(0)
+  gramEkor    Float    @default(0)
+  beratPakan  Float    @default(0)
+  volEmber    Float?   @default(0)
+  hargaPakan  Float?   @default(0)
+  mortality   Int      @default(0)
+  faktorPakan Float    @default(13)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Production {
   date          DateTime @id @db.Date
+  cageMasterId  String? @default("default") // Link to CageMaster group for future use
   b1JmlTelur    Int      @default(0)
   b1Kg          Float    @default(0)
   b1Pct         Float    @default(0)

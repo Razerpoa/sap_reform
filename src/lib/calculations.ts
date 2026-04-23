@@ -4,6 +4,51 @@
  */
 import { getWIBDateString } from "@/lib/date-utils";
 
+// ==================== CAGE MASTER CALCULATIONS ====================
+
+export type CageMasterInput = {
+  jmlAyam: number;
+  jmlEmber: number;
+  jmlPakan: number;
+  hargaPakan?: number;
+};
+
+/**
+ * Calculate derived fields from CageMaster input
+ * G/Ekor (gram per chicken) = Jml Pakan / Jml Ayam
+ */
+export function calculateGramEkor(input: CageMasterInput): number {
+  if (!input.jmlAyam || input.jmlAyam === 0) return 0;
+  return input.jmlPakan / input.jmlAyam;
+}
+
+/**
+ * B Pakan (total feed cost) = Jml Pakan * H. Pakan
+ */
+export function calculateBeratPakan(input: CageMasterInput): number {
+  const harga = input.hargaPakan ?? 0;
+  return input.jmlPakan * harga;
+}
+
+/**
+ * Vol/Ember (volume per bucket) = Jml Pakan / Jml Ember
+ */
+export function calculateVolEmber(input: CageMasterInput): number {
+  if (!input.jmlEmber || input.jmlEmber === 0) return 0;
+  return input.jmlPakan / input.jmlEmber;
+}
+
+/**
+ * Calculate all derived fields for CageMaster
+ */
+export function calculateCageMasterFields(input: CageMasterInput) {
+  return {
+    gramEkor: calculateGramEkor(input),
+    beratPakan: calculateBeratPakan(input),
+    volEmber: calculateVolEmber(input),
+  };
+}
+
 // ==================== PRODUCTION CALCULATIONS ====================
 
 export function calculateProductionTotals(data: {
