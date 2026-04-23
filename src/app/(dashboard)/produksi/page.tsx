@@ -43,6 +43,8 @@ export default function Produksi() {
   const [metric, setMetric] = useState<"kg" | "telur">("kg");
   const [loading, setLoading] = useState(true);
   const [expandedCard, setExpandedCard] = useState<CageKey | null>(null);
+  const [thirtyDayAvg, setThirtyDayAvg] = useState<Record<CageKey, number>>({} as Record<CageKey, number>);
+  const [cageTimeframes, setCageTimeframes] = useState<Record<CageKey, Timeframe>>({} as Record<CageKey, Timeframe>);
 
   async function fetchData() {
     const ts = Date.now();
@@ -63,6 +65,57 @@ export default function Produksi() {
       setLoading(false);
     }
   }
+
+  // Calculate 30-day average kg per cage
+  const calculateThirtyDayAvg = useMemo((): Record<CageKey, number> => {
+    if (!productionData.length) return {} as Record<CageKey, number>;
+
+    const dates = productionData.map((p) => new Date(p.date)).filter((d) => !isNaN(d.getTime()));
+    if (!dates.length) return {} as Record<CageKey, number>;
+
+    const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+    const thirtyDaysAgo = new Date(maxDate);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const result: Record<CageKey, number> = {} as Record<CageKey, number>;
+
+    (Object.keys(CAGE_CONFIG) as CageKey[]).forEach((cageKey) => {
+      const kgKey = `${cageKey}Kg` as keyof typeof productionData[0];
+
+      const recentData = productionData.filter((p) => {
+        const d = new Date(p.date);
+        return d >= thirtyDaysAgo && d <= maxDate;
+      });
+
+      let totalKg = 0;
+      recentData.forEach((p) => {
+        totalKg += Number(p[kgKey]) || 0;
+      });
+
+      result[cageKey] = totalKg / 30;
+    });
+
+    return result;
+  }, [productionData]);
+
+  // Update thirtyDayAvg when calculation changes
+  useEffect(() => {
+    setThirtyDayAvg(calculateThirtyDayAvg);
+  }, [calculateThirtyDayAvg]);
+
+  // Set default cage timeframes when master data loads
+  useEffect(() => {
+    if (masterData.length > 0) {
+      const defaults: Record<CageKey, Timeframe> = {} as Record<CageKey, Timeframe>;
+      masterData.forEach((item: any) => {
+        const cageKey = KANDANG_TO_CAGE[item.kandang];
+        if (cageKey && !defaults[cageKey]) {
+          defaults[cageKey] = "daily";
+        }
+      });
+      setCageTimeframes(defaults);
+    }
+  }, [masterData]);
 
   useEffect(() => {
     fetchData();
@@ -136,11 +189,12 @@ export default function Produksi() {
   }, [productionData, timeframe]);
 
   // Get chart data for a specific cage
-  const getCageChartData = (cageKey: CageKey) => {
+  const getCageChartData = (cageKey: CageKey, cageTimeframe: Timeframe) => {
+    const cageTimeframeUse = cageTimeframes[cageKey] || cageTimeframe;
     const metricKey = `${cageKey}_${metric}`;
     return aggregatedData.map((entry) => {
       let name: string;
-      switch (timeframe) {
+      switch (cageTimeframeUse) {
         case "daily":
           name = format(entry.date, "dd MMM", { locale: id });
           break;
@@ -234,7 +288,8 @@ export default function Produksi() {
           const cageKey = KANDANG_TO_CAGE[item.kandang];
           const cageConfig = cageKey ? CAGE_CONFIG[cageKey] : null;
           const isExpanded = expandedCard === cageKey;
-          const chartData = cageKey ? getCageChartData(cageKey) : [];
+          const cageTimeframe = cageTimeframes[cageKey] || timeframe;
+          const chartData = cageKey ? getCageChartData(cageKey, timeframe) : [];
 
           if (!cageKey || !cageConfig) return null;
 
@@ -261,7 +316,7 @@ export default function Produksi() {
                     <div>
                       <h4 className="font-black text-slate-900 text-lg">{cageConfig.label}</h4>
                       <p className="text-xs text-slate-500 font-medium">
-                        {item.jmlAyam.toLocaleString()} ayam • {item.gramEkor}g/ekor
+                        {item.jmlAyam.toLocaleString()} ayam • {thirtyDayAvg[cageKey]?.toFixed(1) || 0} kg/hari
                       </p>
                     </div>
                   </div>
@@ -300,7 +355,19 @@ export default function Produksi() {
               {/* Expanded Graph */}
               {isExpanded && (
                 <div className="px-5 pb-5 pt-2 border-t border-slate-100 animate-fadeIn">
-                  <div className="h-[250px] mt-4">
+                  {/* Per-cage Timeframe Dropdown */}
+                  <div className="mt-4 flex justify-end">
+                    <select
+                      value={cageTimeframes[cageKey] || "daily"}
+                      onChange={(e) => setCageTimeframes((prev) => ({ ...prev, [cageKey]: e.target.value as Timeframe }))}
+                      className="px-2 py-1 bg-slate-100 text-slate-700 rounded-lg font-black text-xs appearance-none cursor-pointer"
+                    >
+                      {TIMEFRAME_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="h-[250px]">
                     {!chartData.length ? (
                       <div className="h-full flex items-center justify-center text-slate-400 text-sm italic font-medium">
                         Tidak ada data tersedia.
@@ -315,7 +382,7 @@ export default function Produksi() {
                             tickLine={false}
                             tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: 700 }}
                             dy={10}
-                            interval={timeframe === "daily" ? 6 : timeframe === "weekly" ? 4 : 0}
+                            interval={cageTimeframe === "daily" ? 6 : cageTimeframe === "weekly" ? 4 : 0}
                           />
                           <YAxis
                             axisLine={false}
@@ -357,8 +424,8 @@ export default function Produksi() {
                       <p className="text-xl font-black text-slate-900">{item.jmlAyam.toLocaleString()}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[9px] uppercase font-black text-slate-400 tracking-wider">Gram/Ekor</p>
-                      <p className="text-xl font-black text-slate-900">{item.gramEkor.toLocaleString()}</p>
+                      <p className="text-[9px] uppercase font-black text-slate-400 tracking-wider">Kg/Hari</p>
+                      <p className="text-xl font-black text-slate-900">{thirtyDayAvg[cageKey]?.toFixed(1) || 0}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-[9px] uppercase font-black text-slate-400 tracking-wider">Ember</p>

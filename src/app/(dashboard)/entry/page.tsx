@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { format, startOfDay } from "date-fns";
 import { getWIBDateString } from "@/lib/date-utils";
+import { useSession } from "next-auth/react";
 import { 
   Save, 
   AlertCircle, 
@@ -21,6 +22,7 @@ import {
   Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 
 type Tab = "production" | "master" | "cashflow" | "sales";
 
@@ -30,6 +32,7 @@ const CATEGORY_MAP: Record<string, string> = {
 };
 
 export default function EntryPage() {
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState<Tab>("production");
   const [selectedDate, setSelectedDate] = useState(getWIBDateString());
   const [loading, setLoading] = useState(false);
@@ -525,7 +528,7 @@ function CashFlowForm({ data, setData, isEditable, otherExpenses, setOtherExpens
                     <p className="text-xs text-slate-400 font-medium">{new Date(expense.date).toLocaleDateString("id-ID")}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <p className="text-lg font-black text-blue-700 italic">Rp {expense.amount.toLocaleString()}</p>
+                    <p className="text-lg font-black text-blue-700 italic">{formatNumber(expense.amount)}</p>
                     {isEditable && (
                       <div className="flex gap-1">
                         <button
@@ -618,8 +621,8 @@ function SalesSection({ data, newSale, setNewSale, isEditable, onSave }: any) {
                   <p className="text-xs text-slate-400 font-bold">{sale.jmlPeti} Peti • {sale.totalKg} KG</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-black text-slate-900 italic">Rp {sale.hargaJual.toLocaleString()}</p>
-                  <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">Total: Rp {sale.subTotal.toLocaleString()}</p>
+                  <p className="text-lg font-black text-slate-900 italic">{formatNumber(sale.hargaJual)}</p>
+                  <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">Total: {formatNumber(sale.subTotal)}</p>
                 </div>
               </div>
             ))}
@@ -637,21 +640,61 @@ function SalesSection({ data, newSale, setNewSale, isEditable, onSave }: any) {
 
 function MasterForm({ data, onSave }: any) {
   const [editing, setEditing] = useState<any>(null);
+  const { data: session } = useSession();
+  
+  const userEmail = session?.user?.email || "";
+  const isSuperAdmin = process.env.SUPER_ADMIN_EMAIL?.includes(userEmail) || false;
 
   const handleEdit = (item: any) => {
     setEditing({ ...item });
   };
 
   const handleSaveMaster = async () => {
+    // Auto-calculate jmlPakan = jmlEmber * faktorPakan before saving
+    // Subtract mortality from jmlAyam before saving
+    const jmlEmber = parseFloat(editing.jmlEmber) || 0;
+    const faktorPakan = parseFloat(editing.faktorPakan) || 13;
+    const mortality = parseInt(editing.mortality) || 0;
+    const originalJmlAyam = parseInt(editing.jmlAyam) || 0;
+    const newJmlAyam = originalJmlAyam - mortality;
+    const calculatedData = {
+      ...editing,
+      jmlAyam: newJmlAyam,
+      jmlEmber,
+      faktorPakan,
+      jmlPakan: jmlEmber * faktorPakan,
+      mortality,
+    };
+    console.log('[MasterForm] Saving:', JSON.stringify(calculatedData));
     const res = await fetch("/api/master", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editing),
+      body: JSON.stringify(calculatedData),
     });
+    console.log('[MasterForm] Response:', res.status, await res.text());
     if (res.ok) {
       setEditing(null);
       onSave();
     }
+  };
+
+  const handleEmberChange = (value: string) => {
+    const newJmlEmber = parseFloat(value) || 0;
+    const faktorPakan = editing.faktorPakan || 13;
+    setEditing({
+      ...editing,
+      jmlEmber: newJmlEmber,
+      jmlPakan: newJmlEmber * faktorPakan,
+    });
+  };
+
+  const handleFaktorPakanChange = (value: string) => {
+    const newFaktorPakan = parseFloat(value) || 13;
+    setEditing({
+      ...editing,
+      faktorPakan: newFaktorPakan,
+      jmlPakan: editing.jmlEmber * newFaktorPakan,
+    });
   };
 
   return (
@@ -665,7 +708,6 @@ function MasterForm({ data, onSave }: any) {
               </div>
               <div>
                 <h4 className="font-black text-slate-900 text-lg">Kandang {item.kandang}</h4>
-                {/* <p className="text-xs text-slate-400 font-bold uppercase tracking-wide">Master Data</p> */}
               </div>
             </div>
             <button 
@@ -682,8 +724,8 @@ function MasterForm({ data, onSave }: any) {
               <p className="text-2xl font-black text-slate-900">{item.jmlAyam.toLocaleString()}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Gram/Ekor</p>
-              <p className="text-2xl font-black text-slate-900">{item.gramEkor.toLocaleString()}</p>
+              <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Mortalities</p>
+              <p className="text-2xl font-black text-slate-900">{item.mortality?.toLocaleString() || 0}</p>
             </div>
             <div className="space-y-1">
               <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Jml Ember</p>
@@ -707,9 +749,14 @@ function MasterForm({ data, onSave }: any) {
             <div className="p-10 space-y-6">
               <div className="grid grid-cols-2 gap-6">
                 <InputField label="Jml Ayam" value={editing.jmlAyam} onChange={(v: string) => setEditing({...editing, jmlAyam: parseInt(v) || 0})} />
-                <InputField label="Gram/Ekor" value={editing.gramEkor} onChange={(v: string) => setEditing({...editing, gramEkor: parseFloat(v) || 0})} />
-                <InputField label="Jml Ember" value={editing.jmlEmber} onChange={(v: string) => setEditing({...editing, jmlEmber: parseFloat(v) || 0})} />
-                <InputField label="Jml Pakan" value={editing.jmlPakan} onChange={(v: string) => setEditing({...editing, jmlPakan: parseFloat(v) || 0})} />
+                <InputField label="Mortalities" value={editing.mortality} onChange={(v: string) => setEditing({...editing, mortality: parseInt(v) || 0})} />
+                <InputField label="Jml Ember" value={editing.jmlEmber} onChange={handleEmberChange} />
+                {isSuperAdmin ? (
+                  <InputField label="Faktor Pakan" value={editing.faktorPakan} onChange={handleFaktorPakanChange} />
+                ) : (
+                  <InputField label="Faktor Pakan" value={editing.faktorPakan} onChange={() => {}} readOnly />
+                )}
+                <InputField label="Jml Pakan" value={editing.jmlPakan} onChange={() => {}} readOnly />
               </div>
               <button 
                 onClick={handleSaveMaster}

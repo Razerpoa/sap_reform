@@ -19,11 +19,13 @@ model CageMaster {
   jmlEmber   Float    @default(0)
   jmlPakan   Float    @default(0)
   gramEkor   Float    @default(0)
-  beratPakan Float    @default(0)
+  beratPakan Float   @default(0)
   volEmber   Float?   @default(0)
-  hargaPakan Float?   @default(0)
+  hargaPakan Float?  @default(0)
+  mortality Int      @default(0)
+  faktorPakan Float  @default(13)
   createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 }
 
 model Production {

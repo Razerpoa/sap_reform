@@ -5,6 +5,7 @@ import { PlusCircle, RefreshCw, BarChart2, Clock, CheckCircle2 } from "lucide-re
 import { calculateDashboardStats } from "@/lib/calculations";
 import { getDashboardData } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 
 export const dynamic = 'force-dynamic';
 
@@ -38,12 +39,13 @@ export default async function DashboardPage() {
         <PremiumStatCard 
           variant="hero"
           title="Ringkasan Profit"
-          value={`Rp ${Math.round(stats.cashFlowTotalProfit || 0).toLocaleString()}`}
+          value={`Rp ${formatNumber(Math.round(stats.cashFlowTotalProfit || 0))}`}
           subtitle="Profit (30h)"
           icon={stats.cashFlowTotalProfit >= 0 ? TrendingUp : TrendingDown}
           color={stats.cashFlowTotalProfit >= 0 ? "bg-emerald-600" : "bg-rose-600"}
+          href="/profit"
           breakdown={[
-            { label: "Avg Profit", value: `Rp ${Math.round(stats.cashFlowAvgProfit || 0).toLocaleString()}`, icon: DollarSign }
+            { label: "Avg Profit", value: `Rp ${formatNumber(Math.round(stats.cashFlowAvgProfit || 0))}`, icon: DollarSign }
           ]}
         />
         {/* Quad Grid Cards (4 in desktop, 2x2 in mobile) */}
@@ -51,47 +53,48 @@ export default async function DashboardPage() {
           <PremiumStatCard 
             variant="compact"
             title="Produksi Hari ini"
-            value={`${(stats.productionLatestKg || 0).toLocaleString()} KG`}
+            value={`${formatNumber(stats.productionLatestKg || 0)} KG`}
             subtitle="Produksi"
             icon={Layers}
             color="bg-indigo-600"
             breakdown={[
-              { label: "Avg (30h)", value: `${Math.round(stats.productionAvgKg || 0).toLocaleString()} KG`, icon: Package }
+              { label: "Avg (30h)", value: `${formatNumber(stats.productionAvgKg || 0)} KG`, icon: Package }
             ]}
             href="/produksi"
           />
           <PremiumStatCard 
             variant="compact"
             title="Terjual Hari Ini"
-            value={`${(stats.salesTodayKg || 0).toLocaleString()} KG`}
+            value={`${formatNumber(stats.salesTodayKg || 0)} KG`}
             subtitle="Terjual"
             icon={stats.salesTodayKg >= 0 ? TrendingUp : TrendingDown}
             color="bg-emerald-600"
             breakdown={[
-              { label: "Peti", value: `${(stats.salesTodayPeti || 0).toLocaleString()} Peti`, icon: Layers }
+              { label: "Peti", value: `${formatNumber(stats.salesTodayPeti || 0)} Peti`, icon: Layers }
             ]}
           />
           <PremiumStatCard 
             variant="compact"
             title="Total Pengeluaran"
-            value={`Rp ${Math.round(stats.cashFlowTotalExpenses || 0).toLocaleString()}`}
+            value={`Rp ${formatNumber(stats.cashFlowTotalExpenses || 0)}`}
             subtitle={`biaya beban`}
             icon={Receipt}
             color="bg-rose-500"
+            href="/profit"
             breakdown={[
-              { label: "Sebulan ini", value: `Rp ${Math.round(stats.cashFlowMonthExpenses || 0).toLocaleString()}`, icon: ShoppingBag },
+              { label: "Sebulan ini", value: `Rp ${formatNumber(stats.cashFlowMonthExpenses || 0)}`, icon: ShoppingBag },
             ]}
           />
           <PremiumStatCard 
             variant="compact"
             title="Saldo"
-            value={`Rp ${Math.round(stats.cashFlowTotalLiquidAssets || 0).toLocaleString()}`}
+            value={`Rp ${formatNumber(stats.cashFlowTotalLiquidAssets || 0)}`}
             subtitle="Live Balance"
             icon={Wallet}
             color="bg-blue-600"
             breakdown={[
-              { label: "Rekening", value: `Rp ${Math.round(stats.cashFlowSaldoRekening || 0).toLocaleString()}`, icon: Landmark },
-              { label: "Cash", value: `Rp ${Math.round(stats.cashFlowSaldoCash || 0).toLocaleString()}`, icon: DollarSign }
+              { label: "Rekening", value: `Rp ${formatNumber(stats.cashFlowSaldoRekening || 0)}`, icon: Landmark },
+              { label: "Cash", value: `Rp ${formatNumber(stats.cashFlowSaldoCash || 0)}`, icon: DollarSign }
             ]}
           />
         </div>

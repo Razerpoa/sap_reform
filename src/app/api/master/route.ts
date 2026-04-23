@@ -13,6 +13,8 @@ const cageMasterSchema = z.object({
   beratPakan: z.number().default(0),
   volEmber: z.number().nullable().default(0),
   hargaPakan: z.number().nullable().default(0),
+  mortality: z.number().int().default(0),
+  faktorPakan: z.number().default(13),
 });
 
 export async function GET() {
@@ -32,13 +34,16 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
+    console.log('[MASTER POST] Body:', JSON.stringify(body));
     const validatedData = cageMasterSchema.parse(body);
+    console.log('[MASTER POST] Validated:', JSON.stringify(validatedData));
     
     // Use centralized save function
     const data = await saveMasterData(validatedData);
 
     return NextResponse.json(data);
   } catch (error) {
+    console.error('[MASTER POST] Error:', error);
     if (error instanceof z.ZodError) {
       const messages = error.issues.map((e) => `${e.path.join(".")}: ${e.message}`);
       return NextResponse.json({ error: messages.join(", ") }, { status: 400 });
