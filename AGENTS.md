@@ -6,10 +6,16 @@
 # 1. Start database
 docker compose up -d db
 
-# 2. Sync Prisma schema
+# 2. Generate Prisma client (after schema changes)
+npx prisma generate
+
+# 3. Push schema to database
 npx prisma db push
 
-# 3. Start dev server
+# 4. Seed data
+npx tsx prisma/seed.ts
+
+# 5. Start dev server
 npm run dev
 ```
 
@@ -18,62 +24,59 @@ npm run dev
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Dev server on port 3000 |
-| `npm run build` | Production build |
+| `npm run build` | Production build + typecheck |
 | `npm run lint` | ESLint |
+| `npm run seed` | Seed database |
 | `npm run test:api` | Run API tests |
 | `npx prisma studio` | Open Prisma GUI |
 
-## Environment (.env)
-
-```env
-DATABASE_HOST=localhost        # Use "localhost" for local, "db" for Docker
-DATABASE_USERNAME=postgres
-DATABASE_PASSWORD=password
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=<secret>
-GOOGLE_CLIENT_ID=<from Google Console>
-GOOGLE_CLIENT_SECRET=<from Google Console>
-ALLOWED_EMAILS=user@example.com
-```
-
-## Docker Production
-
-```bash
-# Build and run
-docker compose up -d --build
-
-# View logs
-docker compose logs -f app
-```
-
-**Critical**: `docker-compose.yml` hardcodes `DATABASE_HOST: db` to override any `.env` file.
-
 ## Architecture
 
-- **Next.js 16** with App Router (src/app)
-- **Prisma** - schema in `prisma/schema.prisma`, connection config in `prisma.config.ts`
-- **Auth** - NextAuth v4, config in `src/lib/auth.ts`
+- **Next.js 16** with App Router (`src/app`)
+- **Prisma** - schema in `prisma/schema.prisma`
+- **Auth** - NextAuth v4 (`src/lib/auth.ts`)
 - **Calculations** - `src/lib/calculations.ts` (centralized math logic)
-- **API Routes**:
-  - `/api/production` - Production data
-  - `/api/sales` - Sales data
-  - `/api/master` - Master data
-  - `/api/cashflow` - Cash flow
-  - `/api/export` - Export data
-- **Pages**:
-  - `/` → redirects to `/login` (auth protected)
-  - `/entry` - Daily entry form
-  - `/workers` - Worker management
-  - `/export` - Data export
+- **Data layer** - `src/lib/data.ts` (all database queries go here)
 
-## Testing
+### API Routes
+| Endpoint | Purpose |
+|----------|---------|
+| `/api/production` | Daily production data |
+| `/api/master` | CageMaster CRUD (GET, POST, DELETE) |
+| `/api/sales` | Sales transactions |
+| `/api/cashflow` | Cash flow tracking |
+| `/api/workers` | Worker management |
+| `/api/export` | Excel export |
 
-- Run API tests: `npm run test:api`
-- Insert test data directly: `docker exec db psql -U postgres -d sap_reform -c "INSERT INTO ..."`
+### Database
+- **CageMaster** - Groups of cages (B1, B1+, etc.) with calculated fields
+  - `gramEkor` = jmlPakan / jmlAyam (feed per chicken)
+  - `beratPakan` = jmlPakan * hargaPakan (total feed cost)
+  - `volEmber` = jmlPakan / jmlEmber (volume per bucket)
+- **Production** - Daily entries with hardcoded cage columns (b1Kg, b1pKg, b2Kg, etc.)
+
+## Cage Naming Convention
+
+Cage keys use lowercase + `p` suffix for plus variants:
+```
+B1 → b1    B1+ → b1p    B2 → b2    B2+ → b2p    B3 → b3    B3+ → b3p
+```
+
+Production table columns follow pattern: `{cageKey}{field}` (e.g., `b1Kg`, `b1pJmlTelur`, `b2Pct`)
 
 ## Important Notes
 
-- **DATABASE_HOST quirk**: Local needs `localhost`, Docker needs `db`. The docker-compose.yml hardcodes `DATABASE_HOST: db` to override local `.env`.
-- Dark mode is disabled in `globals.css` (light mode only)
-- Production uses `@prisma/extension-accelerate` (local does not)
-- Cage fields: b1Kg, b1pKg, b2Kg, b2pKg, b3Kg, b3pKg (6 cages)
+- **DATABASE_HOST**: Local uses `localhost`, Docker uses `db`. `docker-compose.yml` hardcodes `DATABASE_HOST: db`.
+- **Prisma client**: After schema changes, must run `npx prisma generate` before building.
+- **Seed script**: Uses `tsx` not `ts-node`. Run after `prisma db push`.
+- **Dark mode**: Disabled in `globals.css` (light mode only).
+- **Production Prisma**: Uses `@prisma/extension-accelerate` (local does not).
+
+## Adding New Cages
+
+1. Update `prisma/schema.prisma` - add columns to `Production` model following naming pattern
+2. Add calculation logic in `src/lib/calculations.ts`
+3. Update API validation in `src/app/api/production/route.ts`
+4. Update UI in `src/app/(dashboard)/entry/page.tsx` (`CATS` array) and `produksi/page.tsx` (`CAGE_CONFIG`)
+5. Push schema: `npx prisma db push`
+6. Seed: `npx tsx prisma/seed.ts`
