@@ -266,34 +266,346 @@ export default function EntryPage() {
 }
 
 function ProductionForm({ data, setData, isEditable }: any) {
+  const [cages, setCages] = useState<any[]>([]);
+  const [loadingCages, setLoadingCages] = useState(true);
+
+  // Fetch cage names from CageMaster
+  useEffect(() => {
+    async function fetchCages() {
+      try {
+        const res = await fetch("/api/master");
+        if (res.ok) {
+          const cageData = await res.json();
+          setCages(cageData || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch cages:", err);
+      } finally {
+        setLoadingCages(false);
+      }
+    }
+    fetchCages();
+  }, []);
+
+  // Initialize default cage data structure
+  const initializeCageData = (cageName: string) => ({
+    rows: [
+      { peti: false, tray: 0, butir: 0 },
+      { peti: false, tray: 0, butir: 0 },
+      { peti: false, tray: 0, butir: 0 },
+    ],
+    footer: { totalTray: 0, totalButir: 0, totalKg: 0 },
+  });
+
+  // Helper to get nested data safely
+  const getCageData = (key: string) => {
+    const cageData = data.cageData?.[key];
+    if (!cageData) {
+      return initializeCageData(key);
+    }
+    return cageData;
+  };
+
+  const getSummaryData = (key: string) => {
+    const summaryData = data.cageSummary?.[key];
+    if (!summaryData) {
+      return initializeCageData(key);
+    }
+    return summaryData;
+  };
+
+  // Update a single peti checkbox - adds/subtracts 15kg
+  const updatePeti = (key: string, rowIndex: number, checked: boolean, isSummary = false) => {
+    if (!isEditable) return;
+
+    const currentData = isSummary ? data.cageSummary : data.cageData;
+    const cageName = key;
+    const cageInfo = getCageData(cageName);
+    const currentKg = parseFloat(cageInfo.footer.totalKg) || 0;
+    const newKg = checked ? currentKg + 15 : Math.max(0, currentKg - 15);
+
+    const updatedCageInfo = {
+      ...cageInfo,
+      rows: cageInfo.rows.map((r: any, i: number) =>
+        i === rowIndex ? { ...r, peti: checked } : r
+      ),
+      footer: { ...cageInfo.footer, totalKg: newKg },
+    };
+
+    if (isSummary) {
+      setData({
+        ...data,
+        cageSummary: { ...data.cageSummary, [key]: updatedCageInfo },
+      });
+    } else {
+      setData({
+        ...data,
+        cageData: { ...data.cageData, [key]: updatedCageInfo },
+      });
+    }
+  };
+
+  // Update a row field (tray or butir)
+  const updateRowField = (
+    key: string,
+    rowIndex: number,
+    field: "tray" | "butir",
+    value: string,
+    isSummary = false
+  ) => {
+    if (!isEditable) return;
+
+    const val = parseInt(value) || 0;
+    const cageInfo = getCageData(key);
+
+    const updatedCageInfo = {
+      ...cageInfo,
+      rows: cageInfo.rows.map((r: any, i: number) =>
+        i === rowIndex ? { ...r, [field]: val } : r
+      ),
+    };
+
+    if (isSummary) {
+      setData({
+        ...data,
+        cageSummary: { ...data.cageSummary, [key]: updatedCageInfo },
+      });
+    } else {
+      setData({
+        ...data,
+        cageData: { ...data.cageData, [key]: updatedCageInfo },
+      });
+    }
+  };
+
+  // Update footer field
+  const updateFooterField = (
+    key: string,
+    field: "totalTray" | "totalButir" | "totalKg",
+    value: string,
+    isSummary = false
+  ) => {
+    if (!isEditable) return;
+
+    const val = field === "totalKg" ? parseFloat(value) || 0 : parseInt(value) || 0;
+    const cageInfo = getCageData(key);
+
+    const updatedCageInfo = {
+      ...cageInfo,
+      footer: { ...cageInfo.footer, [field]: val },
+    };
+
+    if (isSummary) {
+      setData({
+        ...data,
+        cageSummary: { ...data.cageSummary, [key]: updatedCageInfo },
+      });
+    } else {
+      setData({
+        ...data,
+        cageData: { ...data.cageData, [key]: updatedCageInfo },
+      });
+    }
+  };
+
+  // Update financial field
   const updateField = (field: string, val: string) => {
     if (!isEditable) return;
     setData({ ...data, [field]: parseFloat(val) || 0 });
   };
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {CATS.map((cat) => (
-        <div key={cat} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm overflow-hidden group">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black">
-                {CATEGORY_MAP[cat]}
-              </div>
-              <h3 className="text-lg font-black text-slate-900">Kandang {CATEGORY_MAP[cat]}</h3>
+  // Render a single cage card
+  const renderCageCard = (cage: any, isSummary = false) => {
+    const key = cage.kandang;
+    const cageInfo = isSummary ? getSummaryData(key) : getCageData(key);
+    const label = isSummary ? "Summary" : `Kandang ${key}`;
+
+    return (
+      <div
+        key={key}
+        className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm overflow-hidden group ${
+          isSummary ? "bg-blue-600 border-blue-500" : ""
+        }`}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${
+                isSummary
+                  ? "bg-white/20 text-white"
+                  : "bg-blue-50 text-blue-600"
+              }`}
+            >
+              {key}
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <InputField label="Jml Telur" value={data[`${cat}JmlTelur`]} onChange={(v: string) => updateField(`${cat}JmlTelur`, v)} readOnly={!isEditable} />
-            <InputField label="Kg" value={data[`${cat}Kg`]} onChange={(v: string) => updateField(`${cat}Kg`, v)} readOnly={!isEditable} />
-            <InputField label="%" value={data[`${cat}Pct`]} onChange={(v: string) => updateField(`${cat}Pct`, v)} readOnly={!isEditable} />
-            <InputField label="FC" value={data[`${cat}Fc`]} onChange={(v: string) => updateField(`${cat}Fc`, v)} readOnly={!isEditable} />
+            <h3
+              className={`text-lg font-black ${
+                isSummary ? "text-white" : "text-slate-900"
+              }`}
+            >
+              {label}
+            </h3>
           </div>
         </div>
-      ))}
+
+        {/* Header row */}
+        <div
+          className={`grid grid-cols-4 gap-2 mb-3 text-[9px] font-black uppercase tracking-wider ${
+            isSummary ? "text-blue-200" : "text-slate-400"
+          }`}
+        >
+          <div></div>
+          <div className="text-center">Tray</div>
+          <div className="text-center">Butir</div>
+          <div></div>
+        </div>
+
+        {/* 3 data rows */}
+        {cageInfo.rows.map((row: any, rowIndex: number) => (
+          <div
+            key={rowIndex}
+            className="grid grid-cols-4 gap-2 mb-2 items-center"
+          >
+            <div className="flex items-center justify-center">
+              <button
+                onClick={() => updatePeti(key, rowIndex, !row.peti, isSummary)}
+                disabled={!isEditable}
+                className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
+                  row.peti
+                    ? "bg-emerald-500 text-white"
+                    : "bg-slate-100 text-slate-300 hover:bg-slate-200"
+                } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                {row.peti && <CheckCircle2 className="w-4 h-4" />}
+              </button>
+            </div>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={row.tray || ""}
+              onChange={(e) => updateRowField(key, rowIndex, "tray", e.target.value, isSummary)}
+              disabled={!isEditable}
+              placeholder="0"
+              className={`px-2 py-2 rounded-lg text-center font-black text-sm ${
+                isSummary
+                  ? "bg-white/10 border border-white/20 text-white placeholder-white/30"
+                  : "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300"
+              } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
+            />
+            <input
+              type="number"
+              inputMode="numeric"
+              value={row.butir || ""}
+              onChange={(e) => updateRowField(key, rowIndex, "butir", e.target.value, isSummary)}
+              disabled={!isEditable}
+              placeholder="0"
+              className={`px-2 py-2 rounded-lg text-center font-black text-sm ${
+                isSummary
+                  ? "bg-white/10 border border-white/20 text-white placeholder-white/30"
+                  : "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300"
+              } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
+            />
+          </div>
+        ))}
+
+        {/* Footer summary row */}
+        <div
+          className={`mt-4 pt-3 border-t ${
+            isSummary ? "border-white/20" : "border-slate-100"
+          }`}
+        >
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label
+                className={`text-[9px] uppercase font-black tracking-wider block mb-1 ${
+                  isSummary ? "text-blue-200" : "text-slate-400"
+                }`}
+              >
+                Total Tray
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={cageInfo.footer.totalTray || ""}
+                onChange={(e) => updateFooterField(key, "totalTray", e.target.value, isSummary)}
+                disabled={!isEditable}
+                placeholder="0"
+                className={`w-full px-3 py-2 rounded-lg font-black text-sm ${
+                  isSummary
+                    ? "bg-white/10 border border-white/20 text-white placeholder-white/30"
+                    : "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300"
+                } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
+              />
+            </div>
+            <div>
+              <label
+                className={`text-[9px] uppercase font-black tracking-wider block mb-1 ${
+                  isSummary ? "text-blue-200" : "text-slate-400"
+                }`}
+              >
+                Total Butir
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={cageInfo.footer.totalButir || ""}
+                onChange={(e) => updateFooterField(key, "totalButir", e.target.value, isSummary)}
+                disabled={!isEditable}
+                placeholder="0"
+                className={`w-full px-3 py-2 rounded-lg font-black text-sm ${
+                  isSummary
+                    ? "bg-white/10 border border-white/20 text-white placeholder-white/30"
+                    : "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300"
+                } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
+              />
+            </div>
+            <div>
+              <label
+                className={`text-[9px] uppercase font-black tracking-wider block mb-1 ${
+                  isSummary ? "text-blue-200" : "text-slate-400"
+                }`}
+              >
+                Total Kg
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={cageInfo.footer.totalKg || ""}
+                onChange={(e) => updateFooterField(key, "totalKg", e.target.value, isSummary)}
+                disabled={!isEditable}
+                placeholder="0"
+                className={`w-full px-3 py-2 rounded-lg font-black text-sm ${
+                  isSummary
+                    ? "bg-white/10 border border-white/20 text-white placeholder-white/30"
+                    : "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300"
+                } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (loadingCages) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Cage Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {cages.map((cage) => renderCageCard(cage))}
+      </div>
+
+      {/* Daily Financial Summary */}
       <div className="bg-blue-600 p-6 sm:p-8 rounded-2xl text-white md:col-span-2">
         <h3 className="text-xl font-black mb-6">Daily Financial Summary</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mt-6">
           <InputField dark label="Harga Sentral" value={data.hargaSentral} onChange={(v: string) => updateField(`hargaSentral`, v)} readOnly={!isEditable} />
           <InputField dark label="UP" value={data.up} onChange={(v: string) => updateField(`up`, v)} readOnly={!isEditable} />
           <InputField dark label="Operasional" value={data.operasional} onChange={(v: string) => updateField(`operasional`, v)} readOnly={!isEditable} />

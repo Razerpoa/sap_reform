@@ -8,6 +8,26 @@ import { startOfDay } from "date-fns";
 import type { Prisma } from "@prisma/client";
 import { calculateCageMasterFields } from "@/lib/calculations";
 
+// Type definitions for the new JSON-based production structure
+export type CageRow = {
+  peti: boolean;
+  tray: number;
+  butir: number;
+};
+
+export type CageFooter = {
+  totalTray: number;
+  totalButir: number;
+  totalKg: number;
+};
+
+export type CageData = {
+  rows: CageRow[];
+  footer: CageFooter;
+};
+
+export type ProductionCageData = Record<string, CageData>;
+
 // ==================== PRODUCTION DATA ====================
 
 /**
@@ -166,53 +186,17 @@ export function createCacheBuster(): string {
 
 // ==================== SAVE FUNCTIONS ====================
 
-import { calculateProductionTotals } from "@/lib/calculations";
 import { calculateSalesRevenue, calculateSalesTotals } from "@/lib/calculations";
 import { revalidatePath } from "next/cache";
 
 export type ProductionSaveInput = {
   date: Date;
-  b1JmlTelur?: number;
-  b1Kg?: number;
-  b1Pct?: number;
-  b1Fc?: number;
-  b1Hpp?: number;
-  b1pJmlTelur?: number;
-  b1pKg?: number;
-  b1pPct?: number;
-  b1pFc?: number;
-  b1pHpp?: number;
-  b2JmlTelur?: number;
-  b2Kg?: number;
-  b2Pct?: number;
-  b2Fc?: number;
-  b2Hpp?: number;
-  b2pJmlTelur?: number;
-  b2pKg?: number;
-  b2pPct?: number;
-  b2pFc?: number;
-  b2pHpp?: number;
-  b3JmlTelur?: number;
-  b3Kg?: number;
-  b3Pct?: number;
-  b3Fc?: number;
-  b3Hpp?: number;
-  b3pJmlTelur?: number;
-  b3pKg?: number;
-  b3pPct?: number;
-  b3pFc?: number;
-  b3pHpp?: number;
-  totalJmlTelur?: number;
-  totalKg?: number;
-  totalPct?: number;
-  totalFc?: number;
-  totalHpp?: number;
+  cageData?: ProductionCageData;
+  cageSummary?: ProductionCageData;
   hargaSentral?: number;
   up?: number;
-  hargaKandang?: number;
-  profitDaily?: number;
   operasional?: number;
-  profitMonthly?: number;
+  profitDaily?: number;
 };
 
 /**
@@ -220,18 +204,25 @@ export type ProductionSaveInput = {
  * Returns the saved entry
  */
 export async function saveProductionData(data: ProductionSaveInput) {
-  const { totalKg, totalJmlTelur } = calculateProductionTotals(data);
-
-  const dataWithTotals = {
-    ...data,
-    totalKg,
-    totalJmlTelur,
-  };
-
   const entry = await prisma.production.upsert({
     where: { date: data.date },
-    update: dataWithTotals,
-    create: dataWithTotals,
+    update: {
+      cageData: data.cageData || {},
+      cageSummary: data.cageSummary || {},
+      hargaSentral: data.hargaSentral,
+      up: data.up,
+      operasional: data.operasional,
+      profitDaily: data.profitDaily,
+    },
+    create: {
+      date: data.date,
+      cageData: data.cageData || {},
+      cageSummary: data.cageSummary || {},
+      hargaSentral: data.hargaSentral || 0,
+      up: data.up || 0,
+      operasional: data.operasional || 0,
+      profitDaily: data.profitDaily || 0,
+    },
   });
 
   revalidatePath("/");

@@ -51,40 +51,51 @@ export function calculateCageMasterFields(input: CageMasterInput) {
 
 // ==================== PRODUCTION CALCULATIONS ====================
 
+/**
+ * Calculate totalKg from the new JSON-based cageData structure
+ */
+export function calculateTotalKgFromCageData(cageData: Record<string, any>): number {
+  if (!cageData) return 0;
+  
+  return Object.values(cageData).reduce((sum: number, cage: any) => {
+    if (!cage?.footer?.totalKg) return sum;
+    return sum + (cage.footer.totalKg || 0);
+  }, 0);
+}
+
+/**
+ * Calculate totalJmlTelur (total eggs) from cageData
+ */
+export function calculateTotalJmlTelurFromCageData(cageData: Record<string, any>): number {
+  if (!cageData) return 0;
+  
+  return Object.values(cageData).reduce((sum: number, cage: any) => {
+    if (!cage?.footer?.totalButir) return sum;
+    return sum + (cage.footer.totalButir || 0);
+  }, 0);
+}
+
 export function calculateProductionTotals(data: {
-  b1Kg?: number;
-  b1pKg?: number;
-  b2Kg?: number;
-  b2pKg?: number;
-  b3Kg?: number;
-  b3pKg?: number;
-  b1JmlTelur?: number;
-  b1pJmlTelur?: number;
-  b2JmlTelur?: number;
-  b2pJmlTelur?: number;
-  b3JmlTelur?: number;
-  b3pJmlTelur?: number;
+  cageData?: Record<string, any>;
 }) {
   return {
-    totalKg: 
-      (data.b1Kg || 0) + (data.b1pKg || 0) + 
-      (data.b2Kg || 0) + (data.b2pKg || 0) + 
-      (data.b3Kg || 0) + (data.b3pKg || 0),
-    totalJmlTelur: 
-      (data.b1JmlTelur || 0) + (data.b1pJmlTelur || 0) + 
-      (data.b2JmlTelur || 0) + (data.b2pJmlTelur || 0) + 
-      (data.b3JmlTelur || 0) + (data.b3pJmlTelur || 0),
+    totalKg: calculateTotalKgFromCageData(data.cageData || {}),
+    totalJmlTelur: calculateTotalJmlTelurFromCageData(data.cageData || {}),
   };
 }
 
 export function calculateProductionStats(entries: any[]) {
-  const totalKg = entries.reduce((sum, e) => sum + (e.totalKg || 0), 0);
+  const totalKg = entries.reduce((sum, e) => {
+    return sum + calculateTotalKgFromCageData(e.cageData);
+  }, 0);
   const avgKg = entries.length > 0 ? totalKg / entries.length : 0;
   
   // Filter for today's production (00:00-23:59 WIB)
   const today = getWIBDateString();
   const todayEntries = entries.filter(e => e.date && getWIBDateString(e.date) === today);
-  const todayKg = todayEntries.reduce((sum, e) => sum + (e.totalKg || 0), 0);
+  const todayKg = todayEntries.reduce((sum, e) => {
+    return sum + calculateTotalKgFromCageData(e.cageData);
+  }, 0);
   
   return { totalKg, avgKg, todayKg };
 }

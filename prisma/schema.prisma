@@ -30,51 +30,16 @@ model CageMaster {
 }
 
 model Production {
-  date          DateTime @id @db.Date
-  cageMasterId  String? @default("default") // Link to CageMaster group for future use
-  b1JmlTelur    Int      @default(0)
-  b1Kg          Float    @default(0)
-  b1Pct         Float    @default(0)
-  b1Fc          Float    @default(0)
-  b1Hpp         Float    @default(0)
-  b1pJmlTelur   Int      @default(0)
-  b1pKg         Float    @default(0)
-  b1pPct        Float    @default(0)
-  b1pFc         Float    @default(0)
-  b1pHpp        Float    @default(0)
-  b2JmlTelur    Int      @default(0)
-  b2Kg          Float    @default(0)
-  b2Pct         Float    @default(0)
-  b2Fc          Float    @default(0)
-  b2Hpp         Float    @default(0)
-  b2pJmlTelur   Int      @default(0)
-  b2pKg         Float    @default(0)
-  b2pPct        Float    @default(0)
-  b2pFc         Float    @default(0)
-  b2pHpp        Float    @default(0)
-  b3JmlTelur    Int      @default(0)
-  b3Kg          Float    @default(0)
-  b3Pct         Float    @default(0)
-  b3Fc          Float    @default(0)
-  b3Hpp         Float    @default(0)
-  b3pJmlTelur   Int      @default(0)
-  b3pKg         Float    @default(0)
-  b3pPct        Float    @default(0)
-  b3pFc         Float    @default(0)
-  b3pHpp        Float    @default(0)
-  totalJmlTelur Int      @default(0)
-  totalKg       Float    @default(0)
-  totalPct      Float    @default(0)
-  totalFc       Float    @default(0)
-  totalHpp      Float    @default(0)
+  date          DateTime  @id @db.Date
+  cageMasterId  String?  @default("default")
+  cageData      Json     @default("{}")
+  cageSummary  Json     @default("{}")
   hargaSentral  Float    @default(0)
   up            Float    @default(0)
-  hargaKandang  Float    @default(0)
-  profitDaily   Float    @default(0)
-  operasional   Float    @default(0)
-  profitMonthly Float    @default(0)
+  operasional  Float    @default(0)
+  profitDaily  Float    @default(0)
   createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  updatedAt    DateTime @updatedAt
 
   @@index([date])
 }
