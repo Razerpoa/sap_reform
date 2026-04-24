@@ -12,17 +12,17 @@ const rowSchema = z.object({
   butir: z.number().int().default(0),
 });
 
-// Sub-schema for footer totals
-const footerSchema = z.object({
-  totalTray: z.number().int().default(0),
-  totalButir: z.number().int().default(0),
-  totalKg: z.number().default(0),
+// Sub-schema for footer/extra totals
+const extraSchema = z.object({
+  extraTray: z.number().int().default(0),
+  extraButir: z.number().int().default(0),
+  extraKg: z.number().default(0),
 });
 
 // Sub-schema for a single cage
 const cageDataSchema = z.object({
   rows: z.array(rowSchema).length(3),
-  footer: footerSchema,
+  extra: extraSchema,
 });
 
 // Main production schema

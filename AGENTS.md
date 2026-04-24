@@ -9,8 +9,8 @@ docker compose up -d db
 # 2. Generate Prisma client (after schema changes)
 npx prisma generate
 
-# 3. Push schema to database
-npx prisma db push
+# 3. Push schema to database (use --accept-data-loss for breaking changes)
+npx prisma db push --accept-data-loss
 
 # 4. Seed data
 npx tsx prisma/seed.ts
@@ -53,16 +53,32 @@ npm run dev
   - `gramEkor` = jmlPakan / jmlAyam (feed per chicken)
   - `beratPakan` = jmlPakan * hargaPakan (total feed cost)
   - `volEmber` = jmlPakan / jmlEmber (volume per bucket)
-- **Production** - Daily entries with hardcoded cage columns (b1Kg, b1pKg, b2Kg, etc.)
+- **Production** - Daily entries with JSONB fields (`cageData`, `cageSummary`)
 
 ## Cage Naming Convention
 
-Cage keys use lowercase + `p` suffix for plus variants:
-```
-B1 → b1    B1+ → b1p    B2 → b2    B2+ → b2p    B3 → b3    B3+ → b3p
+Cage names are now **dynamic** - loaded from CageMaster table. No hardcoded keys.
+
+## Data Structure (JSONB)
+
+### cageData / cageSummary
+```json
+{
+  "B1": {
+    "rows": [
+      { "peti": false, "tray": 0, "butir": 0 },
+      { "peti": false, "tray": 0, "butir": 0 },
+      { "peti": false, "tray": 0, "butir": 0 }
+    ],
+    "extra": { "extraTray": 0, "extraButir": 0, "extraKg": 0 }
+  }
+}
 ```
 
-Production table columns follow pattern: `{cageKey}{field}` (e.g., `b1Kg`, `b1pJmlTelur`, `b2Pct`)
+### Global Stats Calculation
+- `totalKg` = sum(rows.peti × 15) + sum(extra.extraKg)
+- `totalTray` = sum(rows.tray) + sum(extra.extraTray)
+- `totalButir` = sum(rows.butir) + sum(extra.extraButir)
 
 ## Important Notes
 
@@ -71,12 +87,27 @@ Production table columns follow pattern: `{cageKey}{field}` (e.g., `b1Kg`, `b1pJ
 - **Seed script**: Uses `tsx` not `ts-node`. Run after `prisma db push`.
 - **Dark mode**: Disabled in `globals.css` (light mode only).
 - **Production Prisma**: Uses `@prisma/extension-accelerate` (local does not).
+- **Dynamic Cages**: Production table uses JSONB (`cageData`, `cageSummary`) - cage names come from CageMaster.
 
 ## Adding New Cages
 
-1. Update `prisma/schema.prisma` - add columns to `Production` model following naming pattern
-2. Add calculation logic in `src/lib/calculations.ts`
-3. Update API validation in `src/app/api/production/route.ts`
-4. Update UI in `src/app/(dashboard)/entry/page.tsx` (`CATS` array) and `produksi/page.tsx` (`CAGE_CONFIG`)
-5. Push schema: `npx prisma db push`
-6. Seed: `npx tsx prisma/seed.ts`
+1. Add new cage to `CageMaster` table via the **Data Master** tab in the app
+2. The Production form automatically renders the new cage card (no code changes needed)
+
+## Component Structure
+
+```
+src/
+├── app/(dashboard)/entry/page.tsx    (wrapper + navigation)
+├── components/
+│   ├── InputField.tsx
+│   ├── production/
+│   │   ├── types.ts
+│   │   └── ProductionForm.tsx
+│   ├── cashflow/
+│   │   └── CashFlowForm.tsx
+│   ├── sales/
+│   │   └── SalesSection.tsx
+│   └── master/
+│       └── MasterForm.tsx
+```
