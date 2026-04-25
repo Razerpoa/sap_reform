@@ -53,6 +53,16 @@ export async function POST(request: Request) {
     console.log('[MASTER POST] Body:', JSON.stringify(body));
     const validatedData = cageMasterSchema.parse(body);
     console.log('[MASTER POST] Validated:', JSON.stringify(validatedData));
+
+    // Check for duplicate if creating new entry (no id provided)
+    if (!validatedData.id) {
+      const existing = await prisma.cageMaster.findUnique({
+        where: { kandang: validatedData.kandang },
+      });
+      if (existing) {
+        return NextResponse.json({ error: `Kandang ${validatedData.kandang} already exists` }, { status: 400 });
+      }
+    }
     
     // Use centralized save function
     const data = await saveMasterData(validatedData);

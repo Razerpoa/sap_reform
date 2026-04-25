@@ -29,10 +29,12 @@ export function InputField({ label, value, onChange, readOnly, dark, blue, place
       </label>
       <input
         type="text"
-        inputMode="numeric"
+        inputMode={label === "Kandang" ? "text" : "numeric"}
         value={displayValue}
         onChange={(e) => {
-          const cleaned = e.target.value.replace(/[^\d.]/g, "");
+          const cleaned = label === "Kandang"
+            ? e.target.value  // Allow all for Kandang
+            : e.target.value.replace(/[^\d.]/g, "");  // Numbers only for others
           onChange(cleaned);
         }}
         readOnly={readOnly}

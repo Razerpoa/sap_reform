@@ -49,9 +49,8 @@ export default function EntryPage() {
 
   const isEditable = useMemo(() => {
     if (!isAdmin) return false; // Whitelisted users can only read
-    if (activeTab === "master" && isAdmin) return true;
-    return selectedDate === getWIBDateString();
-  }, [selectedDate, activeTab, isAdmin]);
+    return true; // Admins can edit any date (past or today)
+  }, [isAdmin]);
 
   // Check if draft exists for current tab+date
   const [hasDraft, setHasDraft] = useState(false);
@@ -341,7 +340,8 @@ export default function EntryPage() {
             <ProductionForm 
               data={productionData} 
               setData={setProductionData} 
-              isEditable={isEditable} 
+              isEditable={isEditable}
+              date={selectedDate}
             />
           )}
           {activeTab === "cashflow" && (
@@ -380,7 +380,7 @@ export default function EntryPage() {
 
       {/* Draft Save Bar - only show when draft exists */}
       {isEditable && hasDraft && (activeTab === "production" || activeTab === "cashflow") && (
-        <div className="fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 w-[90%] max-w-4xl bg-slate-900 text-white rounded-3xl shadow-2xl p-5 flex items-center justify-between z-40">
+        <div className="fixed bottom-27 sm:bottom-10 left-1/2 -translate-x-1/2 w-[90%] max-w-4xl bg-slate-900 text-white rounded-3xl shadow-2xl p-5 flex items-center justify-between z-40">
           <div className="hidden sm:block">
             <p className="text-[10px] uppercase font-black text-slate-400">Status</p>
             <h4 className="text-sm font-bold flex items-center gap-2">
@@ -391,7 +391,7 @@ export default function EntryPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full sm:w-auto flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-amber-500/20"
+            className="w-full sm:w-auto flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-blue-500/20"
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
             Simpan Draft

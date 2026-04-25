@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getTestSession, requireAdmin, getSession } from "@/lib/auth-helpers";
+import { getTestSession, requireAdmin, getSession, canEditPastEntries } from "@/lib/auth-helpers";
 import { getSalesData, saveSalesData } from "@/lib/data";
 import { z } from "zod";
 import { isTodayWIB } from "@/lib/date-utils";
@@ -52,7 +52,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = salesSchema.parse(body);
     
-    if (!isTodayWIB(validatedData.date)) {
+    // Bypass date check for admins
+    const canEditPast = isTest || await canEditPastEntries();
+    if (!canEditPast && !isTodayWIB(validatedData.date)) {
       return NextResponse.json({ error: "Modification of past entries is forbidden." }, { status: 403 });
     }
 

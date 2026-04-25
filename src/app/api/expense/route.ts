@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getTestSession, requireAdmin, getSession } from "@/lib/auth-helpers";
+import { getTestSession, requireAdmin, getSession, canEditPastEntries } from "@/lib/auth-helpers";
 import { getOtherExpensesData, saveOtherExpenseData, deleteOtherExpenseData } from "@/lib/data";
 import { z } from "zod";
 import { isTodayWIB } from "@/lib/date-utils";
@@ -41,7 +41,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = expenseSchema.parse(body);
     
-    if (!isTodayWIB(validatedData.date)) {
+    // Bypass date check for admins
+    const canEditPast = isTest || await canEditPastEntries();
+    if (!canEditPast && !isTodayWIB(validatedData.date)) {
       return NextResponse.json({ error: "Modification of past entries is forbidden." }, { status: 403 });
     }
 
@@ -77,7 +79,9 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Entry not found." }, { status: 404 });
     }
 
-    if (!isTodayWIB(existingEntry.date)) {
+    // Bypass date check for admins
+    const canEditPast = isTest || await canEditPastEntries();
+    if (!canEditPast && !isTodayWIB(existingEntry.date)) {
       return NextResponse.json({ error: "Modification of past entries is forbidden." }, { status: 403 });
     }
 
@@ -117,7 +121,9 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Entry not found." }, { status: 404 });
     }
 
-    if (!isTodayWIB(existingEntry.date)) {
+    // Bypass date check for admins
+    const canEditPast = isTest || await canEditPastEntries();
+    if (!canEditPast && !isTodayWIB(existingEntry.date)) {
       return NextResponse.json({ error: "Deletion of past entries is forbidden." }, { status: 403 });
     }
 

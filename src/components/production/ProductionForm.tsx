@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { getWIBDateString } from "@/lib/date-utils";
 import { InputField } from "@/components/InputField";
 import {
   CageData,
@@ -28,11 +29,20 @@ type ProductionFormProps = {
   data: any;
   setData: (data: any) => void;
   isEditable: boolean;
+  date: string;
 };
 
-export function ProductionForm({ data, setData, isEditable }: ProductionFormProps) {
+export function ProductionForm({ data, setData, isEditable, date }: ProductionFormProps) {
   const [cages, setCages] = useState<{ kandang: string }[]>([]);
   const [loadingCages, setLoadingCages] = useState(true);
+  const today = getWIBDateString();
+  const isToday = date === today;
+  const formattedDate = new Date(date).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+  const headerTitle = isToday ? "Total Hari Ini" : `Total ${formattedDate}`;
 
   useEffect(() => {
     async function fetchCages() {
@@ -292,7 +302,7 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
     <div className="space-y-6">
       {/* Global Stat Card */}
       <div className="bg-slate-900 md:p-8 p-5 rounded-2xl text-white">
-        <h3 className="md:text-xl text-base font-black mb-5 md:mb-6 text-slate-400 uppercase tracking-wider">Total Hari Ini</h3>
+        <h3 className="md:text-xl text-base font-black mb-5 md:mb-6 text-slate-400 uppercase tracking-wider">{headerTitle}</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
             <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalButir)}</div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
-import { Plus, Settings2, Trash2, X, CheckCircle2, Loader2 } from "lucide-react";
+import { Plus, Settings2, Trash2, X, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { InputField } from "@/components/InputField";
 
 type MasterFormProps = {
@@ -15,13 +15,28 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newCage, setNewCage] = useState({ kandang: "", jmlAyam: 0, jmlEmber: 0, jmlPakan: 0, hargaPakan: 7300 });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const { isAdmin } = useUserRole();
+
+  // Only allow A, B, numbers, and + for Kandang input
+  const sanitizeKandang = (value: string) => {
+    return value.toUpperCase().replace(/[^AB0-9+]/g, "");
+  };
+
+  // Check if Kandang already exists
+  const isDuplicateKandang = newCage.kandang.trim() && data.some(
+    (item: any) => item.kandang.toUpperCase() === newCage.kandang.toUpperCase()
+  );
 
   const handleEdit = (item: any) => {
     setEditing({ ...item });
   };
 
   const handleSaveMaster = async () => {
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+    
     const jmlEmber = parseFloat(editing.jmlEmber) || 0;
     const faktorPakan = parseFloat(editing.faktorPakan) || 13;
     const mortality = parseInt(editing.mortality) || 0;
@@ -43,7 +58,11 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
     if (res.ok) {
       setEditing(null);
       onSave();
+    } else {
+      const data = await res.json();
+      setSaveError(data.error || "Failed to save");
     }
+    setSaving(false);
   };
 
   const handleAddNew = async () => {
@@ -148,7 +167,12 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2 mb-3">
-            <InputField label="Kandang" value={newCage.kandang} onChange={(v) => setNewCage({...newCage, kandang: v.toUpperCase()})} placeholder="B4" />
+            <div className="relative">
+              <InputField label="Kandang" value={newCage.kandang} onChange={(v) => setNewCage({...newCage, kandang: sanitizeKandang(v)})} />
+              {isDuplicateKandang && (
+                <p className="text-[10px] text-red-500 mt-1 font-bold">Already exists</p>
+              )}
+            </div>
             <InputField label="Jml Ayam" value={newCage.jmlAyam} onChange={(v) => setNewCage({...newCage, jmlAyam: parseInt(v) || 0})} />
             <InputField label="Jml Ember" value={newCage.jmlEmber} onChange={(v) => setNewCage({...newCage, jmlEmber: parseFloat(v) || 0})} />
             <InputField label="H. Pakan" value={newCage.hargaPakan} onChange={(v) => setNewCage({...newCage, hargaPakan: parseFloat(v) || 0})} />
@@ -176,7 +200,13 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
           </div>
           <div className="flex gap-2">
             <button onClick={() => setIsAddingNew(false)} className="flex-1 py-2 border border-slate-200 rounded-lg font-black text-slate-600 text-sm">Cancel</button>
-            <button onClick={handleAddNew} className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-black text-sm hover:bg-blue-500">Add Cage</button>
+            <button 
+              onClick={handleAddNew} 
+              disabled={isDuplicateKandang || !newCage.kandang.trim()}
+              className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-black text-sm hover:bg-blue-500 disabled:bg-slate-300 disabled:cursor-not-allowed"
+            >
+              Add Cage
+            </button>
           </div>
         </div>
       )}
@@ -250,40 +280,199 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
       </div>
       
       {editing && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-100 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-slate-50 px-2 py-3 flex items-center justify-between border-b border-slate-100">
-              <h3 className="text-lg font-black text-slate-900">Edit {editing.kandang}</h3>
-              <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-slate-600 font-bold">Cancel</button>
-            </div>
-            <div className="p-4 sm:p-6 space-y-3">
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <p className="col-span-2 text-[10px] uppercase font-black text-slate-400 tracking-wider border-b border-slate-100 pb-1">Input Data</p>
-                <InputField label="Jml Ayam" value={editing.jmlAyam} onChange={(v) => setEditing({...editing, jmlAyam: parseInt(v) || 0})} />
-                <InputField label="Mortalities" value={editing.mortality} onChange={(v) => setEditing({...editing, mortality: parseInt(v) || 0})} />
-                <InputField label="Jml Ember" value={editing.jmlEmber} onChange={handleEmberChange} />
-                {isAdmin ? (
-                  <InputField label="Faktor Pakan" value={editing.faktorPakan} onChange={handleFaktorPakanChange} />
-                ) : (
-                  <InputField label="Faktor Pakan" value={editing.faktorPakan} onChange={() => {}} readOnly />
-                )}
-                <InputField label="Jml Pakan (calc)" value={editing.jmlPakan} onChange={() => {}} readOnly blue />
-                <InputField label="H. Pakan" value={editing.hargaPakan} onChange={(v) => setEditing({...editing, hargaPakan: parseFloat(v) || 0})} blue />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4">
+          <div className="bg-white w-full max-w-sm sm:max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="bg-slate-50 px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between border-b border-slate-200">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-9 h-8 sm:w-12 sm:h-10 rounded-lg bg-slate-900 text-white flex items-center justify-center font-black text-sm sm:text-lg">
+                  {editing.kandang}
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">Edit Kandang</h3>
+                  <p className="text-xs sm:text-sm text-slate-500 hidden sm:block">Update cage data</p>
+                </div>
               </div>
-              
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 bg-blue-50 rounded-xl">
-                <p className="col-span-2 text-[10px] uppercase font-black text-blue-400 tracking-wider border-b border-blue-100 pb-1">Calculated Values</p>
-                <InputField label="G/Ekor" value={editing.gramEkor} onChange={() => {}} readOnly blue />
-                <InputField label="B Pakan" value={editing.beratPakan} onChange={() => {}} readOnly blue />
-                <InputField label="Vol/Ember" value={editing.volEmber} onChange={() => {}} readOnly blue />
-              </div>
-              
               <button 
-                onClick={handleSaveMaster}
-                className="w-full bg-slate-900 text-white font-black py-4 rounded-xl hover:bg-blue-600 transition-all"
+                onClick={() => setEditing(null)} 
+                disabled={saving}
+                className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-slate-400 hover:text-slate-600 disabled:opacity-50"
               >
-                Save Master Update
+                <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-3 sm:p-6 space-y-3 sm:space-y-4 max-h-[75vh] sm:max-h-[70vh] overflow-y-auto">
+              {/* Input Data Section */}
+              <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
+                <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                    <span className="text-xs sm:text-sm font-black text-blue-600">1</span>
+                  </div>
+                  <h4 className="text-sm sm:text-base font-black text-slate-700 uppercase tracking-wide">Input Data</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className="space-y-1 sm:space-y-2">
+                    <label className="text-[10px] sm:text-xs uppercase font-black text-slate-400 tracking-wider">Jml Ayam</label>
+                    <input
+                      type="number"
+                      value={editing.jmlAyam}
+                      onChange={(e) => setEditing({...editing, jmlAyam: parseInt(e.target.value) || 0})}
+                      disabled={saving}
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-slate-200 text-sm sm:text-base font-bold outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-50 disabled:text-slate-500 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1 sm:space-y-2">
+                    <label className="text-[10px] sm:text-xs uppercase font-black text-slate-400 tracking-wider">Mortalities</label>
+                    <input
+                      type="number"
+                      value={editing.mortality}
+                      onChange={(e) => setEditing({...editing, mortality: parseInt(e.target.value) || 0})}
+                      disabled={saving}
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-slate-200 text-sm sm:text-base font-bold outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-50 disabled:text-slate-500 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1 sm:space-y-2">
+                    <label className="text-[10px] sm:text-xs uppercase font-black text-slate-400 tracking-wider">Jml Ember</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={editing.jmlEmber}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        const faktorPakan = parseFloat(String(editing.faktorPakan)) || 13;
+                        const jmlAyam = parseInt(String(editing.jmlAyam)) || 0;
+                        setEditing({
+                          ...editing,
+                          jmlEmber: val,
+                          jmlPakan: val * faktorPakan,
+                          gramEkor: jmlAyam > 0 ? (val * faktorPakan) / jmlAyam : 0,
+                          beratPakan: (val * faktorPakan) * (parseFloat(String(editing.hargaPakan)) || 0),
+                          volEmber: val > 0 ? (val * faktorPakan) / val : 0,
+                        });
+                      }}
+                      disabled={saving}
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-slate-200 text-sm sm:text-base font-bold outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-50 disabled:text-slate-500 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1 sm:space-y-2">
+                    <label className="text-[10px] sm:text-xs uppercase font-black text-slate-400 tracking-wider">Faktor Pakan</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={editing.faktorPakan}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 13;
+                        const jmlEmber = parseFloat(String(editing.jmlEmber)) || 0;
+                        const jmlAyam = parseInt(String(editing.jmlAyam)) || 0;
+                        setEditing({
+                          ...editing,
+                          faktorPakan: val,
+                          jmlPakan: jmlEmber * val,
+                          gramEkor: jmlAyam > 0 ? (jmlEmber * val) / jmlAyam : 0,
+                          beratPakan: (jmlEmber * val) * (parseFloat(String(editing.hargaPakan)) || 0),
+                          volEmber: jmlEmber > 0 ? (jmlEmber * val) / jmlEmber : 0,
+                        });
+                      }}
+                      disabled={!isAdmin || saving}
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-slate-200 text-sm sm:text-base font-bold outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-400 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1 sm:space-y-2">
+                    <label className="text-[10px] sm:text-xs uppercase font-black text-blue-400 tracking-wider">Jml Pakan (calc)</label>
+                    <div className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl bg-blue-50 text-sm sm:text-base font-black text-blue-600">
+                      {editing.jmlPakan?.toLocaleString() || 0}
+                    </div>
+                  </div>
+<div className="space-y-1 sm:space-y-2">
+                    <label className="text-[10px] sm:text-xs uppercase font-black text-slate-400 tracking-wider">H. Pakan</label>
+                    <input
+                      type="number"
+                      value={editing.hargaPakan}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        setEditing({
+                          ...editing,
+                          hargaPakan: val,
+                          beratPakan: (parseFloat(String(editing.jmlPakan)) || 0) * val,
+                        });
+                      }}
+                      disabled={saving}
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-slate-200 text-sm sm:text-base font-bold outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-50 disabled:text-slate-500 transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Calculated Values Section */}
+              <div className="bg-blue-50 rounded-xl p-3 sm:p-4">
+                <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-200 flex items-center justify-center">
+                    <span className="text-xs sm:text-sm font-black text-blue-700">2</span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm sm:text-base font-black text-blue-700 uppercase tracking-wide">Calculated Values</h4>
+                    <p className="text-[10px] sm:text-xs text-blue-400 hidden sm:block">Auto-calculated from inputs</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  <div className="bg-white/70 rounded-xl p-2 sm:p-3">
+                    <p className="text-[10px] sm:text-xs uppercase font-black text-blue-400 tracking-wider mb-1 sm:mb-2">G/Ekor</p>
+                    <p className="text-sm sm:text-xl font-black text-blue-600">{editing.gramEkor?.toFixed(3) || "0.000"}</p>
+                    <p className="text-[10px] sm:text-xs text-blue-300 mt-1 sm:mt-2">Pakan ÷ Ayam</p>
+                  </div>
+                  <div className="bg-white/70 rounded-xl p-2 sm:p-3">
+                    <p className="text-[10px] sm:text-xs uppercase font-black text-blue-400 tracking-wider mb-1 sm:mb-2">B Pakan</p>
+                    <p className="text-sm sm:text-xl font-black text-blue-600">{editing.beratPakan?.toLocaleString() || 0}</p>
+                    <p className="text-[10px] sm:text-xs text-blue-300 mt-1 sm:mt-2">Pakan × Harga</p>
+                  </div>
+                  <div className="bg-white/70 rounded-xl p-2 sm:p-3">
+                    <p className="text-[10px] sm:text-xs uppercase font-black text-blue-400 tracking-wider mb-1 sm:mb-2">Vol/Ember</p>
+                    <p className="text-sm sm:text-xl font-black text-blue-600">{editing.volEmber?.toFixed(1) || "0.0"}</p>
+                    <p className="text-[10px] sm:text-xs text-blue-300 mt-1 sm:mt-2">Pakan ÷ Ember</p>
+                  </div>
+                </div>
+</div>
+
+              {/* Error Display */}
+              {saveError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+                  <XCircle className="w-5 h-5 text-red-500 shrink-0" />
+                  <p className="text-sm text-red-700 font-medium">{saveError}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="p-3 sm:p-4 border-t border-slate-200 bg-slate-50">
+              <div className="flex gap-2 sm:gap-3">
+                <button
+                  onClick={() => setEditing(null)}
+                  disabled={saving}
+                  className="flex-1 py-2 sm:py-3 border border-slate-300 rounded-xl font-black text-slate-600 text-xs sm:text-sm hover:bg-slate-100 transition-colors disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleSaveMaster}
+                  disabled={saving}
+                  className="flex-1 py-2 sm:py-3 bg-blue-600 text-white rounded-xl font-black text-xs sm:text-sm hover:bg-blue-500 transition-colors disabled:bg-blue-300 flex items-center justify-center gap-1 sm:gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                      <span className="hidden sm:inline">Menyimpan...</span>
+                      <span className="sm:hidden">...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                      Simpan
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
