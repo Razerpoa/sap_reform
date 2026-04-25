@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { getWIBDateString } from "@/lib/date-utils";
 import { useSession } from "next-auth/react";
@@ -21,6 +21,7 @@ import { ProductionForm } from "@/components/production/ProductionForm";
 import { CashFlowForm } from "@/components/cashflow/CashFlowForm";
 import { SalesSection } from "@/components/sales/SalesSection";
 import { MasterForm } from "@/components/master/MasterForm";
+import { useDraft } from "@/hooks/useDraft";
 
 type Tab = "production" | "master" | "cashflow" | "sales";
 
@@ -32,6 +33,7 @@ export default function EntryPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // Form States
   const [productionData, setProductionData] = useState<any>({});
@@ -48,11 +50,26 @@ export default function EntryPage() {
     return selectedDate === getWIBDateString();
   }, [selectedDate, activeTab]);
 
+  // Check if draft exists for current tab+date
+  const [hasDraft, setHasDraft] = useState(false);
+
+  useEffect(() => {
+    const draftKey = `draft-${activeTab}-${selectedDate}`;
+    setHasDraft(localStorage.getItem(draftKey) !== null);
+  }, [activeTab, selectedDate]);
+
   useEffect(() => {
     fetchData();
   }, [selectedDate, activeTab]);
 
   async function fetchData() {
+    // Skip fetch if draft exists for this tab+date (preserve unsaved work)
+    const draftKey = `draft-${activeTab}-${selectedDate}`;
+    if (localStorage.getItem(draftKey)) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     const dateStr = selectedDate;
@@ -97,6 +114,7 @@ export default function EntryPage() {
   async function handleSave() {
     if (!isEditable) return;
     setSaving(true);
+    setIsSavingDraft(true); // Prevent auto-save during save
     setError(null);
     setSuccess(false);
 
@@ -120,6 +138,8 @@ export default function EntryPage() {
 
       if (res.ok) {
         setSuccess(true);
+        draft.clearDraft();
+        setHasDraft(false); // Immediately hide draft bar
         if (activeTab === "sales") setNewSale({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0 });
         
         await new Promise(r => setTimeout(r, 100));
@@ -134,8 +154,48 @@ export default function EntryPage() {
       setError("Network error");
     } finally {
       setSaving(false);
+      setIsSavingDraft(false); // Re-enable auto-save
     }
   }
+
+  // Helper functions to get data/setter based on tab
+  function getDataSetter(tab: Tab): (data: any) => void {
+    switch (tab) {
+      case "production": return setProductionData;
+      case "cashflow": return setCashFlowData;
+      case "sales": return setNewSale;
+      default: return () => {};
+    }
+  }
+
+  function getData(tab: Tab): any {
+    switch (tab) {
+      case "production": return productionData;
+      case "cashflow": return cashFlowData;
+      case "sales": return newSale;
+      default: return {};
+    }
+  }
+
+  // useDraft hook for auto-save/load
+  const draft = useDraft({
+    tab: activeTab,
+    date: selectedDate,
+    onLoad: useCallback((data: any) => {
+      const setter = getDataSetter(activeTab);
+      setter(data);
+    }, [activeTab]),
+  });
+
+  // Auto-save to draft when data changes (skip during save operation)
+  useEffect(() => {
+    if (isSavingDraft) return;
+    const currentData = getData(activeTab);
+    if (currentData && Object.keys(currentData).length > 0) {
+      draft.saveDraft(currentData);
+      setHasDraft(true); // Show button immediately when saving
+    }
+  }, [productionData, cashFlowData, newSale, activeTab, draft, isSavingDraft]);
 
   const tabConfig = [
     { id: "production", icon: TrendingUp, label: "Produksi" },
@@ -264,23 +324,23 @@ export default function EntryPage() {
         </div>
       )}
 
-      {/* Persistent Save Bar */}
-      {isEditable && (activeTab === "production" || activeTab === "cashflow") && (
+      {/* Draft Save Bar - only show when draft exists */}
+      {isEditable && hasDraft && (activeTab === "production" || activeTab === "cashflow") && (
         <div className="fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 w-[90%] max-w-4xl bg-slate-900 text-white rounded-3xl shadow-2xl p-5 flex items-center justify-between z-40">
           <div className="hidden sm:block">
             <p className="text-[10px] uppercase font-black text-slate-400">Status</p>
             <h4 className="text-sm font-bold flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              Drafting {activeTab}
+              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+              Draft ditemukan
             </h4>
           </div>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full sm:w-auto flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+            className="w-full sm:w-auto flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-amber-500/20"
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-            Simpan Informasi
+            Simpan Draft
           </button>
         </div>
       )}
