@@ -284,16 +284,16 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
         <h3 className="md:text-xl text-base font-black mb-5 md:mb-6 text-slate-400 uppercase tracking-wider">Total Hari Ini</h3>
         <div className="grid grid-cols-3 gap-5">
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
+            <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalButir)}</div>
+            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Butir</div>
+          </div>
+          <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
             <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalKg)}</div>
             <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Kg</div>
           </div>
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
             <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalPeti)}</div>
             <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Peti</div>
-          </div>
-          <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
-            <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalButir)}</div>
-            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Butir</div>
           </div>
         </div>
       </div>
