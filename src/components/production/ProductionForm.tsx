@@ -61,12 +61,20 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
     if (!isEditable) return;
 
     const cageInfo = getCageData(key);
+    
+    // Count how many peti rows are currently checked
+    const currentPetiCount = cageInfo.rows.filter(r => r.peti).length;
+    // Calculate new peti count (add or remove based on toggle)
+    const newPetiCount = checked ? currentPetiCount + 1 : currentPetiCount - 1;
+    // extraKg = newPetiCount × 15
+    const newExtraKg = newPetiCount * 15;
 
     const updatedCageInfo: CageData = {
       ...cageInfo,
       rows: cageInfo.rows.map((r, i) =>
         i === rowIndex ? { ...r, peti: checked } : r
       ),
+      extra: { ...cageInfo.extra, extraKg: newExtraKg },
     };
 
     setData({

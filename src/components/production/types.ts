@@ -49,19 +49,21 @@ export const calculateGlobalStats = (
   cages.forEach((cage) => {
     const cageInfo = getCageData(cage.kandang);
     
+    // Rows: (tray × 30) + butir per row
     cageInfo.rows?.forEach((row: CageRow) => {
-      totalButir += row.butir || 0;
+      totalButir += (row.tray * 30) + row.butir;
       totalTray += row.tray || 0;
-      if (row.peti) {
-        totalKg += 15;
-        totalPeti += 1;
-      }
+      // Peti now contributes via extraKg (auto-filled), not here
     });
     
-    totalButir += cageInfo.extra?.extraButir || 0;
+    // Extra section: captures kg from peti checkboxes + manual extraKg
+    totalButir += (cageInfo.extra?.extraTray * 30) + (cageInfo.extra?.extraButir || 0);
     totalTray += cageInfo.extra?.extraTray || 0;
     totalKg += cageInfo.extra?.extraKg || 0;
   });
+
+  // Peti = totalKg / 15 (derived, not stored)
+  totalPeti = totalKg / 15;
 
   return { totalKg, totalPeti, totalTray, totalButir };
 };
