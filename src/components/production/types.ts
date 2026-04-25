@@ -53,17 +53,22 @@ export const calculateGlobalStats = (
     cageInfo.rows?.forEach((row: CageRow) => {
       totalButir += (row.tray * 30) + row.butir;
       totalTray += row.tray || 0;
-      // Peti now contributes via extraKg (auto-filled), not here
+      // Peti checkbox adds 15kg silently to totalKg
+      if (row.peti) {
+        totalKg += 15;
+      }
     });
     
-    // Extra section: captures kg from peti checkboxes + manual extraKg
+    // Extra section: manual kg entry + butir/tray
     totalButir += (cageInfo.extra?.extraTray * 30) + (cageInfo.extra?.extraButir || 0);
     totalTray += cageInfo.extra?.extraTray || 0;
-    totalKg += cageInfo.extra?.extraKg || 0;
+    // extraKg can be string (during typing) or number - convert safely
+    const extraKgVal = cageInfo.extra?.extraKg;
+    totalKg += typeof extraKgVal === "number" ? extraKgVal : parseFloat(extraKgVal as string) || 0;
   });
 
-  // Peti = totalKg / 15 (derived, not stored)
-  totalPeti = totalKg / 15;
+  // Peti = totalKg / 15 (drop decimals, no rounding)
+  totalPeti = Math.floor(totalKg / 15);
 
   return { totalKg, totalPeti, totalTray, totalButir };
 };

@@ -15,6 +15,10 @@ import {
 function formatNumber(value: number | undefined | null | string): string {
   if (value == null) return "";
   if (typeof value === "string" && value === "") return "";
+  // Allow partial decimal input (e.g. "7.", ".") to display while typing
+  if (typeof value === "string" && /^\d*\.?\d*$/.test(value) && (value.endsWith(".") || value === ".")) {
+    return value;
+  }
   const num = typeof value === "string" ? parseFloat(value) : Number(value);
   if (isNaN(num)) return "";
   return num.toLocaleString("en-US");
@@ -61,20 +65,14 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
     if (!isEditable) return;
 
     const cageInfo = getCageData(key);
-    
-    // Count how many peti rows are currently checked
-    const currentPetiCount = cageInfo.rows.filter(r => r.peti).length;
-    // Calculate new peti count (add or remove based on toggle)
-    const newPetiCount = checked ? currentPetiCount + 1 : currentPetiCount - 1;
-    // extraKg = newPetiCount × 15
-    const newExtraKg = newPetiCount * 15;
 
+    // Just toggle the peti checkbox - does NOT modify extraKg
+    // The 15kg contribution is calculated silently in calculateGlobalStats
     const updatedCageInfo: CageData = {
       ...cageInfo,
       rows: cageInfo.rows.map((r, i) =>
         i === rowIndex ? { ...r, peti: checked } : r
       ),
-      extra: { ...cageInfo.extra, extraKg: newExtraKg },
     };
 
     setData({
@@ -114,7 +112,12 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
   ) => {
     if (!isEditable) return;
 
-    const val = field === "extraKg" ? parseFloat(value) || 0 : parseInt(value) || 0;
+    // For extraKg, store whatever user types (allows partial input like "7." or ".")
+    // For others, parse as integer
+    const val = field === "extraKg" 
+      ? (value === "" ? "" : value)  // keep string as-is for display
+      : (parseInt(value) || 0);
+      
     const cageInfo = getCageData(key);
 
     const updatedCageInfo: CageData = {
@@ -214,7 +217,7 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
               </label>
               <input
                 type="text"
-                inputMode="numeric"
+                inputMode="decimal"
                 value={formatNumber(cageInfo.extra?.extraTray)}
                 onChange={(e) => {
                   const cleaned = e.target.value.replace(/,/g, "");
@@ -235,7 +238,7 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
               </label>
               <input
                 type="text"
-                inputMode="numeric"
+                inputMode="decimal"
                 value={formatNumber(cageInfo.extra?.extraButir)}
                 onChange={(e) => {
                   const cleaned = e.target.value.replace(/,/g, "");
@@ -256,7 +259,7 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
               </label>
               <input
                 type="text"
-                inputMode="numeric"
+                inputMode="decimal"
                 value={formatNumber(cageInfo.extra?.extraKg)}
                 onChange={(e) => {
                   const cleaned = e.target.value.replace(/,/g, "");
