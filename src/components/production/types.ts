@@ -23,6 +23,7 @@ export type ProductionCageData = Record<string, CageData>;
 
 export type GlobalStats = {
   totalKg: number;
+  totalPeti: number;
   totalTray: number;
   totalButir: number;
 };
@@ -41,6 +42,7 @@ export const calculateGlobalStats = (
   getCageData: (key: string) => CageData
 ): GlobalStats => {
   let totalKg = 0;
+  let totalPeti = 0;
   let totalTray = 0;
   let totalButir = 0;
 
@@ -48,15 +50,18 @@ export const calculateGlobalStats = (
     const cageInfo = getCageData(cage.kandang);
     
     cageInfo.rows?.forEach((row: CageRow) => {
-      totalTray += row.tray || 0;
       totalButir += row.butir || 0;
-      if (row.peti) totalKg += 15;
+      totalTray += row.tray || 0;
+      if (row.peti) {
+        totalKg += 15;
+        totalPeti += 1;
+      }
     });
     
-    totalTray += cageInfo.extra?.extraTray || 0;
     totalButir += cageInfo.extra?.extraButir || 0;
+    totalTray += cageInfo.extra?.extraTray || 0;
     totalKg += cageInfo.extra?.extraKg || 0;
   });
 
-  return { totalKg, totalTray, totalButir };
+  return { totalKg, totalPeti, totalTray, totalButir };
 };

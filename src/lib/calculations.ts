@@ -58,8 +58,8 @@ export function calculateTotalKgFromCageData(cageData: Record<string, any>): num
   if (!cageData) return 0;
   
   return Object.values(cageData).reduce((sum: number, cage: any) => {
-    if (!cage?.footer?.totalKg) return sum;
-    return sum + (cage.footer.totalKg || 0);
+    if (!cage?.extra?.extraKg) return sum;
+    return sum + (cage.extra.extraKg || 0);
   }, 0);
 }
 
@@ -70,8 +70,8 @@ export function calculateTotalJmlTelurFromCageData(cageData: Record<string, any>
   if (!cageData) return 0;
   
   return Object.values(cageData).reduce((sum: number, cage: any) => {
-    if (!cage?.footer?.totalButir) return sum;
-    return sum + (cage.footer.totalButir || 0);
+    if (!cage?.extra?.extraButir) return sum;
+    return sum + (cage.extra.extraButir || 0);
   }, 0);
 }
 
@@ -243,11 +243,36 @@ export function calculateCashFlowStats(entries: any[]) {
 export function calculateDashboardStats(
   productionEntries: any[],
   cashFlowEntries: any[],
-  salesEntries: any[]
+  salesEntries: any[],
+  otherExpenses: any[] = []
 ) {
   const prodStats = calculateProductionStats(productionEntries);
   const cashStats = calculateCashFlowStats(cashFlowEntries);
   const salesStats = calculateSalesStats(salesEntries);
+  
+  // Calculate total other expenses
+  const totalOtherExpenses = otherExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  // Calculate this month's other expenses
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const monthOtherExpenses = otherExpenses.reduce((sum, e) => {
+    if (!e.date) return sum;
+    const entryDate = new Date(e.date);
+    return entryDate.getFullYear() === currentYear && entryDate.getMonth() === currentMonth 
+      ? sum + (e.amount || 0) 
+      : sum;
+  }, 0);
+  
+  // Calculate today's other expenses
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const todayOtherExpenses = otherExpenses.reduce((sum, e) => {
+    if (!e.date) return sum;
+    const entryDate = new Date(e.date).toISOString().split('T')[0];
+    return entryDate === todayStr ? sum + (e.amount || 0) : sum;
+  }, 0);
   
   return {
     // Production
@@ -263,9 +288,9 @@ export function calculateDashboardStats(
     // CashFlow
     cashFlowTotalProfit: cashStats.totalProfit,
     cashFlowAvgProfit: cashStats.avgProfit,
-    cashFlowTotalExpenses: cashStats.totalExpenses,
-    cashFlowTodayExpenses: cashStats.todayExpenses,
-    cashFlowMonthExpenses: cashStats.monthExpenses,
+    cashFlowTotalExpenses: cashStats.totalExpenses + totalOtherExpenses,
+    cashFlowTodayExpenses: cashStats.todayExpenses + todayOtherExpenses,
+    cashFlowMonthExpenses: cashStats.monthExpenses + monthOtherExpenses,
     cashFlowTotalLiquidAssets: cashStats.totalLiquidAssets,
     cashFlowSaldoRekening: cashStats.saldoRekening,
     cashFlowSaldoCash: cashStats.saldoCash,

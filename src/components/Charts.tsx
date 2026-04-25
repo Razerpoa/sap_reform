@@ -12,6 +12,7 @@ import {
   Bar,
 } from "recharts";
 import { format } from "date-fns";
+import { calculateTotalKgFromCageData } from "@/lib/calculations";
 
 export default function Charts({ data, type = "production" }: { data: any[], type?: "production" | "finance" }) {
   if (!data || data.length === 0) {
@@ -24,7 +25,7 @@ export default function Charts({ data, type = "production" }: { data: any[], typ
 
   const chartData = data.map((entry) => ({
     name: entry.date ? format(new Date(entry.date), "dd MMM") : "Unknown",
-    kg: Number(entry.totalKg) || 0,
+    kg: calculateTotalKgFromCageData(entry.cageData || {}) || Number(entry.totalKg) || 0,
     profit: Number(entry.profit) || 0,
     biaya: Number(entry.expenses) || 0,
   }));

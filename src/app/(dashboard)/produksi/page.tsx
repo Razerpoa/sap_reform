@@ -15,26 +15,22 @@ import { id } from "date-fns/locale";
 
 type Timeframe = "daily" | "weekly" | "monthly" | "annually";
 
-const CAGE_CONFIG = {
-  b1: { label: "B1", color: "#000000" },
-  b1p: { label: "B1+", color: "#000000" },
-  b2: { label: "B2", color: "#000000" },
-  b2p: { label: "B2+", color: "#000000" },
-  b3: { label: "B3", color: "#000000" },
-  b3p: { label: "B3+", color: "#000000" },
-};
+// Helper to extract kg from production entry using JSON-based cageData
+function getCageKg(entry: any, cageName: string): number {
+  // Use extra field (same structure in both cageData and cageSummary)
+  const summary = entry.cageSummary as Record<string, { extra?: { extraKg?: number } }> | undefined;
+  const data = entry.cageData as Record<string, { extra?: { extraKg?: number } }> | undefined;
+  const cageInfo = summary?.[cageName] ?? data?.[cageName];
+  return cageInfo?.extra?.extraKg ?? 0;
+}
 
-type CageKey = keyof typeof CAGE_CONFIG;
-
-// Map master data kandangs to cage keys
-const KANDANG_TO_CAGE: Record<string, CageKey> = {
-  "B1": "b1",
-  "B1+": "b1p",
-  "B2": "b2",
-  "B2+": "b2p",
-  "B3": "b3",
-  "B3+": "b3p",
-};
+// Helper to extract eggs (butir) from production entry using JSON-based cageData
+function getCageButir(entry: any, cageName: string): number {
+  const summary = entry.cageSummary as Record<string, { extra?: { extraButir?: number } }> | undefined;
+  const data = entry.cageData as Record<string, { extra?: { extraButir?: number } }> | undefined;
+  const cageInfo = summary?.[cageName] ?? data?.[cageName];
+  return cageInfo?.extra?.extraButir ?? 0;
+}
 
 export default function Produksi() {
   const [masterData, setMasterData] = useState<any[]>([]);
@@ -42,9 +38,9 @@ export default function Produksi() {
   const [timeframe, setTimeframe] = useState<Timeframe>("daily");
   const [metric, setMetric] = useState<"kg" | "telur">("kg");
   const [loading, setLoading] = useState(true);
-  const [expandedCard, setExpandedCard] = useState<CageKey | null>(null);
-  const [thirtyDayAvg, setThirtyDayAvg] = useState<Record<CageKey, number>>({} as Record<CageKey, number>);
-  const [cageTimeframes, setCageTimeframes] = useState<Record<CageKey, Timeframe>>({} as Record<CageKey, Timeframe>);
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [thirtyDayAvg, setThirtyDayAvg] = useState<Record<string, number>>({} as Record<string, number>);
+  const [cageTimeframes, setCageTimeframes] = useState<Record<string, Timeframe>>({} as Record<string, Timeframe>);
 
   async function fetchData() {
     const ts = Date.now();
@@ -67,21 +63,22 @@ export default function Produksi() {
   }
 
   // Calculate 30-day average kg per cage
-  const calculateThirtyDayAvg = useMemo((): Record<CageKey, number> => {
-    if (!productionData.length) return {} as Record<CageKey, number>;
+  const calculateThirtyDayAvg = useMemo((): Record<string, number> => {
+    if (!productionData.length || !masterData.length) return {} as Record<string, number>;
 
     const dates = productionData.map((p) => new Date(p.date)).filter((d) => !isNaN(d.getTime()));
-    if (!dates.length) return {} as Record<CageKey, number>;
+    if (!dates.length) return {} as Record<string, number>;
 
     const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
     const thirtyDaysAgo = new Date(maxDate);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const result: Record<CageKey, number> = {} as Record<CageKey, number>;
+    const result: Record<string, number> = {};
 
-    (Object.keys(CAGE_CONFIG) as CageKey[]).forEach((cageKey) => {
-      const kgKey = `${cageKey}Kg` as keyof typeof productionData[0];
+    // Get cage names from masterData
+    const cageNames = masterData.map((m) => m.kandang) as string[];
 
+    cageNames.forEach((cageName) => {
       const recentData = productionData.filter((p) => {
         const d = new Date(p.date);
         return d >= thirtyDaysAgo && d <= maxDate;
@@ -89,14 +86,14 @@ export default function Produksi() {
 
       let totalKg = 0;
       recentData.forEach((p) => {
-        totalKg += Number(p[kgKey]) || 0;
+        totalKg += getCageKg(p, cageName);
       });
 
-      result[cageKey] = totalKg / 30;
+      result[cageName] = totalKg / 30;
     });
 
     return result;
-  }, [productionData]);
+  }, [productionData, masterData]);
 
   // Update thirtyDayAvg when calculation changes
   useEffect(() => {
@@ -106,11 +103,11 @@ export default function Produksi() {
   // Set default cage timeframes when master data loads
   useEffect(() => {
     if (masterData.length > 0) {
-      const defaults: Record<CageKey, Timeframe> = {} as Record<CageKey, Timeframe>;
+      const defaults: Record<string, Timeframe> = {};
       masterData.forEach((item: any) => {
-        const cageKey = KANDANG_TO_CAGE[item.kandang];
-        if (cageKey && !defaults[cageKey]) {
-          defaults[cageKey] = "daily";
+        const cageName = item.kandang;
+        if (cageName && !defaults[cageName]) {
+          defaults[cageName] = "daily";
         }
       });
       setCageTimeframes(defaults);
@@ -123,7 +120,10 @@ export default function Produksi() {
 
   // Aggregate data by timeframe
   const aggregatedData = useMemo(() => {
-    if (!productionData.length) return [];
+    if (!productionData.length || !masterData.length) return [];
+
+    // Get cage names from masterData
+    const cageNames = masterData.map((m) => m.kandang) as string[];
 
     const getRange = (date: Date) => {
       switch (timeframe) {
@@ -164,10 +164,7 @@ export default function Produksi() {
       const entry: any = { date: intervalStart };
 
       // Aggregate each cage
-      (Object.keys(CAGE_CONFIG) as CageKey[]).forEach((cageKey) => {
-        const kgKey = `${cageKey}Kg` as keyof typeof productionData[0];
-        const telurKey = `${cageKey}JmlTelur` as keyof typeof productionData[0];
-
+      cageNames.forEach((cageName) => {
         const relevantEntries = productionData.filter((p) => {
           const d = new Date(p.date);
           return isWithinInterval(d, { start, end });
@@ -176,22 +173,22 @@ export default function Produksi() {
         let totalKg = 0;
         let totalTelur = 0;
         relevantEntries.forEach((p) => {
-          totalKg += Number(p[kgKey]) || 0;
-          totalTelur += Number(p[telurKey]) || 0;
+          totalKg += getCageKg(p, cageName);
+          totalTelur += getCageButir(p, cageName);
         });
 
-        entry[`${cageKey}_kg`] = totalKg;
-        entry[`${cageKey}_telur`] = totalTelur;
+        entry[`${cageName}_kg`] = totalKg;
+        entry[`${cageName}_telur`] = totalTelur;
       });
 
       return entry;
     });
-  }, [productionData, timeframe]);
+  }, [productionData, masterData, timeframe]);
 
   // Get chart data for a specific cage
-  const getCageChartData = (cageKey: CageKey, cageTimeframe: Timeframe) => {
-    const cageTimeframeUse = cageTimeframes[cageKey] || cageTimeframe;
-    const metricKey = `${cageKey}_${metric}`;
+  const getCageChartData = (cageName: string, cageTimeframe: Timeframe) => {
+    const cageTimeframeUse = cageTimeframes[cageName] || cageTimeframe;
+    const metricKey = `${cageName}_${metric}`;
     return aggregatedData.map((entry) => {
       let name: string;
       switch (cageTimeframeUse) {
@@ -212,8 +209,8 @@ export default function Produksi() {
     });
   };
 
-  const toggleCard = (cageKey: CageKey) => {
-    setExpandedCard((prev) => (prev === cageKey ? null : cageKey));
+  const toggleCard = (cageName: string) => {
+    setExpandedCard((prev) => (prev === cageName ? null : cageName));
   };
 
   const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
@@ -285,13 +282,15 @@ export default function Produksi() {
       )}
       <div className="space-y-4">
         {masterData.map((item: any, idx: number) => {
-          const cageKey = KANDANG_TO_CAGE[item.kandang];
-          const cageConfig = cageKey ? CAGE_CONFIG[cageKey] : null;
-          const isExpanded = expandedCard === cageKey;
-          const cageTimeframe = cageTimeframes[cageKey] || timeframe;
-          const chartData = cageKey ? getCageChartData(cageKey, timeframe) : [];
+          const cageName = item.kandang;
+          // Simple color assignment - cycle through colors based on index
+          const COLORS = ["#1e293b", "#334155", "#475569", "#0f172a", "#1e3a8a", "#1e40af"];
+          const cageColor = COLORS[idx % COLORS.length];
+          const isExpanded = expandedCard === cageName;
+          const cageTimeframe = cageTimeframes[cageName] || timeframe;
+          const chartData = getCageChartData(cageName, timeframe);
 
-          if (!cageKey || !cageConfig) return null;
+          if (!cageName) return null;
 
           return (
             <div
@@ -302,21 +301,21 @@ export default function Produksi() {
             >
               {/* Card Header - Clickable */}
               <button
-                onClick={() => toggleCard(cageKey)}
+                onClick={() => toggleCard(cageName)}
                 className="w-full p-5 text-left"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div
                       className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl"
-                      style={{ backgroundColor: cageConfig.color, color: "white" }}
+                      style={{ backgroundColor: cageColor, color: "white" }}
                     >
                       {item.kandang}
                     </div>
                     <div>
-                      <h4 className="font-black text-slate-900 text-lg">{cageConfig.label}</h4>
+                      <h4 className="font-black text-slate-900 text-lg">{item.kandang}</h4>
                       <p className="text-xs text-slate-500 font-medium">
-                        {item.jmlAyam.toLocaleString()} ayam • {thirtyDayAvg[cageKey]?.toFixed(1) || 0} kg/hari
+                        {item.jmlAyam.toLocaleString()} ayam • {thirtyDayAvg[cageName]?.toFixed(1) || 0} kg/hari
                       </p>
                     </div>
                   </div>
@@ -358,8 +357,8 @@ export default function Produksi() {
                   {/* Per-cage Timeframe Dropdown */}
                   <div className="mt-4 flex justify-end">
                     <select
-                      value={cageTimeframes[cageKey] || "daily"}
-                      onChange={(e) => setCageTimeframes((prev) => ({ ...prev, [cageKey]: e.target.value as Timeframe }))}
+                      value={cageTimeframes[cageName] || "daily"}
+                      onChange={(e) => setCageTimeframes((prev) => ({ ...prev, [cageName]: e.target.value as Timeframe }))}
                       className="px-2 py-1 bg-slate-100 text-slate-700 rounded-lg font-black text-xs appearance-none cursor-pointer"
                     >
                       {TIMEFRAME_OPTIONS.map((opt) => (
@@ -406,8 +405,8 @@ export default function Produksi() {
                           <Line
                             type="monotone"
                             dataKey="value"
-                            name={cageConfig.label}
-                            stroke={cageConfig.color}
+                            name={item.kandang}
+                            stroke={cageColor}
                             strokeWidth={3}
                             dot={false}
                             activeDot={{ r: 6 }}
@@ -425,7 +424,7 @@ export default function Produksi() {
                     </div>
                     <div className="text-center">
                       <p className="text-[9px] uppercase font-black text-slate-400 tracking-wider">Kg/Hari</p>
-                      <p className="text-xl font-black text-slate-900">{thirtyDayAvg[cageKey]?.toFixed(1) || 0}</p>
+                      <p className="text-xl font-black text-slate-900">{thirtyDayAvg[cageName]?.toFixed(1) || 0}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-[9px] uppercase font-black text-slate-400 tracking-wider">Ember</p>
@@ -441,14 +440,6 @@ export default function Produksi() {
             </div>
           );
         })}
-
-        {!loading && masterData.length > 0 && masterData.every((item) => !KANDANG_TO_CAGE[item.kandang]) && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
-            <p className="text-amber-800 font-medium text-sm">
-              Data kandang tidak cocok dengan konfigurasi. Cek database: {masterData.map((m) => m.kandang).join(", ")}
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { Download, TrendingUp, Package, Layers, DollarSign, Wallet, ShoppingBag,
 import Link from "next/link";
 import Charts from "@/components/Charts";
 import { PlusCircle, RefreshCw, BarChart2, Clock, CheckCircle2 } from "lucide-react";
-import { calculateDashboardStats } from "@/lib/calculations";
+import { calculateDashboardStats, calculateTotalKgFromCageData } from "@/lib/calculations";
 import { getDashboardData } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/format";
@@ -11,10 +11,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   // Use centralized data fetching
-  const { productionEntries, cashFlowEntries, salesEntries } = await getDashboardData({ take: 30 });
-
+  const { productionEntries, cashFlowEntries, salesEntries, otherExpenses } = await getDashboardData({ take: 30 });
+ 
   // Use centralized calculation functions
-  const stats = calculateDashboardStats(productionEntries, cashFlowEntries, salesEntries);
+  const stats = calculateDashboardStats(productionEntries, cashFlowEntries, salesEntries, otherExpenses);
 
   // Prepare data for charts
   const chartData = productionEntries.slice().reverse().map((p: any) => {
@@ -25,7 +25,7 @@ export default async function DashboardPage() {
       : 0;
     return {
       date: p.date,
-      totalKg: p.totalKg,
+      totalKg: calculateTotalKgFromCageData(p.cageData || {}),
       profit: cf ? (cf.totalPenjualan - cf.biayaPakan - cf.biayaOperasional - salariesTotal) : 0,
       expenses: cf ? (cf.biayaPakan + cf.biayaOperasional + salariesTotal) : 0,
     };
@@ -76,7 +76,7 @@ export default async function DashboardPage() {
           <PremiumStatCard 
             variant="compact"
             title="Total Pengeluaran"
-            value={`Rp ${formatNumber(stats.cashFlowTotalExpenses || 0)}`}
+            value={`Rp ${formatNumber(stats.cashFlowTodayExpenses || 0)}`}
             subtitle={`biaya beban`}
             icon={Receipt}
             color="bg-rose-500"

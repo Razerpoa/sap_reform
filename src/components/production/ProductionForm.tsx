@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { InputField } from "@/components/InputField";
 import {
@@ -10,6 +10,15 @@ import {
   initializeCageData,
   calculateGlobalStats,
 } from "./types";
+
+// Format number with thousand separators
+function formatNumber(value: number | undefined | null | string): string {
+  if (value == null) return "";
+  if (typeof value === "string" && value === "") return "";
+  const num = typeof value === "string" ? parseFloat(value) : Number(value);
+  if (isNaN(num)) return "";
+  return num.toLocaleString("en-US");
+}
 
 type ProductionFormProps = {
   data: any;
@@ -52,15 +61,12 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
     if (!isEditable) return;
 
     const cageInfo = getCageData(key);
-    const currentKg = Number(cageInfo.extra?.extraKg) || 0;
-    const newKg = checked ? currentKg + 15 : Math.max(0, currentKg - 15);
 
     const updatedCageInfo: CageData = {
       ...cageInfo,
       rows: cageInfo.rows.map((r, i) =>
         i === rowIndex ? { ...r, peti: checked } : r
       ),
-      extra: { ...cageInfo.extra, extraKg: newKg },
     };
 
     setData({
@@ -116,103 +122,99 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
 
   const updateField = (field: string, val: string) => {
     if (!isEditable) return;
-    setData({ ...data, [field]: parseFloat(val) || 0 });
+    const cleaned = val.replace(/,/g, "");
+    setData({ ...data, [field]: parseFloat(cleaned) || 0 });
   };
 
   const renderCageCard = (cage: { kandang: string }) => {
     const key = cage.kandang;
     const cageInfo = getCageData(key);
 
-return (
+    return (
       <div
         key={key}
-        className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm overflow-hidden group"
+        className="bg-white md:p-8 p-6 rounded-3xl border border-slate-200 shadow-sm overflow-hidden group"
       >
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-black text-sm">
+        <div className="flex items-center justify-between mb-6 md:mb-8">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="md:w-14 md:h-14 w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black md:text-lg text-base">
               {key}
             </div>
-            <h3 className="text-base font-black text-slate-900">Kandang {key}</h3>
+            <h3 className="md:text-2xl text-xl font-black text-slate-900">Kandang {key}</h3>
           </div>
         </div>
 
         {/* Header row */}
-        <div className="grid grid-cols-4 gap-2 mb-3 text-[8px] font-black uppercase tracking-wider text-slate-400">
-          <div></div>
+        <div className="grid grid-cols-2 gap-3 mb-4 ml-9 md:text-sm text-xs font-black uppercase tracking-wider text-slate-400">
           <div className="text-center">Tray</div>
           <div className="text-center">Butir</div>
-          <div></div>
         </div>
 
         {/* 3 data rows */}
-        <div className="space-y-3">
+        <div className="space-y-3 md:space-y-4">
           {cageInfo.rows.map((row, rowIndex) => (
-            <div
-              key={rowIndex}
-              className="grid grid-cols-4 gap-3 items-center"
-            >
-              <div className="flex items-center justify-center">
-                <button
-                  onClick={() => updatePeti(key, rowIndex, !row.peti)}
+            <div key={rowIndex} className="flex items-center gap-2 mb-3">
+              <button
+                onClick={() => updatePeti(key, rowIndex, !row.peti)}
+                disabled={!isEditable}
+                className={`md:w-8 md:h-8 w-7 h-7 shrink-0 rounded-xl flex items-center justify-center transition-all ${
+                  row.peti ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-300"
+                } ${!isEditable ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-200"}`}
+              >
+                {row.peti && <CheckCircle2 className="md:w-5 md:h-5 w-4 h-4" />}
+              </button>
+
+              {/* Tray + Butir inputs now share all remaining space */}
+              <div className="grid grid-cols-2 gap-2 flex-1">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formatNumber(row.tray)}
+                  onChange={(e) => updateRowField(key, rowIndex, "tray", e.target.value.replace(/,/g, ""))}
                   disabled={!isEditable}
-                  className={`w-5 h-5 rounded flex items-center justify-center transition-all ${
-                    row.peti
-                      ? "bg-emerald-500 text-white"
-                      : "bg-slate-100 text-slate-300 hover:bg-slate-200"
+                  placeholder="0"
+                  className={`md:px-4 md:py-4 px-3 py-3 rounded-xl text-center font-black md:text-lg text-base w-full ${
+                    isEditable
+                      ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                      : "bg-slate-50 border border-slate-100 text-slate-400"
                   } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  {row.peti && <CheckCircle2 className="w-3 h-3" />}
-                </button>
-              </div>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={row.tray || ""}
-                onChange={(e) => updateRowField(key, rowIndex, "tray", e.target.value)}
-                disabled={!isEditable}
-                placeholder="0"
-                className={`px-2 py-2 rounded text-center font-black text-xs ${
-                  isEditable
-                    ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                    : "bg-slate-50 border border-slate-100 text-slate-400"
-                } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
-              />
-              <input
-                type="number"
-                inputMode="numeric"
-                value={row.butir || ""}
-                onChange={(e) => updateRowField(key, rowIndex, "butir", e.target.value)}
-                disabled={!isEditable}
-                placeholder="0"
-                className={`px-2 py-2 rounded text-center font-black text-xs ${
-                  isEditable
-                    ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                    : "bg-slate-50 border border-slate-100 text-slate-400"
-                } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
-              />
-              <div className="text-[8px] font-medium text-slate-300 text-right pr-1">
-                Row {rowIndex + 1}
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formatNumber(row.butir)}
+                  onChange={(e) => updateRowField(key, rowIndex, "butir", e.target.value.replace(/,/g, ""))}
+                  disabled={!isEditable}
+                  placeholder="0"
+                  className={`md:px-4 md:py-4 px-3 py-3 rounded-xl text-center font-black md:text-lg text-base w-full ${
+                    isEditable
+                      ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                      : "bg-slate-50 border border-slate-100 text-slate-400"
+                  } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
+                />
               </div>
             </div>
           ))}
         </div>
 
         {/* Extra/footer row */}
-        <div className="mt-5 pt-4 border-t border-slate-100">
-          <div className="grid grid-cols-3 gap-4">
+        <div className="mt-6 md:mt-8 pt-5 border-t border-slate-100">
+          <div className="grid grid-cols-3 gap-4 md:gap-6">
             <div>
-              <label className="text-[8px] uppercase font-black tracking-wider block mb-1.5 text-slate-400">
+              <label className="md:text-sm text-xs uppercase font-black tracking-wider block mb-2 md:mb-3 text-slate-400">
                 +Tray
               </label>
               <input
-                type="number"
+                type="text"
                 inputMode="numeric"
-                value={cageInfo.extra?.extraTray || ""}
-                onChange={(e) => updateExtraField(key, "extraTray", e.target.value)}
+                value={formatNumber(cageInfo.extra?.extraTray)}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/,/g, "");
+                  updateExtraField(key, "extraTray", cleaned);
+                }}
                 disabled={!isEditable}
                 placeholder="0"
-                className={`w-full px-2 py-2 rounded font-black text-xs ${
+                className={`w-full md:px-4 md:py-4 px-3 py-3 rounded-xl font-black md:text-lg text-base ${
                   isEditable
                     ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
                     : "bg-slate-50 border border-slate-100 text-slate-400"
@@ -220,17 +222,20 @@ return (
               />
             </div>
             <div>
-              <label className="text-[8px] uppercase font-black tracking-wider block mb-1.5 text-slate-400">
+              <label className="md:text-sm text-xs uppercase font-black tracking-wider block mb-2 md:mb-3 text-slate-400">
                 +Butir
               </label>
               <input
-                type="number"
+                type="text"
                 inputMode="numeric"
-                value={cageInfo.extra?.extraButir || ""}
-                onChange={(e) => updateExtraField(key, "extraButir", e.target.value)}
+                value={formatNumber(cageInfo.extra?.extraButir)}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/,/g, "");
+                  updateExtraField(key, "extraButir", cleaned);
+                }}
                 disabled={!isEditable}
                 placeholder="0"
-                className={`w-full px-2 py-2 rounded font-black text-xs ${
+                className={`w-full md:px-4 md:py-4 px-3 py-3 rounded-xl font-black md:text-lg text-base ${
                   isEditable
                     ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
                     : "bg-slate-50 border border-slate-100 text-slate-400"
@@ -238,17 +243,20 @@ return (
               />
             </div>
             <div>
-              <label className="text-[8px] uppercase font-black tracking-wider block mb-1.5 text-slate-400">
+              <label className="md:text-sm text-xs uppercase font-black tracking-wider block mb-2 md:mb-3 text-slate-400">
                 +Kg
               </label>
               <input
-                type="number"
+                type="text"
                 inputMode="numeric"
-                value={cageInfo.extra?.extraKg || ""}
-                onChange={(e) => updateExtraField(key, "extraKg", e.target.value)}
+                value={formatNumber(cageInfo.extra?.extraKg)}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/,/g, "");
+                  updateExtraField(key, "extraKg", cleaned);
+                }}
                 disabled={!isEditable}
                 placeholder="0"
-                className={`w-full px-2 py-2 rounded font-black text-xs ${
+                className={`w-full md:px-4 md:py-4 px-3 py-3 rounded-xl font-black md:text-lg text-base ${
                   isEditable
                     ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
                     : "bg-slate-50 border border-slate-100 text-slate-400"
@@ -272,27 +280,27 @@ return (
   return (
     <div className="space-y-6">
       {/* Global Stat Card */}
-      <div className="bg-slate-900 p-6 rounded-2xl text-white">
-        <h3 className="text-sm font-black mb-5 text-slate-400 uppercase tracking-wider">Total Hari Ini</h3>
+      <div className="bg-slate-900 md:p-8 p-5 rounded-2xl text-white">
+        <h3 className="md:text-xl text-base font-black mb-5 md:mb-6 text-slate-400 uppercase tracking-wider">Total Hari Ini</h3>
         <div className="grid grid-cols-3 gap-5">
-          <div className="bg-slate-800/50 rounded-xl p-5 text-center">
-            <div className="text-2xl font-black">{globalStats.totalKg}</div>
-            <div className="text-[10px] uppercase font-medium text-slate-400">Kg</div>
+          <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
+            <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalKg)}</div>
+            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Kg</div>
           </div>
-          <div className="bg-slate-800/50 rounded-xl p-5 text-center">
-            <div className="text-2xl font-black">{globalStats.totalTray}</div>
-            <div className="text-[10px] uppercase font-medium text-slate-400">Tray</div>
+          <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
+            <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalPeti)}</div>
+            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Peti</div>
           </div>
-          <div className="bg-slate-800/50 rounded-xl p-5 text-center">
-            <div className="text-2xl font-black">{globalStats.totalButir}</div>
-            <div className="text-[10px] uppercase font-medium text-slate-400">Butir</div>
+          <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
+            <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalButir)}</div>
+            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Butir</div>
           </div>
         </div>
       </div>
 
       {/* Daily Financial Summary */}
-      <div className="bg-blue-600 p-6 rounded-2xl text-white">
-        <h3 className="text-sm font-black mb-5 text-white/70 uppercase tracking-wider">Ringkasan Keuangan</h3>
+      <div className="bg-blue-600 md:p-8 p-5 rounded-2xl text-white">
+        <h3 className="md:text-xl text-base font-black mb-5 md:mb-6 text-white/70 uppercase tracking-wider">Ringkasan Keuangan</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
           <InputField dark label="Harga Sentral" value={data.hargaSentral} onChange={(v: string) => updateField(`hargaSentral`, v)} readOnly={!isEditable} />
           <InputField dark label="UP" value={data.up} onChange={(v: string) => updateField(`up`, v)} readOnly={!isEditable} />

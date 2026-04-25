@@ -6,20 +6,46 @@ import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
 
-// Helper function to build dynamic salary headers and values
-async function buildSalaryColumnsForCashFlow(cashflowEntries: any[]) {
-  // Get all workers sorted by name
-  const workers = await prisma.worker.findMany({
-    orderBy: { name: "asc" },
-  });
-
-  const salaryHeaders = workers.map((w: any) => `Gaji ${w.name}`);
+// Helper function to calculate totals from cageData
+function calculateCageTotals(cageData: Record<string, any>) {
+  const totals: Record<string, { totalKg: number; totalTray: number; totalButir: number }> = {};
   
+  if (!cageData) return totals;
+  
+  for (const [cageKey, cage] of Object.entries(cageData)) {
+    const rows = cage?.rows || [];
+    const extra = cage?.extra || {};
+    
+    let cageKg = 0;
+    let cageTray = 0;
+    let cageButir = 0;
+    
+    // Sum from rows
+    for (const row of rows) {
+      cageTray += row.tray || 0;
+      cageButir += row.butir || 0;
+      if (row.peti) cageKg += 15; // +15 kg per checked peti
+    }
+    
+    // Add extra fields
+    cageKg += extra.extraKg || 0;
+    cageTray += extra.extraTray || 0;
+    cageButir += extra.extraButir || 0;
+    
+    totals[cageKey] = { totalKg: cageKg, totalTray: cageTray, totalButir: cageButir };
+  }
+  
+  return totals;
+}
+
+// Helper function to build salary columns for CashFlow
+async function buildSalaryColumnsForCashFlow(cashflowEntries: any[]) {
+  const workers = await prisma.worker.findMany({ orderBy: { name: "asc" } });
+  const salaryHeaders = workers.map((w: any) => `Gaji ${w.name}`);
   const salaryRows = cashflowEntries.map((entry: any) => {
     const salaries = entry.salaries || {};
     return workers.map((w: any) => salaries[w.id] || 0);
   });
-
   return { salaryHeaders, salaryRows, workers };
 }
 
@@ -38,32 +64,23 @@ export async function GET(request: Request) {
   if (startDate) dateFilter.gte = new Date(startDate);
   if (endDate) dateFilter.lte = new Date(endDate);
 
-  // Build date where clause
   const whereClause: any = {};
   if (startDate || endDate) {
     whereClause.date = dateFilter;
   }
 
+  // Fetch cage names for dynamic columns
+  const cages = await prisma.cageMaster.findMany({ orderBy: { kandang: "asc" } });
+  const cageNames = cages.map((c: any) => c.kandang);
+
   // Fetch all data in parallel
   const [production, sales, cashflow, users] = await Promise.all([
-    prisma.production.findMany({
-      where: whereClause,
-      orderBy: { date: "asc" },
-    }),
-    prisma.sales.findMany({
-      where: whereClause,
-      orderBy: { date: "asc" },
-    }),
-    prisma.cashFlow.findMany({
-      where: whereClause,
-      orderBy: { date: "asc" },
-    }),
-    prisma.user.findMany({
-      orderBy: { email: "asc" },
-    }),
+    prisma.production.findMany({ where: whereClause, orderBy: { date: "asc" } }),
+    prisma.sales.findMany({ where: whereClause, orderBy: { date: "asc" } }),
+    prisma.cashFlow.findMany({ where: whereClause, orderBy: { date: "asc" } }),
+    prisma.user.findMany({ orderBy: { email: "asc" } }),
   ]);
 
-  // Check if there's any data
   if (production.length === 0 && sales.length === 0 && cashflow.length === 0 && users.length === 0) {
     return NextResponse.json({ error: "No entries to export" }, { status: 404 });
   }
@@ -71,27 +88,38 @@ export async function GET(request: Request) {
   const dateStr = format(new Date(), "yyyy-MM-dd");
 
   if (formatType === "csv") {
-    // Create ZIP with 4 CSV files
     const zip = new JSZip();
 
-    // Production sheet
+    // Production sheet with dynamic cage columns
     if (production.length > 0) {
-      const prodHeaders = [
-        "Date", "B1 KG", "B1 Butir", "B1+ KG", "B1+ Butir",
-        "B2 KG", "B2 Butir", "B2+ KG", "B2+ Butir",
-        "B3 KG", "B3 Butir", "B3+ KG", "B3+ Butir", "Total KG",
-        "Total Butir", "B1 HPP", "B1+ HPP", "B2 HPP", "B2+ HPP", "B3 HPP", "B3+ HPP",
-        "Harga Sentral", "UP", "Harga Kandang", "Profit Daily"
-      ];
-      const prodRows = production.map((entry: any) => [
-        format(entry.date, "yyyy-MM-dd"),
-        entry.b1Kg, entry.b1JmlTelur, entry.b1pKg, entry.b1pJmlTelur,
-        entry.b2Kg, entry.b2JmlTelur, entry.b2pKg, entry.b2pJmlTelur,
-        entry.b3Kg, entry.b3JmlTelur, entry.b3pKg, entry.b3pJmlTelur,
-        entry.totalKg, entry.totalJmlTelur,
-        entry.b1Hpp, entry.b1pHpp, entry.b2Hpp, entry.b2pHpp, entry.b3Hpp, entry.b3pHpp,
-        entry.hargaSentral, entry.up, entry.hargaKandang, entry.profitDaily
-      ]);
+      // Build dynamic headers
+      const baseHeaders = ["Date", "Harga Sentral", "UP", "Operasional", "Profit Daily"];
+      const cageHeaders: string[] = [];
+      
+      for (const cageName of cageNames) {
+        cageHeaders.push(`${cageName} Kg`, `${cageName} Tray`, `${cageName} Butir`);
+      }
+      
+      const prodHeaders = [...baseHeaders, ...cageHeaders];
+      
+      const prodRows = production.map((entry: any) => {
+        const totals = calculateCageTotals(entry.cageData);
+        const baseRow = [
+          format(entry.date, "yyyy-MM-dd"),
+          entry.hargaSentral || 0,
+          entry.up || 0,
+          entry.operasional || 0,
+          entry.profitDaily || 0,
+        ];
+        
+        const cageRow = cageNames.map((cageName: string) => {
+          const t = totals[cageName] || { totalKg: 0, totalTray: 0, totalButir: 0 };
+          return [t.totalKg, t.totalTray, t.totalButir];
+        }).flat();
+        
+        return [...baseRow, ...cageRow];
+      });
+      
       const prodCsv = [prodHeaders.join(","), ...prodRows.map((row: any[]) => row.join(","))].join("\n");
       zip.file("Production.csv", prodCsv);
     }
@@ -155,26 +183,38 @@ export async function GET(request: Request) {
   // Default: XLSX with 4 sheets
   const workbook = XLSX.utils.book_new();
 
-  // Production sheet
+  // Production sheet with dynamic cage columns
   if (production.length > 0) {
+    const baseHeaders = ["Date", "Harga Sentral", "UP", "Operasional", "Profit Daily"];
+    const cageHeaders: string[] = [];
+    
+    for (const cageName of cageNames) {
+      cageHeaders.push(`${cageName} Kg`, `${cageName} Tray`, `${cageName} Butir`);
+    }
+    
+    const prodHeaders = [...baseHeaders, ...cageHeaders];
+    
     const prodData = [
-      [
-        "Date", "B1 KG", "B1 Butir", "B1+ KG", "B1+ Butir",
-        "B2 KG", "B2 Butir", "B2+ KG", "B2+ Butir",
-        "B3 KG", "B3 Butir", "B3+ KG", "B3+ Butir", "Total KG",
-        "Total Butir", "B1 HPP", "B1+ HPP", "B2 HPP", "B2+ HPP", "B3 HPP", "B3+ HPP",
-        "Harga Sentral", "UP", "Harga Kandang", "Profit Daily"
-      ],
-      ...production.map((entry: any) => [
-        format(entry.date, "yyyy-MM-dd"),
-        entry.b1Kg, entry.b1JmlTelur, entry.b1pKg, entry.b1pJmlTelur,
-        entry.b2Kg, entry.b2JmlTelur, entry.b2pKg, entry.b2pJmlTelur,
-        entry.b3Kg, entry.b3JmlTelur, entry.b3pKg, entry.b3pJmlTelur,
-        entry.totalKg, entry.totalJmlTelur,
-        entry.b1Hpp, entry.b1pHpp, entry.b2Hpp, entry.b2pHpp, entry.b3Hpp, entry.b3pHpp,
-        entry.hargaSentral, entry.up, entry.hargaKandang, entry.profitDaily
-      ])
+      prodHeaders,
+      ...production.map((entry: any) => {
+        const totals = calculateCageTotals(entry.cageData);
+        const baseRow = [
+          format(entry.date, "yyyy-MM-dd"),
+          entry.hargaSentral || 0,
+          entry.up || 0,
+          entry.operasional || 0,
+          entry.profitDaily || 0,
+        ];
+        
+        const cageRow = cageNames.map((cageName: string) => {
+          const t = totals[cageName] || { totalKg: 0, totalTray: 0, totalButir: 0 };
+          return [t.totalKg, t.totalTray, t.totalButir];
+        }).flat();
+        
+        return [...baseRow, ...cageRow];
+      })
     ];
+    
     const prodSheet = XLSX.utils.aoa_to_sheet(prodData);
     XLSX.utils.book_append_sheet(workbook, prodSheet, "Production");
   }

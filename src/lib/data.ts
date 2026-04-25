@@ -161,16 +161,18 @@ export async function getDashboardData(options?: {
 }) {
   const { take = 30 } = options || {};
   
-  const [productionEntries, cashFlowEntries, salesEntries] = await Promise.all([
+  const [productionEntries, cashFlowEntries, salesEntries, otherExpenses] = await Promise.all([
     getProductionData({ take }),
     getCashFlowData({ take }),
     getSalesData({ take }),
+    getOtherExpensesData({ take }),
   ]);
   
   return {
     productionEntries,
     cashFlowEntries,
     salesEntries,
+    otherExpenses,
   };
 }
 
