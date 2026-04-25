@@ -286,7 +286,7 @@ export function calculateDashboardStats(
     salesTodayKg: salesStats.todayKg,
     salesTodayPeti: salesStats.todayPeti,
     // CashFlow
-    cashFlowTotalProfit: cashStats.totalProfit,
+    cashFlowTotalProfit: cashStats.totalProfit - totalOtherExpenses,
     cashFlowAvgProfit: cashStats.avgProfit,
     cashFlowTotalExpenses: cashStats.totalExpenses + totalOtherExpenses,
     cashFlowTodayExpenses: cashStats.todayExpenses + todayOtherExpenses,

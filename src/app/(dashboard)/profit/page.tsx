@@ -159,13 +159,16 @@ function ProfitCard({
 
   // Build transaction log based on type
   const transactions = useMemo(() => {
-    const items: Array<{ date: Date; description: string; amount: number; type: string }> = [];
+    const items: Array<{ date: Date; description: string; peti?: number; kg?: number; price?: number; amount: number; type: string }> = [];
 
     if (type === "gross") {
       data.sales.forEach((sale: any) => {
         items.push({
           date: new Date(sale.date),
-          description: `${sale.customerName} - ${sale.jmlPeti} peti × ${sale.totalKg}kg @ Rp ${sale.hargaJual?.toLocaleString()}`,
+          description: sale.customerName,
+          peti: sale.jmlPeti,
+          kg: sale.totalKg,
+          price: sale.hargaJual,
           amount: sale.subTotal || 0,
           type: "sale",
         });
@@ -372,7 +375,26 @@ function ProfitCard({
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-slate-900 text-sm truncate">{t.description}</p>
-                        <p className="text-[10px] text-slate-400 font-medium">
+                        {t.type === "sale" && (
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            {t.peti !== undefined && (
+                              <span className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-full">
+                                {t.peti.toLocaleString()} peti
+                              </span>
+                            )}
+                            {t.kg !== undefined && (
+                              <span className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-full">
+                                {t.kg.toLocaleString()} kg
+                              </span>
+                            )}
+                            {t.price !== undefined && (
+                              <span className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-full">
+                                Rp {t.price.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        <p className="text-[10px] text-slate-400 font-medium mt-1">
                           {format(t.date, "dd MMM yyyy", { locale: id })}
                         </p>
                       </div>

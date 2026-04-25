@@ -24,6 +24,25 @@ function getCageKg(entry: any, cageName: string): number {
   return cageInfo?.extra?.extraKg ?? 0;
 }
 
+// Get color based on whether cage reaches 10kg/day target
+function getCageColor(cageName: string, thirtyDayAvg: Record<string, number>): string {
+  const avg = thirtyDayAvg[cageName] || 0;
+  const targetKg = 10;
+  
+  // Calculate ratio capped at 1 (full blue at target or above)
+  const ratio = Math.min(avg / targetKg, 1);
+  
+  // Interpolate between #8CA1B9 (gray-blue) and #2563eb (blue-600)
+  const startColor = { r: 140, g: 161, b: 185 };  // #8CA1B9
+  const endColor = { r: 37, g: 99, b: 231 };       // #2563eb
+  
+  const r = Math.round(startColor.r + (endColor.r - startColor.r) * ratio);
+  const g = Math.round(startColor.g + (endColor.g - startColor.g) * ratio);
+  const b = Math.round(startColor.b + (endColor.b - startColor.b) * ratio);
+  
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
 // Helper to extract eggs (butir) from production entry using JSON-based cageData
 function getCageButir(entry: any, cageName: string): number {
   const summary = entry.cageSummary as Record<string, { extra?: { extraButir?: number } }> | undefined;
@@ -283,9 +302,8 @@ export default function Produksi() {
       <div className="space-y-4">
         {masterData.map((item: any, idx: number) => {
           const cageName = item.kandang;
-          // Simple color assignment - cycle through colors based on index
-          const COLORS = ["#1e293b", "#334155", "#475569", "#0f172a", "#1e3a8a", "#1e40af"];
-          const cageColor = COLORS[idx % COLORS.length];
+          // Dynamic color based on 30-day average vs 10kg target
+          const cageColor = getCageColor(cageName, thirtyDayAvg);
           const isExpanded = expandedCard === cageName;
           const cageTimeframe = cageTimeframes[cageName] || timeframe;
           const chartData = getCageChartData(cageName, timeframe);

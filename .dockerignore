@@ -38,7 +38,7 @@ LICENSE
 AGENTS.md
 CLAUDE.md
 TODO.md
-docs/
+/docs
 
 # IDE & OS
 .vscode
