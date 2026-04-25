@@ -1,6 +1,6 @@
 # 🥚 SAP REFORM - Layer Egg Farm Management
 
-SAP REFORM is a premium, real-time management dashboard for layer egg farms. It centralizes production tracking, sales operations, and financial cash flow into a single, high-performance interface.
+SAP REFORM is a real-time, production-ready dashboard for layer egg farms. It centralizes production tracking, sales operations, and financial cash flow into a single, high-performance interface.
 
 ![Dashboard Preview](https://github.com/Razerpoa/sap_reform/raw/main/public/dashboard-preview.png)
 
@@ -12,8 +12,9 @@ SAP REFORM is a premium, real-time management dashboard for layer egg farms. It 
 - **Smart Stat Cards**: Dynamic indicators (Trending Up/Down) for profit and production efficiency.
 
 ### 🐓 Production Management
-- **Cage-level Detail**: Track production across 6 distinct cages (B1, B1+, B2, B2+, B3, B3+).
-- **Efficiency Metrics**: Automatic calculation of percentage production, Feed Conversion (FC), and Cost of Production (HPP).
+- **Cage-level Detail**: Track production across dynamic cages (loaded from database).
+- **Efficiency Metrics**: Automatic calculation of kg production, feed metrics, and cost analysis.
+- **Flexible Layout**: Add new cages without code changes - just add to database.
 
 ### 💰 Sales & Inventory
 - **Automated Billing**: Instant subtotal calculation based on central pricing and profit margins.
@@ -21,8 +22,9 @@ SAP REFORM is a premium, real-time management dashboard for layer egg farms. It 
 
 ### 🏦 Financial Cash Flow
 - **Automated Profit Sync**: Sales revenue automatically updates the cash flow reports.
-- **Comprehensive Overhead**: Tracks operational costs, feed costs, salaries for 5+ staff, and dividends.
+- **Comprehensive Overhead**: Tracks operational costs, feed costs, salaries (dynamic), and dividends.
 - **Liquidity Monitoring**: Live balance tracking for bank accounts and physical cash.
+- **Expense Tracking**: Separate OtherExpense table for miscellaneous costs.
 
 ## 🛠️ Tech Stack
 
@@ -36,8 +38,9 @@ SAP REFORM is a premium, real-time management dashboard for layer egg farms. It 
 ## 🏁 Getting Started
 
 ### Prerequisites
-- Node.js 20+
+- Node.js 22+
 - Docker (for PostgreSQL)
+- Google Cloud Project (for OAuth)
 
 ### Installation
 
@@ -64,6 +67,7 @@ SAP REFORM is a premium, real-time management dashboard for layer egg farms. It 
    ```bash
    docker compose up -d db
    npx prisma db push
+   npm run seed
    ```
 
 4. **Run Development Server**:
@@ -90,4 +94,9 @@ The app runs on `http://localhost:3000`.
 - **Math Logic**: Centralized in `src/lib/calculations.ts`
 
 ## 📄 License
-This project is private and intended for internal use at SAP Farm.
+
+[GNU General Public License v3.0 (GPL-3.0)](LICENSE) - Free to use and modify.
+
+---
+
+Built with 💙 for every farm on earth.
