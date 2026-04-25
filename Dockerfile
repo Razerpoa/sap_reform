@@ -42,6 +42,8 @@ RUN chown -R nextjs:nodejs /app/node_modules/@prisma/engines 2>/dev/null || true
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/prisma ./prisma
 
+COPY --from=builder /app/scripts ./scripts
+
 USER nextjs
 
 EXPOSE 3000
