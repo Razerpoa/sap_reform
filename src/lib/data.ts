@@ -212,18 +212,12 @@ export async function saveProductionData(data: ProductionSaveInput) {
       cageData: data.cageData || {},
       cageSummary: data.cageSummary || {},
       hargaSentral: data.hargaSentral,
-      up: data.up,
-      operasional: data.operasional,
-      profitDaily: data.profitDaily,
     },
     create: {
       date: data.date,
       cageData: data.cageData || {},
       cageSummary: data.cageSummary || {},
       hargaSentral: data.hargaSentral || 0,
-      up: data.up || 0,
-      operasional: data.operasional || 0,
-      profitDaily: data.profitDaily || 0,
     },
   });
 
@@ -236,6 +230,7 @@ export type CashFlowSaveInput = {
   totalPenjualan?: number;
   biayaPakan?: number;
   biayaOperasional?: number;
+  up?: number;
   // New dynamic salaries field
   salaries?: Record<string, number>;
   // Legacy fields - kept for backward compatibility
@@ -269,6 +264,7 @@ export async function saveCashFlowData(data: CashFlowSaveInput) {
     totalPenjualan: data.totalPenjualan,
     biayaPakan: data.biayaPakan,
     biayaOperasional: data.biayaOperasional,
+    up: data.up,
     salaries: data.salaries || {},
     devidenA: data.devidenA,
     devidenB: data.devidenB,
@@ -344,7 +340,7 @@ export async function saveSalesData(data: SalesSaveInput) {
     where: { date: data.date }
   });
 
-  if (existingCashFlow) {
+if (existingCashFlow) {
     await prisma.cashFlow.update({
       where: { id: existingCashFlow.id },
       data: { totalPenjualan: totalRevenueForDay }
@@ -358,6 +354,27 @@ export async function saveSalesData(data: SalesSaveInput) {
         // Other fields default to 0
       }
     });
+  }
+
+  // Sync to Production: Update hargaSentral for this date
+  if (data.hargaCentral !== undefined && data.hargaCentral !== null) {
+    const existingProduction = await prisma.production.findFirst({
+      where: { date: data.date }
+    });
+
+    if (existingProduction) {
+      await prisma.production.update({
+        where: { date: data.date },
+        data: { hargaSentral: data.hargaCentral }
+      });
+    } else {
+      await prisma.production.create({
+        data: {
+          date: data.date,
+          hargaSentral: data.hargaCentral,
+        }
+      });
+    }
   }
 
   revalidatePath("/");

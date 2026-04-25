@@ -41,7 +41,7 @@ export default function EntryPage() {
   const [cashFlowData, setCashFlowData] = useState<any>({ date: new Date() });
   const [salesData, setSalesData] = useState<any[]>([]);
   const [otherExpenses, setOtherExpenses] = useState<any[]>([]);
-  const [newSale, setNewSale] = useState<any>({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0 });
+  const [newSale, setNewSale] = useState<any>({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, hargaSentral: 0 });
   const [newExpense, setNewExpense] = useState<any>({ amount: 0, description: "" });
   const [editingExpense, setEditingExpense] = useState<any>(null);
 
@@ -99,9 +99,14 @@ export default function EntryPage() {
         setCashFlowData(cashflowData[0] || { date: new Date(selectedDate) });
         setOtherExpenses(Array.isArray(expensesData) ? expensesData : []);
       } else if (activeTab === "sales") {
-        const res = await fetch(`/api/sales?date=${dateStr}&_t=${ts}`);
-        const data = await res.json();
-        setSalesData(data || []);
+        const [salesRes, productionRes] = await Promise.all([
+          fetch(`/api/sales?date=${dateStr}&_t=${ts}`),
+          fetch(`/api/production?date=${dateStr}&_t=${ts}`),
+        ]);
+        const salesData = await salesRes.json();
+        const productionData = await productionRes.json();
+        setSalesData(salesData || []);
+        setProductionData(productionData || {});
       }
     } catch (err: any) {
       console.error("[fetchData] error:", err);
@@ -128,6 +133,15 @@ export default function EntryPage() {
         body = { ...cashFlowData, date: selectedDate };
       } else if (activeTab === "sales") {
         body = { ...newSale, date: selectedDate };
+        
+        // Also save hargaSentral to Production table
+        if (productionData.hargaSentral) {
+          await fetch("/api/production", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ date: selectedDate, hargaSentral: productionData.hargaSentral }),
+          });
+        }
       }
 
       const res = await fetch(endpoint, {
@@ -140,7 +154,7 @@ export default function EntryPage() {
         setSuccess(true);
         draft.clearDraft();
         setHasDraft(false); // Immediately hide draft bar
-        if (activeTab === "sales") setNewSale({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0 });
+        if (activeTab === "sales") setNewSale({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, hargaSentral: 0 });
         
         await new Promise(r => setTimeout(r, 100));
         fetchData();
@@ -313,6 +327,8 @@ export default function EntryPage() {
               setNewSale={setNewSale} 
               isEditable={isEditable} 
               onSave={handleSave}
+              hargaSentral={productionData.hargaSentral}
+              setHargaSentral={(value: number) => setProductionData({ ...productionData, hargaSentral: value })}
             />
           )}
           {activeTab === "master" && (

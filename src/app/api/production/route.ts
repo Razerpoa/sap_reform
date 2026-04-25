@@ -31,9 +31,6 @@ const productionSchema = z.object({
   cageData: z.record(z.string(), z.any()).optional().default({}),
   cageSummary: z.record(z.string(), z.any()).optional().default({}),
   hargaSentral: z.number().default(0),
-  up: z.number().default(0),
-  operasional: z.number().default(0),
-  profitDaily: z.number().default(0),
 });
 
 // Helper to bypass auth in test environment

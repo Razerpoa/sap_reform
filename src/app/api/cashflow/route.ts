@@ -13,6 +13,7 @@ const cashFlowSchema = z.object({
   totalPenjualan: z.number().default(0),
   biayaPakan: z.number().default(0),
   biayaOperasional: z.number().default(0),
+  up: z.number().default(0),
   // New dynamic salaries field (maps worker IDs to amounts)
   salaries: z.record(z.string(), z.number()).default({}),
   // Legacy fields - kept for backward compatibility

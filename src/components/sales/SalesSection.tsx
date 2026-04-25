@@ -10,11 +10,38 @@ type SalesSectionProps = {
   setNewSale: (sale: any) => void;
   isEditable: boolean;
   onSave: () => void;
+  hargaSentral?: number;
+  setHargaSentral?: (value: number) => void;
 };
 
-export function SalesSection({ data, newSale, setNewSale, isEditable, onSave }: SalesSectionProps) {
+export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, hargaSentral, setHargaSentral }: SalesSectionProps) {
   return (
     <div className="space-y-6">
+{/* Global Card - Harga Sentral */}
+      <div className="bg-slate-900 md:p-8 p-5 rounded-2xl text-white">
+        <h3 className="md:text-xl text-base font-black mb-5 md:mb-6 text-slate-400 uppercase tracking-wider">Harga Sentral</h3>
+        <div className="grid grid-cols-1">
+          <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
+            <div className="md:text-4xl text-2xl font-black">
+              {isEditable && setHargaSentral ? (
+                <input
+                  type="text"
+                  value={hargaSentral || ""}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/,/g, "");
+                    setHargaSentral(parseFloat(val) || 0);
+                  }}
+                  className="w-full text-center bg-transparent border-b-2 border-slate-600 focus:border-white"
+                  placeholder="0"
+                />
+              ) : (
+                formatNumber(hargaSentral || 0)
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {isEditable && (
         <div className="bg-blue-50 p-6 sm:p-8 rounded-2xl border border-blue-100">
           <h3 className="text-xl font-black text-blue-900 mb-6">Entri Penjualan Baru</h3>

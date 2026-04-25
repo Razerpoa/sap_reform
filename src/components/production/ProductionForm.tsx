@@ -293,7 +293,7 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
       {/* Global Stat Card */}
       <div className="bg-slate-900 md:p-8 p-5 rounded-2xl text-white">
         <h3 className="md:text-xl text-base font-black mb-5 md:mb-6 text-slate-400 uppercase tracking-wider">Total Hari Ini</h3>
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
             <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalButir)}</div>
             <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Butir</div>
@@ -306,17 +306,10 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
             <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalPeti)}</div>
             <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Peti</div>
           </div>
-        </div>
-      </div>
-
-      {/* Daily Financial Summary */}
-      <div className="bg-blue-600 md:p-8 p-5 rounded-2xl text-white">
-        <h3 className="md:text-xl text-base font-black mb-5 md:mb-6 text-white/70 uppercase tracking-wider">Ringkasan Keuangan</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
-          <InputField dark label="Harga Sentral" value={data.hargaSentral} onChange={(v: string) => updateField(`hargaSentral`, v)} readOnly={!isEditable} />
-          <InputField dark label="UP" value={data.up} onChange={(v: string) => updateField(`up`, v)} readOnly={!isEditable} />
-          <InputField dark label="Operasional" value={data.operasional} onChange={(v: string) => updateField(`operasional`, v)} readOnly={!isEditable} />
-          <InputField dark label="Daily Profit" value={data.profitDaily} onChange={(v: string) => updateField(`profitDaily`, v)} readOnly={!isEditable} />
+          <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
+            <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalKg % 15)}</div>
+            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Sisa Kg</div>
+          </div>
         </div>
       </div>
 
