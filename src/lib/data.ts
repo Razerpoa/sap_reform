@@ -195,7 +195,6 @@ export type ProductionSaveInput = {
   date: Date;
   cageData?: ProductionCageData;
   cageSummary?: ProductionCageData;
-  hargaSentral?: number;
   up?: number;
   operasional?: number;
   profitDaily?: number;
@@ -211,13 +210,11 @@ export async function saveProductionData(data: ProductionSaveInput) {
     update: {
       cageData: data.cageData || {},
       cageSummary: data.cageSummary || {},
-      hargaSentral: data.hargaSentral,
     },
     create: {
       date: data.date,
       cageData: data.cageData || {},
       cageSummary: data.cageSummary || {},
-      hargaSentral: data.hargaSentral || 0,
     },
   });
 
@@ -292,7 +289,7 @@ export type SalesSaveInput = {
   customerName: string;
   jmlPeti?: number | null;
   totalKg?: number | null;
-  hargaCentral?: number | null;
+  hargaSentral?: number | null;
   up?: number | null;
   hargaJual?: number | null;
   subTotal?: number | null;
@@ -352,29 +349,8 @@ if (existingCashFlow) {
         date: data.date,
         totalPenjualan: totalRevenueForDay,
         // Other fields default to 0
-      }
+      },
     });
-  }
-
-  // Sync to Production: Update hargaSentral for this date
-  if (data.hargaCentral !== undefined && data.hargaCentral !== null) {
-    const existingProduction = await prisma.production.findFirst({
-      where: { date: data.date }
-    });
-
-    if (existingProduction) {
-      await prisma.production.update({
-        where: { date: data.date },
-        data: { hargaSentral: data.hargaCentral }
-      });
-    } else {
-      await prisma.production.create({
-        data: {
-          date: data.date,
-          hargaSentral: data.hargaCentral,
-        }
-      });
-    }
   }
 
   revalidatePath("/");

@@ -12,7 +12,7 @@ const salesSchema = z.object({
   customerName: z.string().min(1),
   jmlPeti: z.number().default(0),
   totalKg: z.number().default(0),
-  hargaCentral: z.number().default(0),
+  hargaSentral: z.number().default(0),
   up: z.number().default(0),
   hargaJual: z.number().default(0),
   subTotal: z.number().default(0),

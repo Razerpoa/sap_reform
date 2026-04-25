@@ -63,8 +63,61 @@ export default function EntryPage() {
   }, [selectedDate, activeTab]);
 
   async function fetchData() {
-    // Skip fetch if draft exists for this tab+date (preserve unsaved work)
     const draftKey = `draft-${activeTab}-${selectedDate}`;
+    const dateStr = selectedDate;
+    const ts = Date.now();
+
+    // For sales tab: fetch sales data
+    if (activeTab === "sales") {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Check for draft
+        const draftKey = `draft-${activeTab}-${selectedDate}`;
+        const draftData = localStorage.getItem(draftKey);
+        if (draftData) {
+          // Load draft
+          const parsed = JSON.parse(draftData);
+          setNewSale({
+            customerName: parsed.customerName || "",
+            jmlPeti: parsed.jmlPeti || 0,
+            totalKg: parsed.totalKg || 0,
+            hargaJual: parsed.hargaJual || 0,
+            hargaSentral: parsed.hargaSentral || 0
+          });
+          
+          // Fetch sales list to display existing records
+          const salesRes = await fetch(`/api/sales?date=${dateStr}&_t=${ts}`);
+          const salesData = await salesRes.json();
+          setSalesData(salesData || []);
+          
+          setLoading(false);
+          return;
+        }
+
+        // No draft, fetch sales data
+        const salesRes = await fetch(`/api/sales?date=${dateStr}&_t=${ts}`);
+        const salesData = await salesRes.json();
+        setSalesData(salesData || []);
+
+        // Load hargaSentral from the most recent sale (any date) as default
+        const latestRes = await fetch(`/api/sales?take=1&_t=${ts}`);
+        const latestData = await latestRes.json();
+        if (latestData && latestData.length > 0) {
+          const latestHargaSentral = latestData[0].hargaSentral || 0;
+          setNewSale((prev: any) => ({ ...prev, hargaSentral: latestHargaSentral }));
+        }
+      } catch (err: any) {
+        console.error("[fetchData] error:", err);
+        setError(err.message || "Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // For other tabs: skip fetch if draft exists (preserve unsaved work)
     if (localStorage.getItem(draftKey)) {
       setLoading(false);
       return;
@@ -72,8 +125,6 @@ export default function EntryPage() {
 
     setLoading(true);
     setError(null);
-    const dateStr = selectedDate;
-    const ts = Date.now();
 
     try {
       if (activeTab === "production") {
@@ -98,15 +149,6 @@ export default function EntryPage() {
         const expensesData = await expensesRes.json();
         setCashFlowData(cashflowData[0] || { date: new Date(selectedDate) });
         setOtherExpenses(Array.isArray(expensesData) ? expensesData : []);
-      } else if (activeTab === "sales") {
-        const [salesRes, productionRes] = await Promise.all([
-          fetch(`/api/sales?date=${dateStr}&_t=${ts}`),
-          fetch(`/api/production?date=${dateStr}&_t=${ts}`),
-        ]);
-        const salesData = await salesRes.json();
-        const productionData = await productionRes.json();
-        setSalesData(salesData || []);
-        setProductionData(productionData || {});
       }
     } catch (err: any) {
       console.error("[fetchData] error:", err);
@@ -133,15 +175,6 @@ export default function EntryPage() {
         body = { ...cashFlowData, date: selectedDate };
       } else if (activeTab === "sales") {
         body = { ...newSale, date: selectedDate };
-        
-        // Also save hargaSentral to Production table
-        if (productionData.hargaSentral) {
-          await fetch("/api/production", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ date: selectedDate, hargaSentral: productionData.hargaSentral }),
-          });
-        }
       }
 
       const res = await fetch(endpoint, {
@@ -154,7 +187,9 @@ export default function EntryPage() {
         setSuccess(true);
         draft.clearDraft();
         setHasDraft(false); // Immediately hide draft bar
-        if (activeTab === "sales") setNewSale({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, hargaSentral: 0 });
+        if (activeTab === "sales") {
+          setNewSale({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, hargaSentral: 0 });
+        }
         
         await new Promise(r => setTimeout(r, 100));
         fetchData();
@@ -327,8 +362,8 @@ export default function EntryPage() {
               setNewSale={setNewSale} 
               isEditable={isEditable} 
               onSave={handleSave}
-              hargaSentral={productionData.hargaSentral}
-              setHargaSentral={(value: number) => setProductionData({ ...productionData, hargaSentral: value })}
+              hargaSentral={newSale.hargaSentral}
+              setHargaSentral={(value: number) => setNewSale({ ...newSale, hargaSentral: value })}
             />
           )}
           {activeTab === "master" && (

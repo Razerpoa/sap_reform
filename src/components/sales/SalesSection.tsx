@@ -26,7 +26,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, ha
               {isEditable && setHargaSentral ? (
                 <input
                   type="text"
-                  value={hargaSentral || ""}
+                  value={hargaSentral ? hargaSentral.toLocaleString() : ""}
                   onChange={(e) => {
                     const val = e.target.value.replace(/,/g, "");
                     setHargaSentral(parseFloat(val) || 0);

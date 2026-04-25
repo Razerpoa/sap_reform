@@ -93,7 +93,7 @@ export async function GET(request: Request) {
     // Production sheet with dynamic cage columns
     if (production.length > 0) {
       // Build dynamic headers
-      const baseHeaders = ["Date", "Harga Sentral", "UP", "Operasional", "Profit Daily"];
+      const baseHeaders = ["Date", "UP", "Operasional", "Profit Daily"];
       const cageHeaders: string[] = [];
       
       for (const cageName of cageNames) {
@@ -106,7 +106,6 @@ export async function GET(request: Request) {
         const totals = calculateCageTotals(entry.cageData);
         const baseRow = [
           format(entry.date, "yyyy-MM-dd"),
-          entry.hargaSentral || 0,
           entry.up || 0,
           entry.operasional || 0,
           entry.profitDaily || 0,
@@ -127,12 +126,12 @@ export async function GET(request: Request) {
     // Sales sheet
     if (sales.length > 0) {
       const salesHeaders = [
-        "Date", "Customer Name", "Jml Peti", "Total KG", "Harga Central",
+        "Date", "Customer Name", "Jml Peti", "Total KG", "Harga Sentral",
         "UP", "Harga Jual", "Sub Total", "Total KG Hari Ini", "Total Peti Hari Ini"
       ];
       const salesRows = sales.map((entry: any) => [
         format(entry.date, "yyyy-MM-dd"),
-        entry.customerName, entry.jmlPeti, entry.totalKg, entry.hargaCentral,
+        entry.customerName, entry.jmlPeti, entry.totalKg, entry.hargaSentral,
         entry.up, entry.hargaJual, entry.subTotal, entry.totalKgHariIni, entry.totalPetiHariIni
       ]);
       const salesCsv = [salesHeaders.join(","), ...salesRows.map((row: any[]) => row.join(","))].join("\n");
@@ -200,7 +199,6 @@ export async function GET(request: Request) {
         const totals = calculateCageTotals(entry.cageData);
         const baseRow = [
           format(entry.date, "yyyy-MM-dd"),
-          entry.hargaSentral || 0,
           entry.up || 0,
           entry.operasional || 0,
           entry.profitDaily || 0,
@@ -223,12 +221,12 @@ export async function GET(request: Request) {
   if (sales.length > 0) {
     const salesData = [
       [
-        "Date", "Customer Name", "Jml Peti", "Total KG", "Harga Central",
+        "Date", "Customer Name", "Jml Peti", "Total KG", "Harga Sentral",
         "UP", "Harga Jual", "Sub Total", "Total KG Hari Ini", "Total Peti Hari Ini"
       ],
       ...sales.map((entry: any) => [
         format(entry.date, "yyyy-MM-dd"),
-        entry.customerName, entry.jmlPeti, entry.totalKg, entry.hargaCentral,
+        entry.customerName, entry.jmlPeti, entry.totalKg, entry.hargaSentral,
         entry.up, entry.hargaJual, entry.subTotal, entry.totalKgHariIni, entry.totalPetiHariIni
       ])
     ];

@@ -30,7 +30,6 @@ const productionSchema = z.object({
   date: z.string().transform((str) => new Date(str)),
   cageData: z.record(z.string(), z.any()).optional().default({}),
   cageSummary: z.record(z.string(), z.any()).optional().default({}),
-  hargaSentral: z.number().default(0),
 });
 
 // Helper to bypass auth in test environment

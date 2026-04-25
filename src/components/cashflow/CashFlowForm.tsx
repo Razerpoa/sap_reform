@@ -139,7 +139,6 @@ export function CashFlowForm({
           Pengeluaran Utama
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
-          <InputField label="Total Penjualan" value={data.totalPenjualan} onChange={(v) => updateField(`totalPenjualan`, v)} readOnly={!isEditable} />
           <InputField label="Biaya Pakan" value={data.biayaPakan} onChange={(v) => updateField(`biayaPakan`, v)} readOnly={!isEditable} />
           <InputField label="Operasional" value={data.biayaOperasional} onChange={(v) => updateField(`biayaOperasional`, v)} readOnly={!isEditable} />
           <InputField label="UP" value={data.up} onChange={(v) => updateField(`up`, v)} readOnly={!isEditable} />
