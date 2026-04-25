@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "npx tsx prisma/seed.ts",
+    "set-role": "npx tsx scripts/set-role.ts",
     "test:api": "NODE_ENV=test node tests/api-data-flow.js"
   },
   "dependencies": {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Plus, Settings2, Trash2, X, CheckCircle2, Loader2 } from "lucide-react";
 import { InputField } from "@/components/InputField";
 
@@ -15,10 +15,7 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newCage, setNewCage] = useState({ kandang: "", jmlAyam: 0, jmlEmber: 0, jmlPakan: 0, hargaPakan: 7300 });
   const [saving, setSaving] = useState(false);
-  const { data: session } = useSession();
-  
-  const userEmail = session?.user?.email || "";
-  const isSuperAdmin = process.env.SUPER_ADMIN_EMAIL?.includes(userEmail) || false;
+  const { isAdmin } = useUserRole();
 
   const handleEdit = (item: any) => {
     setEditing({ ...item });
@@ -132,7 +129,7 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
 
   return (
     <div className="space-y-3">
-      {isSuperAdmin && (
+      {isAdmin && (
         <button
           onClick={() => setIsAddingNew(true)}
           className="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-black hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 text-sm"
@@ -203,7 +200,7 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
                 >
                   <Settings2 className="w-4 h-4" />
                 </button>
-                {isSuperAdmin && (
+                {isAdmin && (
                   <button 
                     onClick={() => handleDelete(item.kandang)}
                     className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-red-400 hover:text-red-600"
@@ -265,7 +262,7 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
                 <InputField label="Jml Ayam" value={editing.jmlAyam} onChange={(v) => setEditing({...editing, jmlAyam: parseInt(v) || 0})} />
                 <InputField label="Mortalities" value={editing.mortality} onChange={(v) => setEditing({...editing, mortality: parseInt(v) || 0})} />
                 <InputField label="Jml Ember" value={editing.jmlEmber} onChange={handleEmberChange} />
-                {isSuperAdmin ? (
+                {isAdmin ? (
                   <InputField label="Faktor Pakan" value={editing.faktorPakan} onChange={handleFaktorPakanChange} />
                 ) : (
                   <InputField label="Faktor Pakan" value={editing.faktorPakan} onChange={() => {}} readOnly />

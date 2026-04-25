@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { getTestSession, requireAdmin, getSession } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -21,7 +20,7 @@ const WorkerUpdateSchema = z.object({
 export async function GET(request: Request) {
   // Bypass auth in test environment
   const isTest = process.env.NODE_ENV === "test" || process.env.TESTING_MODE === "true";
-  const session = isTest ? { user: { email: "test@test.com" } } : await getServerSession(authOptions);
+  const session = isTest ? getTestSession() : await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -42,8 +41,12 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   const isTest = process.env.NODE_ENV === "test" || process.env.TESTING_MODE === "true";
-  const session = isTest ? { user: { email: "test@test.com" } } : await getServerSession(authOptions);
+  const session = isTest ? getTestSession() : await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Check admin role
+  const isAdmin = isTest ? true : await requireAdmin();
+  if (!isAdmin) return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
 
   try {
     const body = await request.json();
@@ -80,8 +83,12 @@ export async function POST(request: Request) {
  */
 export async function PUT(request: Request) {
   const isTest = process.env.NODE_ENV === "test" || process.env.TESTING_MODE === "true";
-  const session = isTest ? { user: { email: "test@test.com" } } : await getServerSession(authOptions);
+  const session = isTest ? getTestSession() : await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Check admin role
+  const isAdmin = isTest ? true : await requireAdmin();
+  if (!isAdmin) return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
 
   try {
     const body = await request.json();
@@ -120,8 +127,12 @@ export async function PUT(request: Request) {
  */
 export async function DELETE(request: Request) {
   const isTest = process.env.NODE_ENV === "test" || process.env.TESTING_MODE === "true";
-  const session = isTest ? { user: { email: "test@test.com" } } : await getServerSession(authOptions);
+  const session = isTest ? getTestSession() : await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Check admin role
+  const isAdmin = isTest ? true : await requireAdmin();
+  if (!isAdmin) return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
 
   try {
     const url = new URL(request.url);

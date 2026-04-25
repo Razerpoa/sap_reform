@@ -38,7 +38,7 @@ function calculateFields(jmlAyam: number, jmlEmber: number, jmlPakan: number, ha
 async function main() {
   const envEmails = process.env.ALLOWED_EMAILS?.split(",").map(e => e.trim()) || [];
 
-  console.log("Seeding whitelisted users...");
+  console.log("Seeding whitelisted users with ADMIN role...");
 
   for (const email of envEmails) {
     // @ts-ignore
@@ -48,6 +48,7 @@ async function main() {
       create: {
         email,
         name: email.split("@")[0],
+        role: "ADMIN", // Existing users get ADMIN role
       },
     });
   }

@@ -170,7 +170,7 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
                 disabled={!isEditable}
                 className={`md:w-8 md:h-8 w-7 h-7 shrink-0 rounded-xl flex items-center justify-center transition-all ${
                   row.peti ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-300"
-                } ${!isEditable ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-200"}`}
+                } ${!isEditable ? "cursor-not-allowed" : "hover:bg-slate-200"}`}
               >
                 {row.peti && <CheckCircle2 className="md:w-5 md:h-5 w-4 h-4" />}
               </button>
@@ -187,8 +187,8 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
                   className={`md:px-4 md:py-4 px-3 py-3 rounded-xl text-center font-black md:text-lg text-base w-full ${
                     isEditable
                       ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                      : "bg-slate-50 border border-slate-100 text-slate-400"
-                  } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
+                      : "bg-slate-50 border border-slate-100 text-slate-600"
+                  } ${!isEditable ? " cursor-not-allowed" : ""}`}
                 />
                 <input
                   type="text"
@@ -200,8 +200,8 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
                   className={`md:px-4 md:py-4 px-3 py-3 rounded-xl text-center font-black md:text-lg text-base w-full ${
                     isEditable
                       ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                      : "bg-slate-50 border border-slate-100 text-slate-400"
-                  } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
+                      : "bg-slate-50 border border-slate-100 text-slate-600"
+                  } ${!isEditable ? " cursor-not-allowed" : ""}`}
                 />
               </div>
             </div>
@@ -228,8 +228,8 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
                 className={`w-full md:px-4 md:py-4 px-3 py-3 rounded-xl font-black md:text-lg text-base ${
                   isEditable
                     ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                    : "bg-slate-50 border border-slate-100 text-slate-400"
-                } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
+                    : "bg-slate-50 border border-slate-100 text-slate-600"
+                } ${!isEditable ? " cursor-not-allowed" : ""}`}
               />
             </div>
             <div>
@@ -249,8 +249,8 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
                 className={`w-full md:px-4 md:py-4 px-3 py-3 rounded-xl font-black md:text-lg text-base ${
                   isEditable
                     ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                    : "bg-slate-50 border border-slate-100 text-slate-400"
-                } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
+                    : "bg-slate-50 border border-slate-100 text-slate-600"
+                } ${!isEditable ? " cursor-not-allowed" : ""}`}
               />
             </div>
             <div>
@@ -270,8 +270,8 @@ export function ProductionForm({ data, setData, isEditable }: ProductionFormProp
                 className={`w-full md:px-4 md:py-4 px-3 py-3 rounded-xl font-black md:text-lg text-base ${
                   isEditable
                     ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                    : "bg-slate-50 border border-slate-100 text-slate-400"
-                } ${!isEditable ? "opacity-50 cursor-not-allowed" : ""}`}
+                    : "bg-slate-50 border border-slate-100 text-slate-600"
+                } ${!isEditable ? " cursor-not-allowed" : ""}`}
               />
             </div>
           </div>

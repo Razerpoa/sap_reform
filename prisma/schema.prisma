@@ -7,10 +7,16 @@ datasource db {
   
 }
 
+enum UserRole {
+  WHITELISTED
+  ADMIN
+}
+
 model User {
-  id    String  @id @default(cuid())
-  email String  @unique
+  id    String   @id @default(cuid())
+  email String   @unique
   name  String?
+  role  UserRole @default(WHITELISTED)
 }
 
 model CageMaster {

@@ -75,6 +75,24 @@ SAP REFORM is a real-time, production-ready dashboard for layer egg farms. It ce
    npm run dev
    ```
 
+### User Roles
+
+The app has two access levels:
+
+| Role | Access Level |
+|------|-------------|
+| **ADMIN** | Full create/edit/delete access on all pages |
+| **WHITELISTED** | Read-only access (cannot modify any data) |
+
+Users in `ALLOWED_EMAILS` get ADMIN by default. To change a user's role:
+
+```bash
+npm run set-role user@example.com whitelisted
+npm run set-role user@example.com admin
+```
+
+Note: Users must sign in first before their role can be updated.
+
 ## 🐳 Docker Production
 
 ```bash

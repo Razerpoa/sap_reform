@@ -1,6 +1,17 @@
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
+import { UserRole } from "@prisma/client";
+
+declare module "next-auth" {
+  interface Session {
+    user: {
+      email?: string | null;
+      name?: string | null;
+      role?: UserRole;
+    }
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -25,10 +36,22 @@ export const authOptions: NextAuthOptions = {
       
       return !!whitelistedUser;
     },
+    async jwt({ token, user }) {
+      if (user?.email) {
+        // Fetch user role from database
+        const dbUser = await prisma.user.findUnique({
+          where: { email: user.email },
+          select: { role: true },
+        });
+        token.role = dbUser?.role || "WHITELISTED";
+      }
+      return token;
+    },
     async session({ session, token }) {
       if (session.user) {
         session.user.email = token.email;
         session.user.name = token.name;
+        session.user.role = token.role as UserRole;
       }
       return session;
     },

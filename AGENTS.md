@@ -27,6 +27,7 @@ npm run dev
 | `npm run build` | Production build + typecheck |
 | `npm run lint` | ESLint |
 | `npm run seed` | Seed database |
+| `npm run set-role <email> <admin\|whitelisted>` | Set user role |
 | `npm run test:api` | Run API tests |
 | `npx prisma studio` | Open Prisma GUI |
 
@@ -79,6 +80,29 @@ Cage names are now **dynamic** - loaded from CageMaster table. No hardcoded keys
 - `totalKg` = sum(rows.peti × 15) + sum(extra.extraKg)
 - `totalTray` = sum(rows.tray) + sum(extra.extraTray)
 - `totalButir` = sum(rows.butir) + sum(extra.extraButir)
+
+## User Roles
+
+The app has two access levels:
+
+| Role | Access Level |
+|------|-------------|
+| ADMIN | Full CRUD on all entry pages |
+| WHITELISTED | Read-only access to entire site |
+
+### Managing Users
+
+```bash
+# Set user to whitelisted (read-only)
+npm run set-role user@example.com whitelisted
+
+# Set user to admin (full access)
+npm run set-role user@example.com admin
+```
+
+- Users in `ALLOWED_EMAILS` default to ADMIN role
+- Users must sign in first to be created in the database before their role can be changed
+- Role check is enforced at both API level (403 for non-ADMIN write operations) and frontend level (UI elements hidden/disabled)
 
 ## Important Notes
 

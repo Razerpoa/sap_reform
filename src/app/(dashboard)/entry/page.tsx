@@ -22,11 +22,13 @@ import { CashFlowForm } from "@/components/cashflow/CashFlowForm";
 import { SalesSection } from "@/components/sales/SalesSection";
 import { MasterForm } from "@/components/master/MasterForm";
 import { useDraft } from "@/hooks/useDraft";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type Tab = "production" | "master" | "cashflow" | "sales";
 
 export default function EntryPage() {
   const { data: session } = useSession();
+  const { role: userRole, isAdmin } = useUserRole();
   const [activeTab, setActiveTab] = useState<Tab>("production");
   const [selectedDate, setSelectedDate] = useState(getWIBDateString());
   const [loading, setLoading] = useState(false);
@@ -46,9 +48,10 @@ export default function EntryPage() {
   const [editingExpense, setEditingExpense] = useState<any>(null);
 
   const isEditable = useMemo(() => {
-    if (activeTab === "master") return true;
+    if (!isAdmin) return false; // Whitelisted users can only read
+    if (activeTab === "master" && isAdmin) return true;
     return selectedDate === getWIBDateString();
-  }, [selectedDate, activeTab]);
+  }, [selectedDate, activeTab, isAdmin]);
 
   // Check if draft exists for current tab+date
   const [hasDraft, setHasDraft] = useState(false);

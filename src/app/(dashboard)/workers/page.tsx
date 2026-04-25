@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   Save,
   AlertCircle,
@@ -23,6 +24,8 @@ type Worker = {
 };
 
 export default function WorkersPage() {
+  const { role: userRole, isAdmin } = useUserRole();
+  
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -231,11 +234,16 @@ export default function WorkersPage() {
           />
           <button
             type="submit"
-            disabled={submitting || !newWorkerName.trim()}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-300 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-colors"
+            disabled={!isAdmin || submitting || !newWorkerName.trim()}
+            className={cn(
+              "flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-colors",
+              isAdmin 
+                ? "bg-blue-600 hover:bg-blue-500 disabled:bg-slate-300 text-white" 
+                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            )}
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Simpan
+            {isAdmin ? "Simpan" : "Admin only"}
           </button>
         </div>
       </form>
@@ -274,12 +282,13 @@ export default function WorkersPage() {
                   <td className="px-6 py-4">
                     <button
                       onClick={() => handleToggleStatus(worker)}
-                      disabled={submitting}
+                      disabled={!isAdmin || submitting}
                       className={cn(
                         "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all",
                         worker.active 
                           ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" 
-                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                          : "bg-slate-100 text-slate-500 hover:bg-slate-200",
+                        !isAdmin && "opacity-50 cursor-not-allowed"
                       )}
                     >
                       {worker.active ? "Aktif" : "Nonaktif"}
@@ -312,7 +321,7 @@ export default function WorkersPage() {
                           <button onClick={handleDeleteWorker} className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-bold">Ya</button>
                           <button onClick={() => setDeletingId(null)} className="px-3 py-1 bg-slate-200 text-slate-600 rounded-lg text-xs font-bold">Tidak</button>
                         </>
-                      ) : (
+                      ) : isAdmin ? (
                         <>
                           <button 
                             onClick={() => { setEditingId(worker.id); setEditingName(worker.name); }}
@@ -327,7 +336,7 @@ export default function WorkersPage() {
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </>
-                      )}
+                      ) : null}
                     </div>
                   </td>
                 </tr>

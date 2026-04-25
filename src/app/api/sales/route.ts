@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { getTestSession, requireAdmin, getSession } from "@/lib/auth-helpers";
 import { getSalesData, saveSalesData } from "@/lib/data";
 import { z } from "zod";
-import { startOfDay } from "date-fns";
 import { isTodayWIB } from "@/lib/date-utils";
 
 const salesSchema = z.object({
@@ -25,7 +23,7 @@ const salesSchema = z.object({
 
 export async function GET(request: Request) {
   const isTest = process.env.NODE_ENV === "test" || process.env.TESTING_MODE === "true";
-  const session = isTest ? { user: { email: "test@test.com" } } : await getServerSession(authOptions);
+  const session = isTest ? getTestSession() : await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
@@ -43,8 +41,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const isTest = process.env.NODE_ENV === "test" || process.env.TESTING_MODE === "true";
-  const session = isTest ? { user: { email: "test@test.com" } } : await getServerSession(authOptions);
+  const session = isTest ? getTestSession() : await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Check admin role
+  const isAdmin = isTest ? true : await requireAdmin();
+  if (!isAdmin) return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
 
   try {
     const body = await request.json();
