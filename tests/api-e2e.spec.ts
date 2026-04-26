@@ -189,9 +189,9 @@ test.describe.skip('API: Cash Flow Entry Flow', () => {
 
 // TEMPORARILY DISABLED - Tests use old flat format (b1Kg, etc.) which no longer exists
 // Rewrite needed for new JSONB format - TBD
-test.describe.skip('API: Sales Entry Flow', () => {
-test.describe.skip('API: Master Data Flow', () => {
-test.describe.skip('Dashboard: Display Tests', () => {
+test.describe.skip('API: Sales Entry Flow', () => {});
+test.describe.skip('API: Master Data Flow', () => {});
+test.describe.skip('Dashboard: Display Tests', () => {});
 test.describe.skip('Entry Form: Input and Save', () => {
   test('Entry page loads with all tabs', async ({ page }) => {
     await page.goto('/entry');

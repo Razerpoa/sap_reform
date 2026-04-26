@@ -376,10 +376,10 @@ function ProfitCard({
                 transactions.map((t, idx) => (
                   <div 
                     key={idx} 
-                    onClick={() => t.type === "sale" && t.sourceCages?.length > 0 && setSelectedTransaction(t)}
+                    onClick={() => t.type === "sale" && (t.sourceCages?.length ?? 0) > 0 && setSelectedTransaction(t)}
                     className={cn(
                       "p-4 transition-colors",
-                      t.type === "sale" && t.sourceCages?.length > 0 && "hover:bg-slate-50/50 cursor-pointer"
+                      t.type === "sale" && (t.sourceCages?.length ?? 0) > 0 && "hover:bg-slate-50/50 cursor-pointer"
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
