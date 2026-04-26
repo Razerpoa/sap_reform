@@ -135,3 +135,28 @@ src/
 │   └── master/
 │       └── MasterForm.tsx
 ```
+
+## Development Progress
+
+### Done
+- Schema: added `hargaSentral Float` to CageMaster, new `CageStock` model (id, date, kandang, openingKg, productionKg, soldKg, closingKg, @@unique([date, kandang])), `sourceCages String[]` to Sales
+- Schema push: `npx prisma generate` + `npx prisma db push`
+- API: `/api/stock/route.ts` — GET (fetch CageStock by date) + POST (upsert with lazy openingKg from yesterday)
+- API: `/api/master/route.ts` — added `hargaSentral` to Zod schema, added PATCH endpoint for global hargaSentral update
+- API: `/api/sales/route.ts` — added `sourceCages` as array of `{kandang, jmlPeti, jmlKg}` objects
+- Data layer: `src/lib/data.ts` — added `syncCageStock()` helper, production save syncs CageStock (productionKg), sales save syncs CageStock (soldKg proportional per cage)
+- Data Master tab: dedicated global hargaSentral card with own Simpan button (updates all cages via PATCH)
+- Produksi tab dark card: butir/kg from gross cageData (globalStats), peti/sisa from net formula: `openingKg + cageData gross - soldKg` (netStats) — auto-updates on unsaved edits, label stays "Total Hari Ini"
+- Per-cage headers in Produksi: net stock badge (e.g., "12 peti available")
+- Penjualan tab: Stok dark card always shows "X peti | Y kg" per cage (no unit toggle)
+- Penjualan form redesigned: Pilih Kandang modal → stacked selected-cage cards → total summary → Customer + Harga Jual inputs → Add Sale Record
+- pilihKandang button moved below input fields, Sisa Kg input removed
+- Validation: checks available peti >= requested per cage before save, shows error if insufficient
+- Type fix: `parseFloat(String(extra?.extraKg))` for extraKg handling in ProductionForm
+- Modal: removed blur effect from Pilih Kandang modal (plain dark overlay, no backdrop-blur)
+
+### In Progress
+- None
+
+### Blocked
+- None

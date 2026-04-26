@@ -30,9 +30,10 @@ type ProductionFormProps = {
   setData: (data: any) => void;
   isEditable: boolean;
   date: string;
+  stockData?: any[];
 };
 
-export function ProductionForm({ data, setData, isEditable, date }: ProductionFormProps) {
+export function ProductionForm({ data, setData, isEditable, date, stockData = [] }: ProductionFormProps) {
   const [cages, setCages] = useState<{ kandang: string }[]>([]);
   const [loadingCages, setLoadingCages] = useState(true);
   const today = getWIBDateString();
@@ -67,6 +68,60 @@ export function ProductionForm({ data, setData, isEditable, date }: ProductionFo
       return initializeCageData(key);
     }
     return cageData;
+  };
+
+  // Calculate net stock stats: openingKg + gross cageData - soldKg
+  // This recalculates on every cageData change (unsaved edits included)
+  const netStats = useMemo(() => {
+    let totalKg = 0;
+    cages.forEach((cage) => {
+      const cageInfo = getCageData(cage.kandang);
+      const stock = stockData.find((s: any) => s.kandang === cage.kandang);
+
+      // openingKg from CageStock (carry-over from yesterday)
+      const openingKg = stock?.openingKg || 0;
+      // soldKg from CageStock (sales deductions)
+      const soldKg = stock?.soldKg || 0;
+
+      // Gross peti kg from cageData (current draft — saved or unsaved)
+      let grossKg = 0;
+      const extra = (cageInfo as any).extra;
+      cageInfo.rows?.forEach((row: any) => {
+        if (row.peti) grossKg += 15;
+      });
+      grossKg += parseFloat(String(extra?.extraKg)) || 0;
+
+      // True net available: opening + gross - sold
+      totalKg += openingKg + grossKg - soldKg;
+    });
+    return {
+      totalKg,
+      totalPeti: Math.floor(totalKg / 15),
+      totalSisaKg: totalKg % 15,
+    };
+  }, [cages, stockData, data]);
+
+  // Helper to get net stock for a specific cage (also reflects unsaved edits)
+  const getCageNetStock = (kandang: string) => {
+    const cageInfo = getCageData(kandang);
+    const stock = stockData.find((s: any) => s.kandang === kandang);
+
+    const openingKg = stock?.openingKg || 0;
+    const soldKg = stock?.soldKg || 0;
+
+    let grossKg = 0;
+    const extra = (cageInfo as any).extra;
+    cageInfo.rows?.forEach((row: any) => {
+      if (row.peti) grossKg += 15;
+    });
+    grossKg += parseFloat(String(extra?.extraKg)) || 0;
+
+    const totalKg = openingKg + grossKg - soldKg;
+    return {
+      totalKg,
+      peti: Math.floor(totalKg / 15),
+      sisaKg: totalKg % 15,
+    };
   };
 
   const globalStats: GlobalStats = calculateGlobalStats(cages, getCageData);
@@ -150,6 +205,7 @@ export function ProductionForm({ data, setData, isEditable, date }: ProductionFo
   const renderCageCard = (cage: { kandang: string }) => {
     const key = cage.kandang;
     const cageInfo = getCageData(key);
+    const netStock = getCageNetStock(key);
 
     return (
       <div
@@ -161,7 +217,12 @@ export function ProductionForm({ data, setData, isEditable, date }: ProductionFo
             <div className="md:w-14 md:h-14 w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black md:text-lg text-base">
               {key}
             </div>
-            <h3 className="md:text-2xl text-xl font-black text-slate-900">Kandang {key}</h3>
+            <div>
+              <h3 className="md:text-2xl text-xl font-black text-slate-900">Kandang {key}</h3>
+              {netStock.peti > 0 && (
+                <span className="text-xs font-bold text-blue-600">{netStock.peti} peti available</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -300,7 +361,7 @@ export function ProductionForm({ data, setData, isEditable, date }: ProductionFo
 
   return (
     <div className="space-y-6">
-      {/* Global Stat Card */}
+      {/* Global Stat Card - Net Available from CageStock */}
       <div className="bg-slate-900 md:p-8 p-5 rounded-2xl text-white">
         <h3 className="md:text-xl text-base font-black mb-5 md:mb-6 text-slate-400 uppercase tracking-wider">{headerTitle}</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
@@ -313,11 +374,11 @@ export function ProductionForm({ data, setData, isEditable, date }: ProductionFo
             <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Kg</div>
           </div>
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
-            <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalPeti)}</div>
+            <div className="md:text-4xl text-2xl font-black">{formatNumber(netStats.totalPeti)}</div>
             <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Peti</div>
           </div>
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
-            <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalKg % 15)}</div>
+            <div className="md:text-4xl text-2xl font-black">{formatNumber(netStats.totalSisaKg)}</div>
             <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Sisa Kg</div>
           </div>
         </div>

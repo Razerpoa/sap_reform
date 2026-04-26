@@ -218,8 +218,105 @@ export async function saveProductionData(data: ProductionSaveInput) {
     },
   });
 
+  // Sync CageStock for each cage in cageData
+  if (data.cageData) {
+    const cages = Object.keys(data.cageData);
+    const dateStr = data.date.toISOString().split("T")[0];
+
+    for (const cage of cages) {
+      const cageInfo = data.cageData[cage];
+      if (!cageInfo) continue;
+
+      // Calculate productionKg for this cage
+      // Same formula as in types.ts calculateGlobalStats
+      let productionKg = 0;
+
+      // Rows: peti checkbox adds 15kg silently
+      cageInfo.rows?.forEach((row: any) => {
+        if (row.peti) productionKg += 15;
+      });
+
+      // Extra section: manual kg entry + butir/tray converted to butir
+      // The structure from frontend uses 'extra', but our type uses 'footer'
+      const extraData = (cageInfo as any).extra || cageInfo.footer || {};
+      productionKg += parseFloat(extraData?.extraKg) || 0;
+
+      // Call stock API to sync
+      await syncCageStock(dateStr, cage, productionKg, 0);
+    }
+  }
+
   revalidatePath("/");
   return entry;
+}
+
+/**
+ * Sync CageStock for a cage on a given date
+ * Called by production and sales saves
+ */
+async function syncCageStock(dateStr: string, kandang: string, productionKg: number, soldKg: number) {
+  const dateObj = new Date(dateStr);
+
+  // Find existing row for this date + cage
+  const existingRow = await prisma.cageStock.findUnique({
+    where: {
+      date_kandang: {
+        date: dateObj,
+        kandang,
+      },
+    },
+  });
+
+  let openingKg = 0;
+
+  if (!existingRow) {
+    // Lazy creation: look up yesterday's closingKg for this cage
+    const yesterday = new Date(dateObj);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const yesterdayRow = await prisma.cageStock.findUnique({
+      where: {
+        date_kandang: {
+          date: yesterday,
+          kandang,
+        },
+      },
+    });
+
+    // Use yesterday's closingKg as today's openingKg
+    openingKg = yesterdayRow?.closingKg || 0;
+  } else {
+    // Use existing openingKg from the row
+    openingKg = existingRow.openingKg;
+  }
+
+  // Calculate new closingKg
+  const newProductionKg = existingRow ? existingRow.productionKg + productionKg : productionKg;
+  const newSoldKg = existingRow ? existingRow.soldKg + soldKg : soldKg;
+  const closingKg = openingKg + newProductionKg - newSoldKg;
+
+  // Upsert the row
+  await prisma.cageStock.upsert({
+    where: {
+      date_kandang: {
+        date: dateObj,
+        kandang,
+      },
+    },
+    update: {
+      productionKg: newProductionKg,
+      soldKg: newSoldKg,
+      closingKg,
+    },
+    create: {
+      date: dateObj,
+      kandang,
+      openingKg,
+      productionKg: newProductionKg,
+      soldKg: newSoldKg,
+      closingKg,
+    },
+  });
 }
 
 export type CashFlowSaveInput = {
@@ -298,6 +395,7 @@ export type SalesSaveInput = {
   penjualanHariIni?: number | null;
   totalProduksi?: number | null;
   stockAkhir?: number | null;
+  sourceCages?: string[] | null | { kandang: string; jmlPeti: number; jmlKg: number }[];
 };
 
 /**
@@ -319,15 +417,34 @@ export async function saveSalesData(data: SalesSaveInput) {
     hargaJual: data.hargaJual || 0,
   });
 
-  const { id, ...saveData } = data;
+  const { id, sourceCages, ...saveData } = data;
   const entry = id
     ? await prisma.sales.update({
         where: { id },
-        data: { ...saveData, subTotal, ...dailyTotals } as any,
+        data: { ...saveData, subTotal, sourceCages, ...dailyTotals } as any,
       })
     : await prisma.sales.create({
-        data: { ...saveData, subTotal, ...dailyTotals } as any,
+        data: { ...saveData, subTotal, sourceCages, ...dailyTotals } as any,
       });
+
+  // Sync CageStock: deduct soldKg from source cages
+  if (sourceCages && sourceCages.length > 0 && data.jmlPeti) {
+    const dateStr = data.date.toISOString().split("T")[0];
+
+    for (const cage of sourceCages) {
+      // Handle both old format (string) and new format (object)
+      const kandang = typeof cage === 'string' ? cage : cage.kandang;
+      const jmlPeti = typeof cage === 'string' ? 0 : (cage.jmlPeti || 0);
+      const jmlKg = typeof cage === 'string' ? 0 : (cage.jmlKg || 0);
+      
+      // Calculate sold kg for this cage: jmlPeti * 15 + jmlKg
+      const soldKgForCage = jmlPeti * 15 + jmlKg;
+      
+      if (soldKgForCage > 0) {
+        await syncCageStock(dateStr, kandang, 0, soldKgForCage);
+      }
+    }
+  }
 
   // Sync to CashFlow: Update totalPenjualan for this date
   const totalRevenueForDay = dailyTotals.penjualanHariIni || 0;
@@ -337,7 +454,7 @@ export async function saveSalesData(data: SalesSaveInput) {
     where: { date: data.date }
   });
 
-if (existingCashFlow) {
+  if (existingCashFlow) {
     await prisma.cashFlow.update({
       where: { id: existingCashFlow.id },
       data: { totalPenjualan: totalRevenueForDay }

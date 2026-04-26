@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Plus, Settings2, Trash2, X, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { InputField } from "@/components/InputField";
@@ -17,6 +17,38 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const { isAdmin } = useUserRole();
+
+  // Global hargaSentral state
+  const [hargaSentralValue, setHargaSentralValue] = useState(0);
+  const [hargaSentralSaving, setHargaSentralSaving] = useState(false);
+  const [hargaSentralSuccess, setHargaSentralSuccess] = useState(false);
+
+  // Initialize hargaSentral from first cage data
+  useEffect(() => {
+    if (data && data.length > 0 && data[0].hargaSentral !== undefined) {
+      setHargaSentralValue(data[0].hargaSentral);
+    }
+  }, [data]);
+
+  const handleSaveHargaSentral = async () => {
+    if (hargaSentralSaving || !isAdmin) return;
+    setHargaSentralSaving(true);
+    try {
+      const res = await fetch("/api/master", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hargaSentral: hargaSentralValue }),
+      });
+      if (res.ok) {
+        setHargaSentralSuccess(true);
+        setTimeout(() => setHargaSentralSuccess(false), 2000);
+        onSave();
+      }
+    } catch (error) {
+      console.error("Failed to save hargaSentral:", error);
+    }
+    setHargaSentralSaving(false);
+  };
 
   // Only allow A, B, numbers, and + for Kandang input
   const sanitizeKandang = (value: string) => {
@@ -148,6 +180,45 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
 
   return (
     <div className="space-y-3">
+      {/* Global Harga Sentral Card */}
+      <div className="bg-slate-900 p-4 rounded-2xl shadow-lg">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-slate-400 font-black uppercase tracking-wider text-sm">Harga Sentral</h3>
+          {hargaSentralSuccess && (
+            <div className="flex items-center gap-1 text-green-400">
+              <CheckCircle2 className="w-4 h-4" />
+              <span className="text-xs font-bold">Tersimpan</span>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <input
+              type="number"
+              value={hargaSentralValue}
+              onChange={(e) => setHargaSentralValue(parseFloat(e.target.value) || 0)}
+              disabled={!isAdmin || hargaSentralSaving}
+              className="w-full px-4 py-3 rounded-xl bg-slate-800 text-white text-xl font-black outline-none focus:ring-2 focus:ring-blue-500 border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              placeholder="0"
+            />
+          </div>
+          {isAdmin && (
+            <button
+              onClick={handleSaveHargaSentral}
+              disabled={hargaSentralSaving}
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-sm hover:bg-blue-500 transition-colors disabled:bg-blue-400 flex items-center gap-2"
+            >
+              {hargaSentralSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4" />
+              )}
+              Simpan
+            </button>
+          )}
+        </div>
+      </div>
+
       {isAdmin && (
         <button
           onClick={() => setIsAddingNew(true)}
@@ -273,6 +344,10 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
               <div className="space-y-1">
                 <p className="text-[9px] uppercase font-black text-blue-400 tracking-wider">H. Pakan</p>
                 <p className="text-base font-black text-blue-600">{item.hargaPakan?.toLocaleString() || 0}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[9px] uppercase font-black text-blue-400 tracking-wider">H. Sentral</p>
+                <p className="text-base font-black text-blue-600">{item.hargaSentral?.toLocaleString() || 0}</p>
               </div>
             </div>
           </div>
@@ -416,7 +491,7 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
                     <p className="text-[10px] sm:text-xs text-blue-400 hidden sm:block">Auto-calculated from inputs</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                   <div className="bg-white/70 rounded-xl p-2 sm:p-3">
                     <p className="text-[10px] sm:text-xs uppercase font-black text-blue-400 tracking-wider mb-1 sm:mb-2">G/Ekor</p>
                     <p className="text-sm sm:text-xl font-black text-blue-600">{editing.gramEkor?.toFixed(3) || "0.000"}</p>
@@ -431,6 +506,11 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
                     <p className="text-[10px] sm:text-xs uppercase font-black text-blue-400 tracking-wider mb-1 sm:mb-2">Vol/Ember</p>
                     <p className="text-sm sm:text-xl font-black text-blue-600">{editing.volEmber?.toFixed(1) || "0.0"}</p>
                     <p className="text-[10px] sm:text-xs text-blue-300 mt-1 sm:mt-2">Pakan ÷ Ember</p>
+                  </div>
+                  <div className="bg-white/70 rounded-xl p-2 sm:p-3">
+                    <p className="text-[10px] sm:text-xs uppercase font-black text-blue-400 tracking-wider mb-1 sm:mb-2">H. Sentral</p>
+                    <p className="text-sm sm:text-xl font-black text-blue-600">{editing.hargaSentral?.toLocaleString() || 0}</p>
+                    <p className="text-[10px] sm:text-xs text-blue-300 mt-1 sm:mt-2">Global</p>
                   </div>
                 </div>
 </div>

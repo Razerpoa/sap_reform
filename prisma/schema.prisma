@@ -29,8 +29,9 @@ model CageMaster {
   beratPakan  Float    @default(0)
   volEmber    Float?   @default(0)
   hargaPakan  Float?   @default(0)
+  hargaSentral Float   @default(0)
   mortality   Int      @default(0)
-  faktorPakan Float    @default(13)
+  faktorPakan Float   @default(13)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -83,7 +84,7 @@ model Sales {
   customerName     String
   jmlPeti          Float    @default(0)
   totalKg          Float    @default(0)
-  hargaSentral     Float    @default(0)
+  hargaSentral     Float?   @default(0)
   up               Float    @default(0)
   hargaJual        Float    @default(0)
   subTotal         Float    @default(0)
@@ -92,6 +93,7 @@ model Sales {
   penjualanHariIni Float?   @default(0)
   totalProduksi    Float?   @default(0)
   stockAkhir       Float?   @default(0)
+  sourceCages      Json      @default("[]")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -107,5 +109,20 @@ model OtherExpense {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([date])
+}
+
+model CageStock {
+  id           String   @id @default(cuid())
+  date         DateTime @db.Date
+  kandang      String
+  openingKg    Float   @default(0)
+  productionKg Float   @default(0)
+  soldKg      Float   @default(0)
+  closingKg   Float   @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([date, kandang])
   @@index([date])
 }

@@ -10,7 +10,7 @@ const salesSchema = z.object({
   customerName: z.string().min(1),
   jmlPeti: z.number().default(0),
   totalKg: z.number().default(0),
-  hargaSentral: z.number().default(0),
+  hargaSentral: z.number().optional().nullable(),
   up: z.number().default(0),
   hargaJual: z.number().default(0),
   subTotal: z.number().default(0),
@@ -19,6 +19,11 @@ const salesSchema = z.object({
   penjualanHariIni: z.number().optional().nullable(),
   totalProduksi: z.number().optional().nullable(),
   stockAkhir: z.number().optional().nullable(),
+  sourceCages: z.array(z.object({
+    kandang: z.string(),
+    jmlPeti: z.number(),
+    jmlKg: z.number(),
+  })).optional().nullable(),
 });
 
 export async function GET(request: Request) {

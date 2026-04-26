@@ -15,6 +15,7 @@ const cageMasterSchema = z.object({
   beratPakan: z.number().default(0),
   volEmber: z.number().nullable().default(0),
   hargaPakan: z.number().nullable().default(0),
+  hargaSentral: z.number().default(0),
   mortality: z.number().int().default(0),
   faktorPakan: z.number().default(13),
 });
@@ -103,5 +104,38 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error('[MASTER DELETE] Error:', error);
     return NextResponse.json({ error: "Not found or already deleted" }, { status: 404 });
+  }
+}
+
+// PATCH: Update global hargaSentral (affects all cages)
+export async function PATCH(request: Request) {
+  const isTest = process.env.NODE_ENV === "test" || process.env.TESTING_MODE === "true";
+  const session = isTest ? getTestSession() : await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Check admin role
+  const isAdmin = isTest ? true : await requireAdmin();
+  if (!isAdmin) return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+
+  try {
+    const body = await request.json();
+    const hargaSentral = parseFloat(body.hargaSentral) || 0;
+
+    // Get all cages and update their hargaSentral to the same value (global)
+    const cages = await prisma.cageMaster.findMany();
+    
+    await Promise.all(
+      cages.map((cage) =>
+        prisma.cageMaster.update({
+          where: { kandang: cage.kandang },
+          data: { hargaSentral },
+        })
+      )
+    );
+
+    return NextResponse.json({ success: true, hargaSentral });
+  } catch (error) {
+    console.error('[MASTER PATCH] Error:', error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

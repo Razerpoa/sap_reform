@@ -43,7 +43,9 @@ export default function EntryPage() {
   const [cashFlowData, setCashFlowData] = useState<any>({ date: new Date() });
   const [salesData, setSalesData] = useState<any[]>([]);
   const [otherExpenses, setOtherExpenses] = useState<any[]>([]);
-  const [newSale, setNewSale] = useState<any>({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, hargaSentral: 0 });
+  const [newSale, setNewSale] = useState<any>({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, sourceCages: [] });
+  const [stockData, setStockData] = useState<any[]>([]);
+  const [cages, setCages] = useState<any[]>([]);
   const [newExpense, setNewExpense] = useState<any>({ amount: 0, description: "" });
   const [editingExpense, setEditingExpense] = useState<any>(null);
 
@@ -69,7 +71,7 @@ export default function EntryPage() {
     const dateStr = selectedDate;
     const ts = Date.now();
 
-    // For sales tab: fetch sales data
+    // For sales tab: fetch sales data, stock data, and cages
     if (activeTab === "sales") {
       setLoading(true);
       setError(null);
@@ -86,30 +88,41 @@ export default function EntryPage() {
             jmlPeti: parsed.jmlPeti || 0,
             totalKg: parsed.totalKg || 0,
             hargaJual: parsed.hargaJual || 0,
-            hargaSentral: parsed.hargaSentral || 0
+            sourceCages: parsed.sourceCages || []
           });
           
           // Fetch sales list to display existing records
-          const salesRes = await fetch(`/api/sales?date=${dateStr}&_t=${ts}`);
+          const [salesRes, stockRes, cagesRes] = await Promise.all([
+            fetch(`/api/sales?date=${dateStr}&_t=${ts}`),
+            fetch(`/api/stock?date=${dateStr}&_t=${ts}`),
+            fetch(`/api/master?_t=${ts}`)
+          ]);
           const salesData = await salesRes.json();
+          const stockData = await stockRes.json();
+          const cagesData = await cagesRes.json();
+          
           setSalesData(salesData || []);
+          setStockData(stockData || []);
+          setCages(cagesData || []);
           
           setLoading(false);
           return;
         }
 
-        // No draft, fetch sales data
-        const salesRes = await fetch(`/api/sales?date=${dateStr}&_t=${ts}`);
+        // No draft, fetch all data in parallel
+        const [salesRes, stockRes, cagesRes] = await Promise.all([
+          fetch(`/api/sales?date=${dateStr}&_t=${ts}`),
+          fetch(`/api/stock?date=${dateStr}&_t=${ts}`),
+          fetch(`/api/master?_t=${ts}`)
+        ]);
+        
         const salesData = await salesRes.json();
+        const stockData = await stockRes.json();
+        const cagesData = await cagesRes.json();
+        
         setSalesData(salesData || []);
-
-        // Load hargaSentral from the most recent sale (any date) as default
-        const latestRes = await fetch(`/api/sales?take=1&_t=${ts}`);
-        const latestData = await latestRes.json();
-        if (latestData && latestData.length > 0) {
-          const latestHargaSentral = latestData[0].hargaSentral || 0;
-          setNewSale((prev: any) => ({ ...prev, hargaSentral: latestHargaSentral }));
-        }
+        setStockData(stockData || []);
+        setCages(cagesData || []);
       } catch (err: any) {
         console.error("[fetchData] error:", err);
         setError(err.message || "Failed to load data");
@@ -119,21 +132,23 @@ export default function EntryPage() {
       return;
     }
 
-    // For other tabs: skip fetch if draft exists (preserve unsaved work)
-    if (localStorage.getItem(draftKey)) {
-      setLoading(false);
-      return;
-    }
+    // For other tabs: always fetch from database, draft will overlay via useDraft hook
+    // Note: UseDraft's onLoad will overlay draft data after DB data is loaded
 
     setLoading(true);
     setError(null);
 
     try {
       if (activeTab === "production") {
-        const res = await fetch(`/api/production?date=${dateStr}&_t=${ts}`);
-        if (!res.ok) throw new Error("production failed");
-        const data = await res.json();
-        setProductionData(data || {});
+        const [productionRes, stockRes] = await Promise.all([
+          fetch(`/api/production?date=${dateStr}&_t=${ts}`),
+          fetch(`/api/stock?date=${dateStr}&_t=${ts}`),
+        ]);
+        if (!productionRes.ok) throw new Error("production failed");
+        const productionData = await productionRes.json();
+        const stockData = await stockRes.json();
+        setProductionData(productionData || {});
+        setStockData(stockData || []);
       } else if (activeTab === "master") {
         try {
           const res = await fetch(`/api/master?_t=${ts}`);
@@ -160,7 +175,7 @@ export default function EntryPage() {
     }
   }
 
-  async function handleSave() {
+  async function handleSave(saleData?: any) {
     if (!isEditable) return;
     setSaving(true);
     setIsSavingDraft(true); // Prevent auto-save during save
@@ -176,7 +191,8 @@ export default function EntryPage() {
       } else if (activeTab === "cashflow") {
         body = { ...cashFlowData, date: selectedDate };
       } else if (activeTab === "sales") {
-        body = { ...newSale, date: selectedDate };
+        // Use passed saleData directly (avoids async state issue)
+        body = { ...saleData, date: selectedDate };
       }
 
       const res = await fetch(endpoint, {
@@ -190,7 +206,7 @@ export default function EntryPage() {
         draft.clearDraft();
         setHasDraft(false); // Immediately hide draft bar
         if (activeTab === "sales") {
-          setNewSale({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, hargaSentral: 0 });
+          setNewSale({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, sourceCages: [] });
         }
         
         await new Promise(r => setTimeout(r, 100));
@@ -342,6 +358,7 @@ export default function EntryPage() {
               setData={setProductionData} 
               isEditable={isEditable}
               date={selectedDate}
+              stockData={stockData}
             />
           )}
           {activeTab === "cashflow" && (
@@ -365,8 +382,8 @@ export default function EntryPage() {
               setNewSale={setNewSale} 
               isEditable={isEditable} 
               onSave={handleSave}
-              hargaSentral={newSale.hargaSentral}
-              setHargaSentral={(value: number) => setNewSale({ ...newSale, hargaSentral: value })}
+              stockData={stockData}
+              cages={cages}
             />
           )}
           {activeTab === "master" && (

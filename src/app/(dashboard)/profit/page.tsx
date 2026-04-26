@@ -22,6 +22,7 @@ import {
   BarChart3,
   Calendar,
   Package,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/format";
@@ -154,12 +155,13 @@ function ProfitCard({
   const [viewMode, setViewMode] = useState<ViewMode>("log");
   const [timeframe, setTimeframe] = useState<Timeframe>("daily");
   const [metric, setMetric] = useState<Metric>("rp");
+  const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
 
   const isProfit = type === "gross";
 
   // Build transaction log based on type
   const transactions = useMemo(() => {
-    const items: Array<{ date: Date; description: string; peti?: number; kg?: number; price?: number; amount: number; type: string }> = [];
+    const items: Array<{ date: Date; description: string; peti?: number; kg?: number; price?: number; amount: number; type: string; sourceCages?: Array<{kandang: string; jmlPeti: number; jmlKg: number}> }> = [];
 
     if (type === "gross") {
       data.sales.forEach((sale: any) => {
@@ -171,6 +173,7 @@ function ProfitCard({
           price: sale.hargaJual,
           amount: sale.subTotal || 0,
           type: "sale",
+          sourceCages: sale.sourceCages || null,
         });
       });
     } else {
@@ -371,7 +374,14 @@ function ProfitCard({
             <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
               {transactions.length > 0 ? (
                 transactions.map((t, idx) => (
-                  <div key={idx} className="p-4 hover:bg-slate-50/50 transition-colors">
+                  <div 
+                    key={idx} 
+                    onClick={() => t.type === "sale" && t.sourceCages?.length > 0 && setSelectedTransaction(t)}
+                    className={cn(
+                      "p-4 transition-colors",
+                      t.type === "sale" && t.sourceCages?.length > 0 && "hover:bg-slate-50/50 cursor-pointer"
+                    )}
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-slate-900 text-sm truncate">{t.description}</p>
@@ -390,6 +400,11 @@ function ProfitCard({
                             {t.price !== undefined && (
                               <span className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-full">
                                 Rp {t.price.toLocaleString()}
+                              </span>
+                            )}
+                            {t.sourceCages && t.sourceCages.length > 0 && (
+                              <span className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-full">
+                                Dari: {t.sourceCages.map(c => c.kandang).join(', ')}
                               </span>
                             )}
                           </div>
@@ -470,6 +485,85 @@ function ProfitCard({
             </div>
           )}
       </div>
+
+      {/* Transaction Detail Modal */}
+      {selectedTransaction && selectedTransaction.type === "sale" && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedTransaction(null);
+          }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black text-lg">{selectedTransaction.description}</h3>
+              <button onClick={() => setSelectedTransaction(null)}>
+                <X className="w-5 h-5 text-slate-400 hover:text-slate-600" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Date */}
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500 font-medium">Tanggal</span>
+                <span className="font-bold">{format(selectedTransaction.date, "dd MMMM yyyy", { locale: id })}</span>
+              </div>
+
+              {/* Quantity Summary */}
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500 font-medium">Jumlah</span>
+                <div className="flex gap-2">
+                  <span className="font-bold">{selectedTransaction.peti?.toLocaleString()} peti</span>
+                  <span className="text-slate-300">|</span>
+                  <span className="font-bold">{selectedTransaction.kg?.toLocaleString()} kg</span>
+                </div>
+              </div>
+
+              {/* Price per kg */}
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500 font-medium">Harga per kg</span>
+                <span className="font-bold">Rp {selectedTransaction.price?.toLocaleString()}</span>
+              </div>
+
+              {/* Total */}
+              <div className="flex justify-between text-sm pt-2 border-t border-slate-100">
+                <span className="text-slate-500 font-medium">Total</span>
+                <span className="font-black text-emerald-600">Rp {selectedTransaction.amount?.toLocaleString()}</span>
+              </div>
+
+              {/* Source Cages Breakdown */}
+              {selectedTransaction.sourceCages && selectedTransaction.sourceCages.length > 0 && (
+                <div className="pt-2 border-t border-slate-100">
+                  <p className="text-xs text-slate-500 font-medium mb-2">Sumber Telur:</p>
+                  <div className="space-y-2">
+                    {selectedTransaction.sourceCages.map((cage: any, idx: number) => (
+                      <div key={idx} className="flex justify-between bg-slate-50 rounded-lg p-3">
+                        <span className="font-bold text-slate-700">{cage.kandang}</span>
+                        <span className="text-sm">
+                          <span className="font-bold">{cage.jmlPeti} peti</span>
+                          {cage.jmlKg > 0 && (
+                            <>
+                              <span className="text-slate-300 mx-1">|</span>
+                              <span className="font-bold">{cage.jmlKg} kg</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button 
+              onClick={() => setSelectedTransaction(null)}
+              className="w-full mt-6 bg-slate-100 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-200 transition-colors"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
