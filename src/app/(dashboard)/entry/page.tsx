@@ -49,18 +49,43 @@ export default function EntryPage() {
   const [newExpense, setNewExpense] = useState<any>({ amount: 0, description: "" });
   const [editingExpense, setEditingExpense] = useState<any>(null);
 
+  // Original data (baseline) - used to detect if user actually made edits
+  const [originalData, setOriginalData] = useState<Record<Tab, any>>({
+    production: {},
+    cashflow: {},
+    sales: null,
+    master: null,
+  });
+
+  // Check if current data differs from original (user made actual edits)
+  const hasChanges = useCallback((tab: Tab): boolean => {
+    const original = originalData[tab];
+    const current = getData(tab);
+    if (!original || !current) return false;
+    return JSON.stringify(current) !== JSON.stringify(original);
+  }, [originalData, productionData, cashFlowData, newSale]);
+
   const isEditable = useMemo(() => {
     if (!isAdmin) return false; // Whitelisted users can only read
     return true; // Admins can edit any date (past or today)
   }, [isAdmin]);
 
-  // Check if draft exists for current tab+date
+  // Check if draft exists AND user made actual changes
   const [hasDraft, setHasDraft] = useState(false);
 
   useEffect(() => {
     const draftKey = `draft-${activeTab}-${selectedDate}`;
-    setHasDraft(localStorage.getItem(draftKey) !== null);
-  }, [activeTab, selectedDate]);
+    const storedDraft = localStorage.getItem(draftKey);
+    if (!storedDraft) {
+      setHasDraft(false);
+      return;
+    }
+    // Only show draft bar if user actually changed data from original
+    const original = originalData[activeTab];
+    const current = getData(activeTab);
+    const hasUserChanges = original && current && JSON.stringify(current) !== JSON.stringify(original);
+    setHasDraft(!!hasUserChanges);
+  }, [activeTab, selectedDate, originalData, productionData, cashFlowData, newSale]);
 
   useEffect(() => {
     fetchData();
@@ -90,7 +115,9 @@ export default function EntryPage() {
             hargaJual: parsed.hargaJual || 0,
             sourceCages: parsed.sourceCages || []
           });
-          
+          // Set original to draft data (user hasn't edited yet relative to draft)
+          setOriginalData(prev => ({ ...prev, sales: { ...parsed } }));
+
           // Fetch sales list to display existing records
           const [salesRes, stockRes, cagesRes] = await Promise.all([
             fetch(`/api/sales?date=${dateStr}&_t=${ts}`),
@@ -100,11 +127,11 @@ export default function EntryPage() {
           const salesData = await salesRes.json();
           const stockData = await stockRes.json();
           const cagesData = await cagesRes.json();
-          
+
           setSalesData(salesData || []);
           setStockData(stockData || []);
           setCages(cagesData || []);
-          
+
           setLoading(false);
           return;
         }
@@ -115,14 +142,18 @@ export default function EntryPage() {
           fetch(`/api/stock?date=${dateStr}&_t=${ts}`),
           fetch(`/api/master?_t=${ts}`)
         ]);
-        
+
         const salesData = await salesRes.json();
         const stockData = await stockRes.json();
         const cagesData = await cagesRes.json();
-        
+
         setSalesData(salesData || []);
         setStockData(stockData || []);
         setCages(cagesData || []);
+        // Reset newSale to empty and set as original baseline
+        const emptySale = { customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, sourceCages: [] };
+        setNewSale(emptySale);
+        setOriginalData(prev => ({ ...prev, sales: emptySale }));
       } catch (err: any) {
         console.error("[fetchData] error:", err);
         setError(err.message || "Failed to load data");
@@ -145,10 +176,12 @@ export default function EntryPage() {
           fetch(`/api/stock?date=${dateStr}&_t=${ts}`),
         ]);
         if (!productionRes.ok) throw new Error("production failed");
-        const productionData = await productionRes.json();
+        const productionDataResponse = await productionRes.json();
         const stockData = await stockRes.json();
-        setProductionData(productionData || {});
+        setProductionData(productionDataResponse || {});
         setStockData(stockData || []);
+        // Set as original baseline for change detection
+        setOriginalData(prev => ({ ...prev, production: productionDataResponse || {} }));
       } else if (activeTab === "master") {
         try {
           const res = await fetch(`/api/master?_t=${ts}`);
@@ -164,8 +197,11 @@ export default function EntryPage() {
         ]);
         const cashflowData = await cashflowRes.json();
         const expensesData = await expensesRes.json();
-        setCashFlowData(cashflowData[0] || { date: new Date(selectedDate) });
+        const cashflowEntry = cashflowData[0] || { date: new Date(selectedDate) };
+        setCashFlowData(cashflowEntry);
         setOtherExpenses(Array.isArray(expensesData) ? expensesData : []);
+        // Set as original baseline for change detection
+        setOriginalData(prev => ({ ...prev, cashflow: cashflowEntry }));
       }
     } catch (err: any) {
       console.error("[fetchData] error:", err);
@@ -254,15 +290,17 @@ export default function EntryPage() {
     }, [activeTab]),
   });
 
-  // Auto-save to draft when data changes (skip during save operation)
+  // Auto-save to draft when data changes (only if user actually edited something)
   useEffect(() => {
     if (isSavingDraft) return;
+    // Only save draft if user made actual changes from original
+    if (!hasChanges(activeTab)) return;
     const currentData = getData(activeTab);
     if (currentData && Object.keys(currentData).length > 0) {
       draft.saveDraft(currentData);
-      setHasDraft(true); // Show button immediately when saving
+      setHasDraft(true); // Show button
     }
-  }, [productionData, cashFlowData, newSale, activeTab, draft, isSavingDraft]);
+  }, [productionData, cashFlowData, newSale, activeTab, draft, isSavingDraft, hasChanges, originalData]);
 
   const tabConfig = [
     { id: "production", icon: TrendingUp, label: "Produksi" },

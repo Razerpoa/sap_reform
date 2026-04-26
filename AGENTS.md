@@ -1,4 +1,4 @@
-# SAP REFORM - Agent Instructions
+# SAP REFORM — Agent Instructions
 
 ## Quick Start
 
@@ -6,7 +6,7 @@
 # 1. Start database
 docker compose up -d db
 
-# 2. Generate Prisma client (after schema changes)
+# 2. Generate Prisma client (after schema changes — ALWAYS do this before build)
 npx prisma generate
 
 # 3. Push schema to database (use --accept-data-loss for breaking changes)
@@ -23,140 +23,81 @@ npm run dev
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Dev server on port 3000 |
-| `npm run build` | Production build + typecheck |
+| `npm run dev` | Dev server on port 3000 (uses `nodemon`, watches `src`) |
+| `npm run build` | Production build (no separate typecheck step) |
 | `npm run lint` | ESLint |
 | `npm run seed` | Seed database |
 | `npm run set-role <email> <admin\|whitelisted>` | Set user role |
-| `npm run test:api` | Run API tests |
+| `npm run test:api` | Run API integration tests (`tests/api-data-flow.js`) |
 | `npx prisma studio` | Open Prisma GUI |
 
-## Architecture
+## Prisma Schema → Database
 
-- **Next.js 16** with App Router (`src/app`)
-- **Prisma** - schema in `prisma/schema.prisma`
-- **Auth** - NextAuth v4 (`src/lib/auth.ts`)
-- **Calculations** - `src/lib/calculations.ts` (centralized math logic)
-- **Data layer** - `src/lib/data.ts` (all database queries go here)
+**Command order after ANY schema change:**
 
-### API Routes
-| Endpoint | Purpose |
-|----------|---------|
-| `/api/production` | Daily production data |
-| `/api/master` | CageMaster CRUD (GET, POST, DELETE) |
-| `/api/sales` | Sales transactions |
-| `/api/cashflow` | Cash flow tracking |
-| `/api/workers` | Worker management |
-| `/api/export` | Excel export |
-
-### Database
-- **CageMaster** - Groups of cages (B1, B1+, etc.) with calculated fields
-  - `gramEkor` = jmlPakan / jmlAyam (feed per chicken)
-  - `beratPakan` = jmlPakan * hargaPakan (total feed cost)
-  - `volEmber` = jmlPakan / jmlEmber (volume per bucket)
-- **Production** - Daily entries with JSONB fields (`cageData`, `cageSummary`)
-
-## Cage Naming Convention
-
-Cage names are now **dynamic** - loaded from CageMaster table. No hardcoded keys.
-
-## Data Structure (JSONB)
-
-### cageData / cageSummary
-```json
-{
-  "B1": {
-    "rows": [
-      { "peti": false, "tray": 0, "butir": 0 },
-      { "peti": false, "tray": 0, "butir": 0 },
-      { "peti": false, "tray": 0, "butir": 0 }
-    ],
-    "extra": { "extraTray": 0, "extraButir": 0, "extraKg": 0 }
-  }
-}
+```bash
+npx prisma generate && npx prisma db push --accept-data-loss
 ```
 
-### Global Stats Calculation
-- `totalKg` = sum(rows.peti × 15) + sum(extra.extraKg)
-- `totalTray` = sum(rows.tray) + sum(extra.extraTray)
-- `totalButir` = sum(rows.butir) + sum(extra.extraButir)
+Then seed if needed: `npx tsx prisma/seed.ts`
+
+## Prisma Client Setup
+
+`src/lib/prisma.ts` creates the client differently per environment:
+- **Local dev**: `Pool` + `PrismaPg` adapter (no accelerate)
+- **Production**: `@prisma/extension-accelerate` with `accelerateUrl`
+- Detection: checks if URL starts with `prisma://` or `prisma+postgres://`
+
+The schema.prisma `datasource` has no `url` — it relies on env vars.
+
+## Database Host
+
+- Local development: `DATABASE_HOST=localhost`
+- Docker: `docker-compose.yml` hardcodes `DATABASE_HOST: db` for the app container
+- The seed script uses `DATABASE_HOST` from `.env`
+
+## Cage Naming — Dynamic, Not Hardcoded
+
+Cage names (B1, B1+, etc.) come from the `CageMaster` table's `kandang` field. No cage names are hardcoded in code. To add a new cage: insert into `CageMaster` via the **Data Master** tab — the Production form auto-renders it without code changes.
+
+## JSONB Data Structures
+
+- **`cageData`** / **`cageSummary`** in `Production` table: keys are cage names (from CageMaster). Structure per cage:
+  ```json
+  {
+    "B1": {
+      "rows": [{ "peti": false, "tray": 0, "butir": 0 }, ...],
+      "extra": { "extraTray": 0, "extraButir": 0, "extraKg": 0 }
+    }
+  }
+  ```
+- **Stats calc** (global): `totalKg` = `rows.peti × 15` + `extra.extraKg`; `totalTray` = `rows.tray` + `extra.extraTray`; `totalButir` = `rows.butir` + `extra.extraButir`
+
+## CageStock — Inventory Tracking
+
+`CageStock` has `@@unique([date, kandang])`. Tracks daily: `openingKg`, `productionKg`, `soldKg`, `closingKg`. The `syncCageStock()` helper in `src/lib/data.ts` updates it on production/sales saves.
 
 ## User Roles
 
-The app has two access levels:
-
-| Role | Access Level |
-|------|-------------|
+| Role | Access |
+|------|--------|
 | ADMIN | Full CRUD on all entry pages |
-| WHITELISTED | Read-only access to entire site |
+| WHITELISTED | Read-only |
 
-### Managing Users
+- Users in `ALLOWED_EMAILS` env var default to ADMIN on first sign-in.
+- Role enforcement: both API (403 on write) and frontend (UI hidden/disabled).
+- `npm run set-role` requires the user to have signed in first (creates the User record).
 
-```bash
-# Set user to whitelisted (read-only)
-npm run set-role user@example.com whitelisted
+## Docker Startup Idempotency
 
-# Set user to admin (full access)
-npm run set-role user@example.com admin
-```
+`docker-compose.yml` app service checks if `postgres_data/` folder exists before running migrations. If it exists, it skips `prisma db push` and `prisma db seed` on restart.
 
-- Users in `ALLOWED_EMAILS` default to ADMIN role
-- Users must sign in first to be created in the database before their role can be changed
-- Role check is enforced at both API level (403 for non-ADMIN write operations) and frontend level (UI elements hidden/disabled)
+## Testing
 
-## Important Notes
+`tests/api-data-flow.js` — plain Node.js script (not a test runner). Requires a running dev server. Tests production POST/GET, cashflow POST/GET, and dashboard load.
 
-- **DATABASE_HOST**: Local uses `localhost`, Docker uses `db`. `docker-compose.yml` hardcodes `DATABASE_HOST: db`.
-- **Prisma client**: After schema changes, must run `npx prisma generate` before building.
-- **Seed script**: Uses `tsx` not `ts-node`. Run after `prisma db push`.
-- **Dark mode**: Disabled in `globals.css` (light mode only).
-- **Production Prisma**: Uses `@prisma/extension-accelerate` (local does not).
-- **Dynamic Cages**: Production table uses JSONB (`cageData`, `cageSummary`) - cage names come from CageMaster.
+## Tech Stack
 
-## Adding New Cages
-
-1. Add new cage to `CageMaster` table via the **Data Master** tab in the app
-2. The Production form automatically renders the new cage card (no code changes needed)
-
-## Component Structure
-
-```
-src/
-├── app/(dashboard)/entry/page.tsx    (wrapper + navigation)
-├── components/
-│   ├── InputField.tsx
-│   ├── production/
-│   │   ├── types.ts
-│   │   └── ProductionForm.tsx
-│   ├── cashflow/
-│   │   └── CashFlowForm.tsx
-│   ├── sales/
-│   │   └── SalesSection.tsx
-│   └── master/
-│       └── MasterForm.tsx
-```
-
-## Development Progress
-
-### Done
-- Schema: added `hargaSentral Float` to CageMaster, new `CageStock` model (id, date, kandang, openingKg, productionKg, soldKg, closingKg, @@unique([date, kandang])), `sourceCages String[]` to Sales
-- Schema push: `npx prisma generate` + `npx prisma db push`
-- API: `/api/stock/route.ts` — GET (fetch CageStock by date) + POST (upsert with lazy openingKg from yesterday)
-- API: `/api/master/route.ts` — added `hargaSentral` to Zod schema, added PATCH endpoint for global hargaSentral update
-- API: `/api/sales/route.ts` — added `sourceCages` as array of `{kandang, jmlPeti, jmlKg}` objects
-- Data layer: `src/lib/data.ts` — added `syncCageStock()` helper, production save syncs CageStock (productionKg), sales save syncs CageStock (soldKg proportional per cage)
-- Data Master tab: dedicated global hargaSentral card with own Simpan button (updates all cages via PATCH)
-- Produksi tab dark card: butir/kg from gross cageData (globalStats), peti/sisa from net formula: `openingKg + cageData gross - soldKg` (netStats) — auto-updates on unsaved edits, label stays "Total Hari Ini"
-- Per-cage headers in Produksi: net stock badge (e.g., "12 peti available")
-- Penjualan tab: Stok dark card always shows "X peti | Y kg" per cage (no unit toggle)
-- Penjualan form redesigned: Pilih Kandang modal → stacked selected-cage cards → total summary → Customer + Harga Jual inputs → Add Sale Record
-- pilihKandang button moved below input fields, Sisa Kg input removed
-- Validation: checks available peti >= requested per cage before save, shows error if insufficient
-- Type fix: `parseFloat(String(extra?.extraKg))` for extraKg handling in ProductionForm
-- Modal: removed blur effect from Pilih Kandang modal (plain dark overlay, no backdrop-blur)
-
-### In Progress
-- None
-
-### Blocked
-- None
+- Next.js 16 (App Router) · Prisma 7 · PostgreSQL · Tailwind CSS v4
+- NextAuth v4 (Google OAuth) · Zod v4 · Recharts · Lucide React
+- `tsx` for dev scripts (not `ts-node`) · `nodemon` for dev hot reload
