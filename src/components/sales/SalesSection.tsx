@@ -229,6 +229,73 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
         <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
           <h3 className="text-xl font-black text-slate-900 mb-6">Entri Penjualan Baru</h3>
 
+          {/* 3. Input Fields */}
+          <div className="bg-slate-50 rounded-2xl p-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Customer */}
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase text-slate-500 font-black tracking-wide">
+                  Customer
+                </label>
+                <input
+                  type="text"
+                  placeholder="Nama customer"
+                  value={newSale.customerName}
+                  onChange={(e) => setNewSale({ ...newSale, customerName: e.target.value })}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                />
+              </div>
+
+              {/* Harga Jual */}
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase text-slate-500 font-black tracking-wide">
+                  Harga Jual
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={newSale.hargaJual.toLocaleString() || ""}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^\d]/g, "");
+                    const num = parseInt(raw) || 0;
+                    setNewSale({ ...newSale, hargaJual: num });
+                  }}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Add Sale Record Button */}
+          <button
+            onClick={handleSave}
+            disabled={selectedCages.length === 0 || !newSale.customerName || newSale.hargaJual === 0}
+            className="w-full bg-blue-600 text-white font-black mb-4 py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
+          >
+            <CheckCircle2 className="w-5 h-5" />
+            Add Sale Record
+          </button>
+
+          {/* 1. "Pilih Kandang" Button - show availability status */}
+          {!hasAnyStock ? (
+            <div className="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl p-4 text-center mb-4">
+              <span className="inline-flex items-center gap-2 text-slate-400 font-bold">
+                <span className="text-2xl">✕</span>
+                <span>Tidak ada stok tersedia</span>
+              </span>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowPickerModal(true)}
+              className="w-full bg-white border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors mb-4"
+            >
+              <span className="inline-flex items-center gap-2 text-slate-600 font-bold">
+                <span className="text-2xl">+</span>
+                <span>Pilih Kandang</span>
+              </span>
+            </button>
+          )}
+
           {/* 2. Selected Cages Stacked Cards */}
           {selectedCages.length > 0 && (
             <div className="space-y-3 mb-4">
@@ -268,73 +335,6 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
               </span>
             </div>
           )}
-
-{/* 4. Input Fields - Single Row */}
-          <div className="bg-slate-50 rounded-2xl p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Customer */}
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase text-slate-500 font-black tracking-wide">
-                  Customer
-                </label>
-                <input
-                  type="text"
-                  placeholder="Nama customer"
-                  value={newSale.customerName}
-                  onChange={(e) => setNewSale({ ...newSale, customerName: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                />
-              </div>
-
-              {/* Harga Jual */}
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase text-slate-500 font-black tracking-wide">
-                  Harga Jual
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={newSale.hargaJual.toLocaleString() || ""}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/[^\d]/g, "");
-                    const num = parseInt(raw) || 0;
-                    setNewSale({ ...newSale, hargaJual: num });
-                  }}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 1. "Pilih Kandang" Button - show availability status */}
-          {!hasAnyStock ? (
-            <div className="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl p-4 text-center mb-4">
-              <span className="inline-flex items-center gap-2 text-slate-400 font-bold">
-                <span className="text-2xl">✕</span>
-                <span>Tidak ada stok tersedia</span>
-              </span>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowPickerModal(true)}
-              className="w-full bg-white border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors mb-4"
-            >
-              <span className="inline-flex items-center gap-2 text-slate-600 font-bold">
-                <span className="text-2xl">+</span>
-                <span>Pilih Kandang</span>
-              </span>
-            </button>
-          )}
-
-          {/* 5. Add Sale Record Button */}
-          <button
-            onClick={handleSave}
-            disabled={selectedCages.length === 0 || !newSale.customerName || newSale.hargaJual === 0}
-            className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
-          >
-            <CheckCircle2 className="w-5 h-5" />
-            Add Sale Record
-          </button>
         </div>
       )}
 
@@ -477,8 +477,8 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
                   )}
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-black text-slate-900 italic">{formatNumber(sale.hargaJual)}</p>
-                  <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">Total: {formatNumber(sale.subTotal)}</p>
+                  <p className="text-lg font-black text-slate-900 italic">{formatNumber(sale.subTotal)}</p>
+                  <p className="text-[8px] text-blue-500 font-black uppercase tracking-widest">Harga Jual: {formatNumber(sale.hargaJual)}</p>
                 </div>
               </div>
             ))}
