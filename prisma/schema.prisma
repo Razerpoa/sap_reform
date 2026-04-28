@@ -44,6 +44,8 @@ model Production {
   up            Float    @default(0)
   operasional  Float    @default(0)
   profitDaily  Float    @default(0)
+  productionKg Float    @default(0)  // cumulative production up to this date
+  soldKg       Float    @default(0)  // cumulative sold up to this date
   createdAt     DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -102,7 +104,7 @@ model Sales {
 }
 
 model OtherExpense {
-  id          String   @id @default(cuid())
+  id          String   @id @default("cuid()")
   date        DateTime @db.Date
   amount     Float
   description String

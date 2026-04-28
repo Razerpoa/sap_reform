@@ -8,10 +8,10 @@ type StockData = {
   id?: number;
   date?: string;
   kandang: string;
-  openingKg?: number;
   productionKg?: number;
   soldKg?: number;
-  closingKg?: number;
+  stockKg?: number;
+  stockPeti?: number;
 };
 
 type CageData = {
@@ -50,16 +50,16 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
   const [pickerPeti, setPickerPeti] = useState(0);
   const [pickerKg, setPickerKg] = useState(0);
 
-  // Calculate stock for each cage (original)
+  // Calculate stock for each cage (cumulative - all time production - all time sold)
   const cageStocks = useMemo(() => {
     return cages.map((cage) => {
       const stock = stockData.find((s) => s.kandang === cage.kandang);
-      const totalKg = stock?.closingKg || 0;
-      const peti = Math.floor(totalKg / 15);
-      const sisaKg = Math.round((totalKg % 15) * 100) / 100; // Round to 2 decimals
+      const stockKg = stock?.stockKg || 0;
+      const peti = Math.floor(stockKg / 15);
+      const sisaKg = Math.round((stockKg % 15) * 100) / 100; // Round to 2 decimals
       return {
         kandang: cage.kandang,
-        totalKg,
+        stockKg,
         peti,
         sisaKg,
       };

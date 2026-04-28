@@ -70,56 +70,31 @@ export function ProductionForm({ data, setData, isEditable, date, stockData = []
     return cageData;
   };
 
-  // Calculate net stock stats: openingKg + gross cageData - soldKg
-  // This recalculates on every cageData change (unsaved edits included)
+  // Calculate net stock stats: just cumulative from database (no adding current unsaved entry)
+  // This matches SalesSection logic - only show what's saved in DB
   const netStats = useMemo(() => {
     let totalKg = 0;
+    let totalPeti = 0;
     cages.forEach((cage) => {
-      const cageInfo = getCageData(cage.kandang);
       const stock = stockData.find((s: any) => s.kandang === cage.kandang);
-
-      // openingKg from CageStock (carry-over from yesterday)
-      const openingKg = stock?.openingKg || 0;
-      // soldKg from CageStock (sales deductions)
-      const soldKg = stock?.soldKg || 0;
-
-      // Gross peti kg from cageData (current draft — saved or unsaved)
-      let grossKg = 0;
-      const extra = (cageInfo as any).extra;
-      cageInfo.rows?.forEach((row: any) => {
-        if (row.peti) grossKg += 15;
-      });
-      grossKg += parseFloat(String(extra?.extraKg)) || 0;
-
-      // True net available: opening + gross - sold
-      totalKg += openingKg + grossKg - soldKg;
+      // Just use cumulative stock from DB
+      totalKg += stock?.stockKg || 0;
+      totalPeti += stock?.stockPeti || 0;
     });
     return {
       totalKg,
-      totalPeti: Math.floor(totalKg / 15),
+      totalPeti,
       totalSisaKg: totalKg % 15,
     };
-  }, [cages, stockData, data]);
+  }, [cages, stockData]);
 
-  // Helper to get net stock for a specific cage (also reflects unsaved edits)
+  // Helper to get net stock for a specific cage (only from DB)
   const getCageNetStock = (kandang: string) => {
-    const cageInfo = getCageData(kandang);
     const stock = stockData.find((s: any) => s.kandang === kandang);
-
-    const openingKg = stock?.openingKg || 0;
-    const soldKg = stock?.soldKg || 0;
-
-    let grossKg = 0;
-    const extra = (cageInfo as any).extra;
-    cageInfo.rows?.forEach((row: any) => {
-      if (row.peti) grossKg += 15;
-    });
-    grossKg += parseFloat(String(extra?.extraKg)) || 0;
-
-    const totalKg = openingKg + grossKg - soldKg;
+    const totalKg = stock?.stockKg || 0;
     return {
-      totalKg,
-      peti: Math.floor(totalKg / 15),
+      kg: totalKg,
+      peti: stock?.stockPeti || 0,
       sisaKg: totalKg % 15,
     };
   };

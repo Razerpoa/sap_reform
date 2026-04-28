@@ -218,105 +218,150 @@ export async function saveProductionData(data: ProductionSaveInput) {
     },
   });
 
-  // Sync CageStock for each cage in cageData
-  if (data.cageData) {
-    const cages = Object.keys(data.cageData);
-    const dateStr = data.date.toISOString().split("T")[0];
-
-    for (const cage of cages) {
-      const cageInfo = data.cageData[cage];
-      if (!cageInfo) continue;
-
-      // Calculate productionKg for this cage
-      // Same formula as in types.ts calculateGlobalStats
-      let productionKg = 0;
-
-      // Rows: peti checkbox adds 15kg silently
-      cageInfo.rows?.forEach((row: any) => {
-        if (row.peti) productionKg += 15;
-      });
-
-      // Extra section: manual kg entry + butir/tray converted to butir
-      // The structure from frontend uses 'extra', but our type uses 'footer'
-      const extraData = (cageInfo as any).extra || cageInfo.footer || {};
-      productionKg += parseFloat(extraData?.extraKg) || 0;
-
-      // Call stock API to sync
-      await syncCageStock(dateStr, cage, productionKg, 0);
-    }
-  }
+  // Recalculate cumulative stock after saving production
+  await recalculateStock();
 
   revalidatePath("/");
   return entry;
 }
 
 /**
- * Sync CageStock for a cage on a given date
- * Called by production and sales saves
+ * Recalculate cumulative productionKg and soldKg for ALL dates
+ * This runs after every production or sales save to ensure stock is always accurate
  */
-async function syncCageStock(dateStr: string, kandang: string, productionKg: number, soldKg: number) {
-  const dateObj = new Date(dateStr);
-
-  // Find existing row for this date + cage
-  const existingRow = await prisma.cageStock.findUnique({
-    where: {
-      date_kandang: {
-        date: dateObj,
-        kandang,
-      },
-    },
+async function recalculateStock() {
+  // Get all production records sorted by date
+  const allProduction = await prisma.production.findMany({
+    orderBy: { date: "asc" },
   });
 
-  let openingKg = 0;
+  // Get all sales records
+  const allSales = await prisma.sales.findMany({});
 
-  if (!existingRow) {
-    // Lazy creation: look up yesterday's closingKg for this cage
-    const yesterday = new Date(dateObj);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const yesterdayRow = await prisma.cageStock.findUnique({
-      where: {
-        date_kandang: {
-          date: yesterday,
-          kandang,
-        },
-      },
-    });
-
-    // Use yesterday's closingKg as today's openingKg
-    openingKg = yesterdayRow?.closingKg || 0;
-  } else {
-    // Use existing openingKg from the row
-    openingKg = existingRow.openingKg;
+  // Calculate cumulative soldKg per date
+  const salesByDate = new Map<string, number>();
+  for (const sale of allSales) {
+    const dateKey = sale.date.toISOString().split("T")[0];
+    const current = salesByDate.get(dateKey) || 0;
+    salesByDate.set(dateKey, current + (sale.totalKg || 0));
   }
 
-  // Calculate new closingKg
-  const newProductionKg = existingRow ? existingRow.productionKg + productionKg : productionKg;
-  const newSoldKg = existingRow ? existingRow.soldKg + soldKg : soldKg;
-  const closingKg = openingKg + newProductionKg - newSoldKg;
+  // Calculate cumulative productionKg per date (from cageData)
+  const productionByDate = new Map<string, number>();
+  for (const prod of allProduction) {
+    const dateKey = prod.date.toISOString().split("T")[0];
+    let totalKg = 0;
 
-  // Upsert the row
-  await prisma.cageStock.upsert({
-    where: {
-      date_kandang: {
-        date: dateObj,
-        kandang,
+    const cageData = prod.cageData as Record<string, any>;
+    for (const cageKey of Object.keys(cageData || {})) {
+      const cageInfo = cageData[cageKey];
+      if (!cageInfo) continue;
+
+      // Rows: peti checkbox adds 15kg
+      cageInfo.rows?.forEach((row: any) => {
+        if (row.peti) totalKg += 15;
+      });
+
+      // Extra section
+      const extraData = cageInfo.extra || {};
+      totalKg += parseFloat(extraData?.extraKg) || 0;
+    }
+
+    const current = productionByDate.get(dateKey) || 0;
+    productionByDate.set(dateKey, current + totalKg);
+  }
+
+  // Calculate cumulative totals and update each production row
+  let cumulativeProduction = 0;
+  let cumulativeSold = 0;
+
+  for (const prod of allProduction) {
+    const dateKey = prod.date.toISOString().split("T")[0];
+    const prodKg = productionByDate.get(dateKey) || 0;
+    const soldKg = salesByDate.get(dateKey) || 0;
+
+    // Accumulate: add today to previous cumulative
+    cumulativeProduction += prodKg;
+    cumulativeSold += soldKg;
+
+    await prisma.production.update({
+      where: { date: prod.date },
+      data: {
+        productionKg: cumulativeProduction,
+        soldKg: cumulativeSold,
       },
-    },
-    update: {
-      productionKg: newProductionKg,
-      soldKg: newSoldKg,
-      closingKg,
-    },
-    create: {
-      date: dateObj,
-      kandang,
-      openingKg,
-      productionKg: newProductionKg,
-      soldKg: newSoldKg,
-      closingKg,
-    },
+    });
+  }
+}
+
+/**
+ * Get stock data for all cages
+ * Returns cumulative production, sold, and stock per cage
+ */
+export async function getCageStockData(): Promise<Record<string, { productionKg: number; soldKg: number; stockKg: number; stockPeti: number }>> {
+  const result: Record<string, { productionKg: number; soldKg: number; stockKg: number; stockPeti: number }> = {};
+
+  // Get all production records
+  const allProduction = await prisma.production.findMany({
+    orderBy: { date: "asc" },
   });
+
+  // Get all sales records
+  const allSales = await prisma.sales.findMany({});
+
+  // Calculate per-cage production from cageData
+  const cageProduction = new Map<string, number>();
+  for (const prod of allProduction) {
+    const cageData = prod.cageData as Record<string, any>;
+    for (const cageKey of Object.keys(cageData || {})) {
+      const cageInfo = cageData[cageKey];
+      if (!cageInfo) continue;
+
+      let totalKg = 0;
+
+      // Rows: peti checkbox adds 15kg
+      cageInfo.rows?.forEach((row: any) => {
+        if (row.peti) totalKg += 15;
+      });
+
+      // Extra section
+      const extraData = cageInfo.extra || {};
+      totalKg += parseFloat(extraData?.extraKg) || 0;
+
+      const current = cageProduction.get(cageKey) || 0;
+      cageProduction.set(cageKey, current + totalKg);
+    }
+  }
+
+  // Calculate per-cage sold from sourceCages
+  const cageSold = new Map<string, number>();
+  for (const sale of allSales) {
+    const sourceCages = sale.sourceCages as { kandang: string; jmlPeti: number; jmlKg: number }[] || [];
+    for (const cage of sourceCages) {
+      if (!cage.kandang) continue;
+      const soldKg = (cage.jmlPeti || 0) * 15 + (cage.jmlKg || 0);
+      const current = cageSold.get(cage.kandang) || 0;
+      cageSold.set(cage.kandang, current + soldKg);
+    }
+  }
+
+  // Merge all cages from both maps
+  const allCages = new Set([...cageProduction.keys(), ...cageSold.keys()]);
+
+  for (const cage of allCages) {
+    const productionKg = cageProduction.get(cage) || 0;
+    const soldKg = cageSold.get(cage) || 0;
+    const stockKg = productionKg - soldKg;
+
+    result[cage] = {
+      productionKg,
+      soldKg,
+      stockKg,
+      stockPeti: Math.floor(stockKg / 15),
+    };
+  }
+
+  return result;
 }
 
 export type CashFlowSaveInput = {
@@ -427,24 +472,8 @@ export async function saveSalesData(data: SalesSaveInput) {
         data: { ...saveData, subTotal, sourceCages, ...dailyTotals } as any,
       });
 
-  // Sync CageStock: deduct soldKg from source cages
-  if (sourceCages && sourceCages.length > 0 && data.jmlPeti) {
-    const dateStr = data.date.toISOString().split("T")[0];
-
-    for (const cage of sourceCages) {
-      // Handle both old format (string) and new format (object)
-      const kandang = typeof cage === 'string' ? cage : cage.kandang;
-      const jmlPeti = typeof cage === 'string' ? 0 : (cage.jmlPeti || 0);
-      const jmlKg = typeof cage === 'string' ? 0 : (cage.jmlKg || 0);
-      
-      // Calculate sold kg for this cage: jmlPeti * 15 + jmlKg
-      const soldKgForCage = jmlPeti * 15 + jmlKg;
-      
-      if (soldKgForCage > 0) {
-        await syncCageStock(dateStr, kandang, 0, soldKgForCage);
-      }
-    }
-  }
+  // Recalculate cumulative stock after saving sales
+  await recalculateStock();
 
   // Sync to CashFlow: Update totalPenjualan for this date
   const totalRevenueForDay = dailyTotals.penjualanHariIni || 0;
