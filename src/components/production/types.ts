@@ -26,6 +26,7 @@ export type GlobalStats = {
   totalPeti: number;
   totalTray: number;
   totalButir: number;
+  totalSisaKg: number;
 };
 
 export const initializeCageData = (cageName: string): CageData => ({
@@ -69,6 +70,7 @@ export const calculateGlobalStats = (
 
   // Peti = totalKg / 15 (drop decimals, no rounding)
   totalPeti = Math.floor(totalKg / 15);
+  const totalSisaKg = totalKg % 15;
 
-  return { totalKg, totalPeti, totalTray, totalButir };
+  return { totalKg, totalPeti, totalTray, totalButir, totalSisaKg };
 };

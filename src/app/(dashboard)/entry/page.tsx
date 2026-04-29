@@ -252,6 +252,8 @@ export default function EntryPage() {
           const stockData = await stockRes.json();
           setProductionData(prodData || {});
           setStockData(Object.entries(stockData || {}).map(([kandang, v]: any) => ({ kandang: kandang, ...v })));
+          // Update originalData so "jumlah setelah di save" hides
+          setOriginalData(prev => ({ ...prev, production: prodData || {} }));
         }
         if (activeTab === "sales") {
           // Clear sales form and re-fetch sales list + stock data
@@ -414,6 +416,7 @@ export default function EntryPage() {
           {activeTab === "production" && (
             <ProductionForm 
               data={productionData} 
+              originalData={originalData.production}
               setData={setProductionData} 
               isEditable={isEditable}
               date={selectedDate}

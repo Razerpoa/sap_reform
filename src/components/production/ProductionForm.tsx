@@ -27,13 +27,14 @@ function formatNumber(value: number | undefined | null | string): string {
 
 type ProductionFormProps = {
   data: any;
+  originalData?: any;
   setData: (data: any) => void;
   isEditable: boolean;
   date: string;
   stockData?: any[];
 };
 
-export function ProductionForm({ data, setData, isEditable, date, stockData = [] }: ProductionFormProps) {
+export function ProductionForm({ data, originalData, setData, isEditable, date, stockData = [] }: ProductionFormProps) {
   const [cages, setCages] = useState<{ kandang: string }[]>([]);
   const [loadingCages, setLoadingCages] = useState(true);
   const today = getWIBDateString();
@@ -72,7 +73,7 @@ export function ProductionForm({ data, setData, isEditable, date, stockData = []
 
   // Calculate net stock stats: just cumulative from database (no adding current unsaved entry)
   // This matches SalesSection logic - only show what's saved in DB
-  const netStats = useMemo(() => {
+  const netStats: GlobalStats = useMemo(() => {
     let totalKg = 0;
     let totalPeti = 0;
     cages.forEach((cage) => {
@@ -84,6 +85,8 @@ export function ProductionForm({ data, setData, isEditable, date, stockData = []
     return {
       totalKg,
       totalPeti,
+      totalTray: 0,
+      totalButir: 0,
       totalSisaKg: totalKg % 15,
     };
   }, [cages, stockData]);
@@ -100,6 +103,12 @@ export function ProductionForm({ data, setData, isEditable, date, stockData = []
   };
 
   const globalStats: GlobalStats = calculateGlobalStats(cages, getCageData);
+
+  // Detect if user has unsaved changes (compares current data with original)
+  const hasUnsavedChanges = useMemo(() => {
+    if (!originalData) return false;
+    return JSON.stringify(data) !== JSON.stringify(originalData);
+  }, [data, originalData]);
 
   const updatePeti = (key: string, rowIndex: number, checked: boolean) => {
     if (!isEditable) return;
@@ -336,16 +345,18 @@ export function ProductionForm({ data, setData, isEditable, date, stockData = []
 
   return (
     <div className="space-y-6">
-      {/* Global Stat Card - Net Available from CageStock */}
+      {/* Global Stat Card - Stock from DB + Conditional Entry */}
       <div className="bg-slate-900 md:p-8 p-5 rounded-2xl text-white">
         <h3 className="md:text-xl text-base font-black mb-5 md:mb-6 text-slate-400 uppercase tracking-wider">{headerTitle}</h3>
+        
+        {/* Row 1: STOCK - Always shown */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
-            <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalButir)}</div>
+            <div className="md:text-4xl text-2xl font-black">{formatNumber(netStats.totalButir)}</div>
             <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Butir</div>
           </div>
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
-            <div className="md:text-4xl text-2xl font-black">{formatNumber(globalStats.totalKg)}</div>
+            <div className="md:text-4xl text-2xl font-black">{formatNumber(netStats.totalKg)}</div>
             <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Kg</div>
           </div>
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
@@ -357,6 +368,27 @@ export function ProductionForm({ data, setData, isEditable, date, stockData = []
             <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Sisa Kg</div>
           </div>
         </div>
+
+        {/* Row 2: Jumlah setelah di save - Only shows when user edits */}
+        {hasUnsavedChanges && (
+          <div className="mt-4 pt-4 border-t border-slate-700">
+            <div className="grid grid-cols-2 gap-5">
+              <div className="sm:col-span-2 md:text-sm text-xs font-medium text-blue-400 uppercase tracking-wider mb-2">
+                Jumlah setelah di save
+              </div>
+              <div className="hidden sm:block" />
+              <div className="hidden sm:block" />
+              <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
+                <div className="md:text-2xl text-xl font-black">{formatNumber(globalStats.totalPeti)}</div>
+                <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Peti</div>
+              </div>
+              <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
+                <div className="md:text-2xl text-xl font-black">{formatNumber(globalStats.totalSisaKg)}</div>
+                <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Sisa Kg</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Cage Cards */}
