@@ -421,6 +421,7 @@ export default function EntryPage() {
               isEditable={isEditable}
               date={selectedDate}
               stockData={stockData}
+              salesData={salesData}
             />
           )}
           {activeTab === "cashflow" && (

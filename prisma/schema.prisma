@@ -66,6 +66,7 @@ model CashFlow {
   totalPenjualan   Float    @default(0)
   biayaPakan       Float    @default(0)
   biayaOperasional Float    @default(0)
+  up               Float    @default(0)
   salaries         Json     @default("{}")
   devidenA         Float    @default(0)
   devidenB         Float    @default(0)

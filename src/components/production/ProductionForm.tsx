@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { getWIBDateString } from "@/lib/date-utils";
 import { InputField } from "@/components/InputField";
 import {
@@ -32,9 +33,10 @@ type ProductionFormProps = {
   isEditable: boolean;
   date: string;
   stockData?: any[];
+  salesData?: any[];
 };
 
-export function ProductionForm({ data, originalData, setData, isEditable, date, stockData = [] }: ProductionFormProps) {
+export function ProductionForm({ data, originalData, setData, isEditable, date, stockData = [], salesData = [] }: ProductionFormProps) {
   const [cages, setCages] = useState<{ kandang: string }[]>([]);
   const [loadingCages, setLoadingCages] = useState(true);
   const today = getWIBDateString();
@@ -103,6 +105,11 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
   };
 
   const globalStats: GlobalStats = calculateGlobalStats(cages, getCageData);
+
+  // Calculate today's sold peti from sales data
+  const todaySoldPeti = useMemo(() => {
+    return salesData.reduce((sum: number, sale: any) => sum + (sale.jmlPeti || 0), 0);
+  }, [salesData]);
 
   // Detect if user has unsaved changes (compares current data with original)
   const hasUnsavedChanges = useMemo(() => {
@@ -360,35 +367,18 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
             <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Kg</div>
           </div>
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
-            <div className="md:text-4xl text-2xl font-black">{formatNumber(netStats.totalPeti)}</div>
+            <div className={cn("md:text-4xl text-2xl font-black", hasUnsavedChanges && "text-blue-400")}>
+              {formatNumber(hasUnsavedChanges ? globalStats.totalPeti - todaySoldPeti : netStats.totalPeti)}
+            </div>
             <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Peti</div>
           </div>
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
-            <div className="md:text-4xl text-2xl font-black">{formatNumber(netStats.totalSisaKg)}</div>
+            <div className={cn("md:text-4xl text-2xl font-black", hasUnsavedChanges && "text-blue-400")}>
+              {formatNumber(hasUnsavedChanges ? (globalStats.totalKg - todaySoldPeti * 15) % 15 : netStats.totalSisaKg)}
+            </div>
             <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Sisa Kg</div>
           </div>
         </div>
-
-        {/* Row 2: Jumlah setelah di save - Only shows when user edits */}
-        {hasUnsavedChanges && (
-          <div className="mt-4 pt-4 border-t border-slate-700">
-            <div className="grid grid-cols-2 gap-5">
-              <div className="sm:col-span-2 md:text-sm text-xs font-medium text-blue-400 uppercase tracking-wider mb-2">
-                Jumlah setelah di save
-              </div>
-              <div className="hidden sm:block" />
-              <div className="hidden sm:block" />
-              <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
-                <div className="md:text-2xl text-xl font-black">{formatNumber(globalStats.totalPeti)}</div>
-                <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Peti</div>
-              </div>
-              <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
-                <div className="md:text-2xl text-xl font-black">{formatNumber(globalStats.totalSisaKg)}</div>
-                <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Sisa Kg</div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Cage Cards */}
