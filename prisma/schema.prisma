@@ -105,7 +105,7 @@ model Sales {
 }
 
 model OtherExpense {
-  id          String   @id @default("cuid()")
+  id          String   @id @default(cuid())
   date        DateTime @db.Date
   amount     Float
   description String

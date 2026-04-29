@@ -50,6 +50,7 @@ export async function POST(request: Request) {
     const entry = await saveOtherExpenseData(validatedData);
     return NextResponse.json(entry);
   } catch (error) {
+    console.log("[EXPENSE] POST Error:", error);
     if (error instanceof z.ZodError) {
       const messages = error.issues.map((e) => `${e.path.join(".")}: ${e.message}`);
       return NextResponse.json({ error: messages.join(", ") }, { status: 400 });
