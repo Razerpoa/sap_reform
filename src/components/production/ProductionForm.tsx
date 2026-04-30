@@ -73,20 +73,18 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
     return cageData;
   };
 
-  // Calculate net stock stats: just cumulative from database (no adding current unsaved entry)
-  // This matches SalesSection logic - only show what's saved in DB
+  // Calculate cumulative production stats: just cumulative from database (no adding current unsaved entry)
+  // This calculates the current all-time cumulative production from stockData
   const netStats: GlobalStats = useMemo(() => {
     let totalKg = 0;
-    let totalPeti = 0;
     cages.forEach((cage) => {
       const stock = stockData.find((s: any) => s.kandang === cage.kandang);
-      // Just use cumulative stock from DB
-      totalKg += stock?.stockKg || 0;
-      totalPeti += stock?.stockPeti || 0;
+      // Use cumulative PRODUCTION instead of stock
+      totalKg += stock?.productionKg || 0;
     });
     return {
       totalKg,
-      totalPeti,
+      totalPeti: Math.floor(totalKg / 15),
       totalTray: 0,
       totalButir: 0,
       totalSisaKg: totalKg % 15,
@@ -106,16 +104,34 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
 
   const globalStats: GlobalStats = calculateGlobalStats(cages, getCageData);
 
-  // Calculate today's sold peti from sales data
-  const todaySoldPeti = useMemo(() => {
-    return salesData.reduce((sum: number, sale: any) => sum + (sale.jmlPeti || 0), 0);
-  }, [salesData]);
-
   // Detect if user has unsaved changes (compares current data with original)
   const hasUnsavedChanges = useMemo(() => {
     if (!originalData) return false;
     return JSON.stringify(data) !== JSON.stringify(originalData);
   }, [data, originalData]);
+
+  // Calculate stats for the baseline (original) data
+  const originalGlobalStats: GlobalStats = useMemo(() => {
+    return calculateGlobalStats(cages, (key) => originalData?.cageData?.[key] || initializeCageData(key));
+  }, [cages, originalData]);
+
+  // DB cumulative production for this date (stored in production record)
+  const dbProductionKg = data.productionKg || 0;
+
+  // Calculate display stats (Live YTD Production)
+  const displayStats = useMemo(() => {
+    const baseKg = dbProductionKg || netStats.totalKg;
+    const currentKg = hasUnsavedChanges
+      ? baseKg - (originalGlobalStats.totalKg || 0) + globalStats.totalKg
+      : baseKg;
+    
+    return {
+      totalKg: currentKg,
+      totalPeti: Math.floor(currentKg / 15),
+      totalSisaKg: currentKg % 15,
+      totalButir: hasUnsavedChanges ? globalStats.totalButir : (data.totalButir || 0) // Butir is usually just for today
+    };
+  }, [dbProductionKg, netStats.totalKg, hasUnsavedChanges, originalGlobalStats.totalKg, globalStats.totalKg, globalStats.totalButir, data.totalButir]);
 
   const updatePeti = (key: string, rowIndex: number, checked: boolean) => {
     if (!isEditable) return;
@@ -359,24 +375,28 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
         {/* Row 1: STOCK - Always shown */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
-            <div className="md:text-4xl text-2xl font-black">{formatNumber(netStats.totalButir)}</div>
-            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Butir</div>
-          </div>
-          <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
-            <div className="md:text-4xl text-2xl font-black">{formatNumber(netStats.totalKg)}</div>
-            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Kg</div>
+            <div className={cn("md:text-4xl text-2xl font-black", hasUnsavedChanges && "text-blue-400")}>
+              {formatNumber(hasUnsavedChanges ? globalStats.totalButir : (data.totalButir || 0))}
+            </div>
+            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Butir (Hari Ini)</div>
           </div>
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
             <div className={cn("md:text-4xl text-2xl font-black", hasUnsavedChanges && "text-blue-400")}>
-              {formatNumber(hasUnsavedChanges ? globalStats.totalPeti - todaySoldPeti : netStats.totalPeti)}
+              {formatNumber(displayStats.totalKg)}
             </div>
-            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Peti</div>
+            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Total Produksi (Kg)</div>
           </div>
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
             <div className={cn("md:text-4xl text-2xl font-black", hasUnsavedChanges && "text-blue-400")}>
-              {formatNumber(hasUnsavedChanges ? (globalStats.totalKg - todaySoldPeti * 15) % 15 : netStats.totalSisaKg)}
+              {formatNumber(displayStats.totalPeti)}
             </div>
-            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Sisa Kg</div>
+            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Total Produksi (Peti)</div>
+          </div>
+          <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
+            <div className={cn("md:text-4xl text-2xl font-black", hasUnsavedChanges && "text-blue-400")}>
+              {formatNumber(displayStats.totalSisaKg)}
+            </div>
+            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Sisa Kg (YTD)</div>
           </div>
         </div>
       </div>

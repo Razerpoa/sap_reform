@@ -393,7 +393,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
                   >
                     <span className="font-black">{cage.kandang}</span>
                     <span className={`text-xs block ${isDisabled ? 'text-slate-400' : 'text-blue-600'}`}>
-                      {remaining?.remainingPeti || 0} peti
+                      {remaining?.remainingPeti || 0} peti | {remaining?.sisaKg || 0} kg
                     </span>
                   </button>
                 );
@@ -469,7 +469,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
               <div key={sale.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
                 <div>
                   <h4 className="font-black text-slate-900 uppercase tracking-tight">{sale.customerName}</h4>
-                  <p className="text-xs text-slate-400 font-bold">{formatNumber(sale.jmlPeti)} Peti • {formatNumber(sale.totalKg)} KG</p>
+                  <p className="text-xs text-slate-400 font-bold">{formatNumber(sale.jmlPeti)} Peti • {formatNumber(sale.totalKg % 15)} KG</p>
                   {sale.sourceCages && sale.sourceCages.length > 0 && (
                     <p className="text-[10px] text-blue-500 font-bold mt-1">
                       Dari: {sale.sourceCages.map((c: any) => `${c.kandang} (${c.jmlPeti} peti${c.jmlKg > 0 ? ` + ${Number(c.jmlKg).toFixed(2)}kg` : ''})`).join(', ')}
