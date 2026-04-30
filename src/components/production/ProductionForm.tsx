@@ -227,7 +227,7 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
             <div>
               <h3 className="md:text-2xl text-xl font-black text-slate-900">Kandang {key}</h3>
               {netStock.peti > 0 && (
-                <span className="text-xs font-bold text-blue-600">{netStock.peti} peti available</span>
+                <span className="text-xs font-bold text-blue-600">{netStock.peti} peti</span>
               )}
             </div>
           </div>
