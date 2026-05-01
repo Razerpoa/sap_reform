@@ -1,9 +1,22 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { LogIn } from "lucide-react";
+import { LogIn, AlertCircle } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function LoginPage() {
+function LoginContent() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get("error");
+
+  const errorMessages: Record<string, string> = {
+    AccessDenied: "Email Anda tidak terdaftar. Silakan hubungi admin untuk mendapatkan akses.",
+    Configuration: "Terdapat masalah konfigurasi sistem. Silakan hubungi developer.",
+    Verification: "Sesi verifikasi telah kedaluwarsa. Silakan coba masuk kembali.",
+    Default: "Terjadi kesalahan saat masuk. Silakan coba lagi nanti.",
+  };
+
+  const errorMessage = error ? (errorMessages[error] || errorMessages.Default) : null;
   return (
     <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8 bg-slate-50">
       <div className="sm:mx-auto sm:w-full sm:max-w-sm">
@@ -25,6 +38,15 @@ export default function LoginPage() {
           <p className="text-center text-sm font-medium text-slate-700 mb-8">
             Akses terbatas untuk pengguna yang diizinkan
           </p>
+
+          {errorMessage && (
+            <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-100 flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div className="text-sm text-red-700 font-medium">
+                {errorMessage}
+              </div>
+            </div>
+          )}
           
           <button
             onClick={() => signIn("google", { callbackUrl: "/" })}
@@ -57,5 +79,17 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-full items-center justify-center bg-slate-50">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }
