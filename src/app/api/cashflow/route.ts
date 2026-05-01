@@ -12,14 +12,7 @@ const cashFlowSchema = z.object({
   biayaPakan: z.number().default(0),
   biayaOperasional: z.number().default(0),
   up: z.number().default(0),
-  // New dynamic salaries field (maps worker IDs to amounts)
   salaries: z.record(z.string(), z.number()).default({}),
-  // Legacy fields - kept for backward compatibility
-  // gajiBepuk: z.number().default(0),
-  // gajiBarman: z.number().default(0),
-  // gajiAgung: z.number().default(0),
-  // gajiEki: z.number().default(0),
-  // gajiAdi: z.number().default(0),
   devidenA: z.number().default(0),
   devidenB: z.number().default(0),
   saldoKas: z.number().default(0),
@@ -62,20 +55,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = cashFlowSchema.parse(body);
     
-    // Handle backward compatibility: if old salary fields are provided, merge them into salaries
-    // Managing old data is no longer needed
-    // const salaries = { ...validatedData.salaries };
-    // if (validatedData.gajiBepuk > 0 || validatedData.gajiBarman > 0 || validatedData.gajiAgung > 0 || 
-    //     validatedData.gajiEki > 0 || validatedData.gajiAdi > 0) {
-      // const workers = await prisma.worker.findMany();
-      // const workerMap = Object.fromEntries(workers.map((w: any) => [w.name, w.id]));
-      
-      // if (validatedData.gajiBepuk > 0) salaries[workerMap["Bepuk"]] = validatedData.gajiBepuk;
-      // if (validatedData.gajiBarman > 0) salaries[workerMap["Barman"]] = validatedData.gajiBarman;
-      // if (validatedData.gajiAgung > 0) salaries[workerMap["Agung"]] = validatedData.gajiAgung;
-      // if (validatedData.gajiEki > 0) salaries[workerMap["Eki"]] = validatedData.gajiEki;
-      // if (validatedData.gajiAdi > 0) salaries[workerMap["Adi"]] = validatedData.gajiAdi;
-    // }
     
     // Use date from body directly for isTodayWIB check
     const dateStr = body.date || new Date().toISOString().split('T')[0];

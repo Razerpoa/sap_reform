@@ -10,26 +10,16 @@ async function testProductionDataFlow() {
   // 1. Save production data
   const productionData = {
     date: today,
-    b1JmlTelur: 100,
-    b1Kg: 50.5,
-    b1Pct: 95.2,
-    b1Fc: 1200,
-    b1pJmlTelur: 80,
-    b1pKg: 42.0,
-    b2JmlTelur: 90,
-    b2Kg: 45.0,
-    b2pJmlTelur: 75,
-    b2pKg: 38.5,
-    b3JmlTelur: 85,
-    b3Kg: 42.5,
-    b3pJmlTelur: 70,
-    b3pKg: 35.0,
-    totalJmlTelur: 500,
-    totalKg: 253.5,
-    hargaSentral: 25000,
-    up: 5000,
-    operasional: 10000,
-    profitDaily: 50000
+    cageData: {
+      "B1": {
+        rows: [
+          { peti: true, tray: 1, butir: 10 }, // 15kg + 40 butir
+          { peti: false, tray: 0, butir: 0 },
+          { peti: false, tray: 0, butir: 0 },
+        ],
+        extra: { extraTray: 0, extraButir: 0, extraKg: 5.5 } // 5.5kg
+      }
+    }
   };
 
   try {
@@ -50,22 +40,25 @@ async function testProductionDataFlow() {
     
     // 2. Retrieve the data we just saved
     const getRes = await fetch(`${API_BASE}/production?date=${today}`);
-    const entries = await getRes.json();
+    const entry = await getRes.json();
     
-    if (entries.length === 0) {
+    if (!entry || !entry.date) {
       console.log('❌ No production data found after save');
       return false;
     }
     
-    const entry = entries[0];
-    console.log('✅ Production retrieved:', entry.b1Kg, 'KG');
+    console.log('✅ Production retrieved');
     
     // 3. Verify data matches what we saved
-    const matches = entry.b1Kg === productionData.b1Kg && entry.totalKg === productionData.totalKg;
+    const savedCage = productionData.cageData["B1"];
+    const gotCage = entry.cageData["B1"];
+    const matches = gotCage && 
+                   gotCage.extra?.extraKg === savedCage.extra.extraKg &&
+                   gotCage.rows?.length === savedCage.rows.length;
     if (matches) {
       console.log('✅ Data integrity verified');
     } else {
-      console.log('❌ Data mismatch:', { saved: productionData.b1Kg, got: entry.b1Kg });
+      console.log('❌ Data mismatch:', { saved: productionData.cageData["B1"], got: entry.cageData["B1"] });
     }
     
     return matches;

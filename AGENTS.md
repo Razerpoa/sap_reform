@@ -60,7 +60,7 @@ The schema.prisma `datasource` has no `url` — it relies on env vars.
 
 Cage names (B1, B1+, etc.) come from the `CageMaster` table's `kandang` field. No cage names are hardcoded in code. To add a new cage: insert into `CageMaster` via the **Data Master** tab — the Production form auto-renders it without code changes.
 
-## JSONB Data Structures
+## Stock & Stats Calculation
 
 - **`cageData`** / **`cageSummary`** in `Production` table: keys are cage names (from CageMaster). Structure per cage:
   ```json
@@ -71,11 +71,10 @@ Cage names (B1, B1+, etc.) come from the `CageMaster` table's `kandang` field. N
     }
   }
   ```
-- **Stats calc** (global): `totalKg` = `rows.peti × 15` + `extra.extraKg`; `totalTray` = `rows.tray` + `extra.extraTray`; `totalButir` = `rows.butir` + `extra.extraButir`
-
-## CageStock — Inventory Tracking
-
-`CageStock` has `@@unique([date, kandang])`. Tracks daily: `openingKg`, `productionKg`, `soldKg`, `closingKg`. The `syncCageStock()` helper in `src/lib/data.ts` updates it on production/sales saves.
+- **Stats calc**:
+  - `totalKg` per cage = `rows.filter(r => r.peti).length × 15` + `extra.extraKg`
+  - `totalButir` per cage = `rows.sum(r => (r.tray × 30) + r.butir)` + `(extra.extraTray × 30) + extra.extraButir`
+- **Cumulative Stock**: Tracked in `Production` table via `productionKg` and `soldKg` fields. These are updated for all records on every production/sales save via the `recalculateStock()` helper in `src/lib/data.ts`.
 
 ## User Roles
 

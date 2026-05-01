@@ -372,12 +372,6 @@ export type CashFlowSaveInput = {
   up?: number;
   // New dynamic salaries field
   salaries?: Record<string, number>;
-  // Legacy fields - kept for backward compatibility
-  gajiBepuk?: number;
-  gajiBarman?: number;
-  gajiAgung?: number;
-  gajiEki?: number;
-  gajiAdi?: number;
   devidenA?: number;
   devidenB?: number;
   saldoKas?: number;

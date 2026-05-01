@@ -75,14 +75,6 @@ export function calculateTotalJmlTelurFromCageData(cageData: Record<string, any>
   }, 0);
 }
 
-export function calculateProductionTotals(data: {
-  cageData?: Record<string, any>;
-}) {
-  return {
-    totalKg: calculateTotalKgFromCageData(data.cageData || {}),
-    totalJmlTelur: calculateTotalJmlTelurFromCageData(data.cageData || {}),
-  };
-}
 
 export function calculateProductionStats(entries: any[]) {
   const totalKg = entries.reduce((sum, e) => {
@@ -167,31 +159,10 @@ export function calculateCashFlowProfit(data: {
   biayaPakan?: number;
   biayaOperasional?: number;
   salaries?: Record<string, number>;
-  // Legacy fields - kept for backward compatibility
-  // gajiBepuk?: number;
-  // gajiBarman?: number;
-  // gajiAgung?: number;
-  // gajiEki?: number;
-  // gajiAdi?: number;
   devidenA?: number;
   devidenB?: number;
 }) {
   const revenue = data.totalPenjualan || 0;
-  
-  // Calculate total salaries from new dynamic structure
-  const salariesTotal = data.salaries 
-    ? Object.values(data.salaries).reduce((sum, salary) => sum + (salary || 0), 0)
-    : 0;
-  
-  // Fall back to legacy fields if no new salaries provided
-  // const legacySalaries = 
-  //   (data.gajiBepuk || 0) + 
-  //   (data.gajiBarman || 0) + 
-  //   (data.gajiAgung || 0) + 
-  //   (data.gajiEki || 0) + 
-  //   (data.gajiAdi || 0);
-  
-  // const totalSalaries = salariesTotal;
   
   const expenses = calculateCashFlowExpenses({
     biayaPakan: data.biayaPakan,
