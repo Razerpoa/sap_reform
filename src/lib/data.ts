@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getWIBDateString } from "@/lib/date-utils";
 import { startOfDay } from "date-fns";
 import type { Prisma } from "@prisma/client";
-import { calculateCageMasterFields } from "@/lib/calculations";
+import { calculateCageMasterFields, calculateTotalKgFromCageData } from "@/lib/calculations";
 
 // Type definitions for the new JSON-based production structure
 export type CageRow = {
@@ -250,22 +250,7 @@ async function recalculateStock() {
   const productionByDate = new Map<string, number>();
   for (const prod of allProduction) {
     const dateKey = prod.date.toISOString().split("T")[0];
-    let totalKg = 0;
-
-    const cageData = prod.cageData as Record<string, any>;
-    for (const cageKey of Object.keys(cageData || {})) {
-      const cageInfo = cageData[cageKey];
-      if (!cageInfo) continue;
-
-      // Rows: peti checkbox adds 15kg
-      cageInfo.rows?.forEach((row: any) => {
-        if (row.peti) totalKg += 15;
-      });
-
-      // Extra section
-      const extraData = cageInfo.extra || {};
-      totalKg += parseFloat(extraData?.extraKg) || 0;
-    }
+    const totalKg = calculateTotalKgFromCageData(prod.cageData as Record<string, any>);
 
     const current = productionByDate.get(dateKey) || 0;
     productionByDate.set(dateKey, current + totalKg);
@@ -317,17 +302,7 @@ export async function getCageStockData(): Promise<Record<string, { productionKg:
       const cageInfo = cageData[cageKey];
       if (!cageInfo) continue;
 
-      let totalKg = 0;
-
-      // Rows: peti checkbox adds 15kg
-      cageInfo.rows?.forEach((row: any) => {
-        if (row.peti) totalKg += 15;
-      });
-
-      // Extra section
-      const extraData = cageInfo.extra || {};
-      totalKg += parseFloat(extraData?.extraKg) || 0;
-
+      const totalKg = calculateTotalKgFromCageData({ [cageKey]: cageInfo });
       const current = cageProduction.get(cageKey) || 0;
       cageProduction.set(cageKey, current + totalKg);
     }

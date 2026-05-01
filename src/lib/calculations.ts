@@ -54,31 +54,52 @@ export function calculateCageMasterFields(input: CageMasterInput) {
 /**
  * Calculate totalKg from the new JSON-based cageData structure
  */
+/**
+ * Calculate totalKg from cageData (including 15kg per peti)
+ */
 export function calculateTotalKgFromCageData(cageData: Record<string, any>): number {
   if (!cageData) return 0;
   
-  return Object.values(cageData).reduce((sum: number, cage: any) => {
-    if (!cage?.extra?.extraKg) return sum;
-    return sum + (cage.extra.extraKg || 0);
-  }, 0);
+  let totalKg = 0;
+  for (const cage of Object.values(cageData)) {
+    if (!cage) continue;
+    
+    // Rows: peti checkbox adds 15kg
+    cage.rows?.forEach((row: any) => {
+      if (row.peti) totalKg += 15;
+    });
+
+    // Extra section
+    totalKg += parseFloat(cage.extra?.extraKg) || 0;
+  }
+  return totalKg;
 }
 
 /**
- * Calculate totalJmlTelur (total eggs) from cageData
+ * Calculate totalButir from cageData
  */
-export function calculateTotalJmlTelurFromCageData(cageData: Record<string, any>): number {
+export function calculateTotalButirFromCageData(cageData: Record<string, any>): number {
   if (!cageData) return 0;
   
-  return Object.values(cageData).reduce((sum: number, cage: any) => {
-    if (!cage?.extra?.extraButir) return sum;
-    return sum + (cage.extra.extraButir || 0);
-  }, 0);
+  let totalButir = 0;
+  for (const cage of Object.values(cageData)) {
+    if (!cage) continue;
+    
+    // Rows: (tray * 30) + butir
+    cage.rows?.forEach((row: any) => {
+      totalButir += (row.tray || 0) * 30 + (row.butir || 0);
+    });
+
+    // Extra section
+    totalButir += (cage.extra?.extraTray || 0) * 30 + (cage.extra?.extraButir || 0);
+  }
+  return totalButir;
 }
 
 
 export function calculateProductionStats(entries: any[]) {
   const totalKg = entries.reduce((sum, e) => {
-    return sum + calculateTotalKgFromCageData(e.cageData);
+    return sum + calculateTotalKgFromCageData(e.cageData || {});
   }, 0);
   const avgKg = entries.length > 0 ? totalKg / entries.length : 0;
   
@@ -86,7 +107,7 @@ export function calculateProductionStats(entries: any[]) {
   const today = getWIBDateString();
   const todayEntries = entries.filter(e => e.date && getWIBDateString(e.date) === today);
   const todayKg = todayEntries.reduce((sum, e) => {
-    return sum + calculateTotalKgFromCageData(e.cageData);
+    return sum + calculateTotalKgFromCageData(e.cageData || {});
   }, 0);
   
   return { totalKg, avgKg, todayKg };

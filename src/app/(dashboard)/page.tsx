@@ -2,7 +2,7 @@ import { Download, TrendingUp, Package, Layers, DollarSign, Wallet, ShoppingBag,
 import Link from "next/link";
 import Charts from "@/components/Charts";
 import { PlusCircle, RefreshCw, BarChart2, Clock, CheckCircle2 } from "lucide-react";
-import { calculateDashboardStats, calculateTotalKgFromCageData } from "@/lib/calculations";
+import { calculateDashboardStats, calculateTotalKgFromCageData, calculateCashFlowProfit, calculateCashFlowExpenses } from "@/lib/calculations";
 import { getDashboardData } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/format";
@@ -16,18 +16,19 @@ export default async function DashboardPage() {
   // Use centralized calculation functions
   const stats = calculateDashboardStats(productionEntries, cashFlowEntries, salesEntries, otherExpenses);
 
+  // Create a map for faster cashflow lookup
+  const cfMap = new Map(cashFlowEntries.map((cf: any) => [cf.date.toISOString().split('T')[0], cf]));
+
   // Prepare data for charts
   const chartData = productionEntries.slice().reverse().map((p: any) => {
-    const cf = cashFlowEntries.find((c: any) => c.date.toISOString().split('T')[0] === p.date.toISOString().split('T')[0]);
-    // Calculate total salaries from the salaries object
-    const salariesTotal = cf && cf.salaries 
-      ? Object.values(cf.salaries).reduce((sum: number, salary: any) => sum + (salary || 0), 0)
-      : 0;
+    const dateKey = p.date.toISOString().split('T')[0];
+    const cf = cfMap.get(dateKey);
+    
     return {
       date: p.date,
       totalKg: calculateTotalKgFromCageData(p.cageData || {}),
-      profit: cf ? (cf.totalPenjualan - cf.biayaPakan - cf.biayaOperasional - salariesTotal) : 0,
-      expenses: cf ? (cf.biayaPakan + cf.biayaOperasional + salariesTotal) : 0,
+      profit: cf ? calculateCashFlowProfit(cf) : 0,
+      expenses: cf ? calculateCashFlowExpenses(cf) : 0,
     };
   });
 

@@ -95,6 +95,22 @@ Cage names (B1, B1+, etc.) come from the `CageMaster` table's `kandang` field. N
 
 `tests/api-data-flow.js` — plain Node.js script (not a test runner). Requires a running dev server. Tests production POST/GET, cashflow POST/GET, and dashboard load.
 
+## API Implementation Pattern
+
+Most API routes follow a standardized pattern using the `withAuth` wrapper in `src/lib/api-wrapper.ts`. This centralized helper handles:
+- **Session retrieval** (with `TESTING_MODE` support)
+- **Role enforcement** (ADMIN required for writes, WHITELISTED for reads)
+- **Generic error handling**
+
+Example usage:
+```ts
+export async function POST(request: Request) {
+  return withAuth(async () => {
+    // Handler logic here...
+  }, { requireAdmin: true });
+}
+```
+
 ## Tech Stack
 
 - Next.js 16 (App Router) · Prisma 7 · PostgreSQL · Tailwind CSS v4

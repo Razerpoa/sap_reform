@@ -122,16 +122,9 @@ export async function PATCH(request: Request) {
     const hargaSentral = parseFloat(body.hargaSentral) || 0;
 
     // Get all cages and update their hargaSentral to the same value (global)
-    const cages = await prisma.cageMaster.findMany();
-    
-    await Promise.all(
-      cages.map((cage) =>
-        prisma.cageMaster.update({
-          where: { kandang: cage.kandang },
-          data: { hargaSentral },
-        })
-      )
-    );
+    await prisma.cageMaster.updateMany({
+      data: { hargaSentral },
+    });
 
     return NextResponse.json({ success: true, hargaSentral });
   } catch (error) {
