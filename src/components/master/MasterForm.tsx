@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
-import { Plus, Settings2, Trash2, X, CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { Plus, Settings2, Trash2, X, CheckCircle2, Loader2, XCircle, ShieldCheck } from "lucide-react";
 import { InputField } from "@/components/InputField";
+import Link from "next/link";
 
 type MasterFormProps = {
   data: any[];
@@ -326,7 +327,6 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
                 <p className="text-lg font-black text-slate-900">{item.jmlEmber?.toLocaleString() || 0}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-[9px] uppercase font-black text-slate-400 tracking-wider">Jml Pakan</p>
                 <p className="text-lg font-black text-slate-900">{item.jmlPakan?.toLocaleString() || 0}</p>
               </div>
               <div className="space-y-1">
@@ -557,6 +557,26 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
           </div>
         </div>
       )}
+
+      <div className="pt-8 border-t border-slate-200 mt-8">
+        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center border border-slate-100">
+              <ShieldCheck className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h4 className="font-black text-slate-900 uppercase tracking-tight">Pemeliharaan Sistem</h4>
+              <p className="text-xs text-slate-500 font-medium tracking-tight">Verifikasi integritas & sinkronisasi data</p>
+            </div>
+          </div>
+          <Link 
+            href="/health"
+            className="w-full sm:w-auto px-6 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-black text-slate-900 hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-2 shadow-sm"
+          >
+            Buka Panel Kesehatan
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
