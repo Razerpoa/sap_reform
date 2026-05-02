@@ -195,29 +195,27 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
   return (
     <div className="space-y-6">
       {/* Global Card - Stok */}
-      <div className="bg-slate-900 md:p-8 p-5 rounded-2xl text-white">
-        <div className="flex items-center justify-between mb-5 md:mb-6">
-          <h3 className="md:text-xl text-base font-black text-slate-400 uppercase tracking-wider">Stok</h3>
+      <div className="bg-slate-900 md:p-8 p-5 rounded-[2rem] text-white">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <h3 className="md:text-xl text-base font-black text-slate-400 uppercase tracking-tight">Status Stok</h3>
         </div>
 
         {/* Global Summary */}
-        <div className="bg-slate-800/50 md:p-4 p-3 rounded-xl mb-4">
-          <div className="text-center">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Stok</span>
-            <div className="md:text-2xl text-xl font-black mt-1">
-              {globalSummary.totalPeti} peti <span className="text-slate-500">|</span> {globalSummary.totalSisaKg} kg
+        <div className="bg-slate-800/50 md:p-5 p-4 rounded-2xl mb-4 text-center">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Ketersediaan</span>
+            <div className="md:text-3xl text-2xl font-black mt-1 italic">
+              {globalSummary.totalPeti} <span className="text-sm font-black text-slate-500 uppercase not-italic">Peti</span> <span className="text-slate-700 mx-1">|</span> {globalSummary.totalSisaKg} <span className="text-sm font-black text-slate-500 uppercase not-italic">Kg</span>
             </div>
-          </div>
         </div>
 
         {/* Per-cage stock display */}
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-2">
           {cageStocks.map((cage) => (
-            <div key={cage.kandang} className="flex items-center justify-between bg-slate-800/30 md:p-3 p-2.5 rounded-lg">
-              <span className="font-bold text-slate-300 uppercase">{cage.kandang}</span>
+            <div key={cage.kandang} className="flex items-center justify-between bg-slate-800/30 md:p-4 p-3 rounded-xl border border-slate-700/30">
+              <span className="font-black text-slate-300 uppercase text-xs">{cage.kandang}</span>
               <div className="text-right">
-                <span className="font-black text-white">
-                  {cage.peti} peti <span className="text-slate-500">|</span> {cage.sisaKg} kg
+                <span className="font-black text-white text-sm">
+                  {cage.peti} <span className="text-[10px] text-slate-500">Peti</span> <span className="text-slate-700 mx-1">|</span> {cage.sisaKg} <span className="text-[10px] text-slate-500">Kg</span>
                 </span>
               </div>
             </div>
@@ -226,30 +224,30 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
       </div>
 
       {isEditable && (
-        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
-          <h3 className="text-xl font-black text-slate-900 mb-6">Entri Penjualan Baru</h3>
+        <div className="bg-white p-5 sm:p-8 rounded-[2rem] border border-slate-200 shadow-sm">
+          <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-6 uppercase tracking-tight">Entri Penjualan</h3>
 
           {/* 3. Input Fields */}
-          <div className="bg-slate-50 rounded-2xl p-6 mb-6">
+          <div className="bg-slate-50 rounded-[1.5rem] p-4 sm:p-6 mb-6 border border-slate-100">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Customer */}
               <div className="space-y-2">
-                <label className="text-[10px] uppercase text-slate-500 font-black tracking-wide">
-                  Customer
+                <label className="text-[10px] uppercase text-slate-400 font-black tracking-widest px-1">
+                  Nama Customer
                 </label>
                 <input
                   type="text"
-                  placeholder="Nama customer"
+                  placeholder="e.g. Toko Berkah"
                   value={newSale.customerName}
                   onChange={(e) => setNewSale({ ...newSale, customerName: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-black text-sm text-center outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-medium placeholder:text-slate-300"
                 />
               </div>
 
               {/* Harga Jual */}
               <div className="space-y-2">
-                <label className="text-[10px] uppercase text-slate-500 font-black tracking-wide">
-                  Harga Jual
+                <label className="text-[10px] uppercase text-slate-400 font-black tracking-widest px-1">
+                  Harga Jual (Rp)
                 </label>
                 <input
                   type="text"
@@ -260,7 +258,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
                     const num = parseInt(raw) || 0;
                     setNewSale({ ...newSale, hargaJual: num });
                   }}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-black text-sm text-center outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-medium placeholder:text-slate-300"
                 />
               </div>
             </div>
@@ -341,7 +339,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
       {/* Pilih Kandang Modal */}
       {showPickerModal && (
         <div 
-          className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowPickerModal(false);
@@ -351,10 +349,13 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
             }
           }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-black text-lg">Pilih Kandang</h3>
+            <div className="p-6 sm:p-8 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-black text-xl text-slate-900 uppercase tracking-tight">Pilih Kandang</h3>
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Alokasi Stok Penjualan</p>
+              </div>
               <button 
                 onClick={() => {
                   setShowPickerModal(false);
@@ -362,123 +363,135 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
                   setPickerPeti(0);
                   setPickerKg(0);
                 }}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-400 transition-colors"
               >
-                <X className="w-5 h-5 text-slate-400 hover:text-slate-600" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Cage Grid */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {cages.map((cage) => {
-                const remaining = remainingStocks.find(s => s.kandang === cage.kandang);
-                const isSelected = pickerSelectedCage === cage.kandang;
-                const isDisabled = (remaining?.remainingPeti || 0) === 0;
-                return (
-                  <button
-                    key={cage.kandang}
-                    onClick={() => {
-                      if (isDisabled) return;
-                      setPickerSelectedCage(cage.kandang);
-                      setPickerPeti(0);
-                      setPickerKg(0);
-                    }}
-                    disabled={isDisabled}
-                    className={`p-3 rounded-xl border-2 text-left transition-all ${
-                      isSelected 
-                        ? "border-blue-500 bg-blue-50" 
-                        : isDisabled
-                          ? "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
-                          : "border-slate-200 hover:border-blue-300"
-                    }`}
-                  >
-                    <span className="font-black">{cage.kandang}</span>
-                    <span className={`text-xs block ${isDisabled ? 'text-slate-400' : 'text-blue-600'}`}>
-                      {remaining?.remainingPeti || 0} peti | {remaining?.sisaKg || 0} kg
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Qty Input (only if cage selected) */}
-            {pickerSelectedCage && (
-              <div className="bg-slate-50 rounded-xl p-4 mb-4">
-                {(() => {
-                  const remaining = remainingStocks.find(s => s.kandang === pickerSelectedCage);
-                  const exceedsStock = pickerPeti > (remaining?.remainingPeti || 0);
+            <div className="p-6 sm:p-8">
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                {cages.map((cage) => {
+                  const remaining = remainingStocks.find(s => s.kandang === cage.kandang);
+                  const isSelected = pickerSelectedCage === cage.kandang;
+                  const isDisabled = (remaining?.remainingPeti || 0) === 0;
                   return (
-                    <>
-                      {exceedsStock && (
-                        <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-center">
-                          <span className="text-xs font-bold text-red-600">
-                            ⚠️ Melebihi stok! Maks: {remaining?.remainingPeti || 0} peti
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="text-[10px] uppercase text-slate-500 block mb-1">Ambil (Peti)</label>
-                    <input 
-                      type="number" 
-                      value={pickerPeti.toLocaleString()} 
-                      onChange={e => setPickerPeti(parseInt(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-bold text-center outline-none focus:border-blue-400" 
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-[10px] uppercase text-slate-500 block mb-1">Sisa (Kg)</label>
-                    <input 
-                      type="number" 
-                      value={pickerKg.toLocaleString()} 
-                      onChange={e => {
-                        const v = parseInt(e.target.value) || 0;
-                        setPickerKg(v >= 15 ? v % 15 : v);
+                    <button
+                      key={cage.kandang}
+                      onClick={() => {
+                        if (isDisabled) return;
+                        setPickerSelectedCage(cage.kandang);
+                        setPickerPeti(0);
+                        setPickerKg(0);
                       }}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-bold text-center outline-none focus:border-blue-400" 
-                    />
-                  </div>
-                </div>
-                    </>
+                      disabled={isDisabled}
+                      className={`p-4 rounded-2xl border-2 text-left transition-all relative overflow-hidden group ${
+                        isSelected 
+                          ? "border-blue-500 bg-blue-50 shadow-lg shadow-blue-500/10" 
+                          : isDisabled
+                            ? "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
+                            : "border-slate-100 hover:border-blue-200 hover:bg-slate-50"
+                      }`}
+                    >
+                      <span className="font-black text-slate-900 text-lg block mb-1">{cage.kandang}</span>
+                      <div className={`text-[10px] font-black uppercase tracking-tighter ${isDisabled ? 'text-slate-400' : 'text-blue-600'}`}>
+                        {remaining?.remainingPeti || 0} <span className="opacity-50 font-medium">Peti</span>
+                      </div>
+                    </button>
                   );
-                })()}
+                })}
               </div>
-            )}
 
-            {/* Pilih Button */}
-            <button 
-              onClick={handleAddCage}
-              disabled={!pickerSelectedCage || (pickerPeti === 0 && pickerKg === 0)}
-              className="w-full bg-blue-600 text-white font-black py-3 rounded-xl disabled:bg-slate-300 hover:bg-blue-700 transition-colors"
-            >
-              Pilih
-            </button>
+              {/* Qty Input (only if cage selected) */}
+              {pickerSelectedCage && (
+                <div className="bg-slate-50 rounded-2xl p-5 mb-6 border border-slate-100 animate-in slide-in-from-top-2">
+                  {(() => {
+                    const remaining = remainingStocks.find(s => s.kandang === pickerSelectedCage);
+                    const exceedsStock = pickerPeti > (remaining?.remainingPeti || 0);
+                    return (
+                      <>
+                        <div className="flex items-center gap-2 mb-4 justify-center">
+                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Input Pengambilan</span>
+                           <div className="h-px flex-1 bg-slate-200"></div>
+                        </div>
+                        {exceedsStock && (
+                          <div className="mb-4 p-2 bg-red-50 border border-red-200 rounded-xl text-center flex items-center justify-center gap-2">
+                            <span className="text-[10px] font-black text-red-600 uppercase">
+                              ⚠️ Melebihi stok! (Max: {remaining?.remainingPeti || 0})
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex gap-4">
+                          <div className="flex-1">
+                            <label className="text-[10px] font-black uppercase text-slate-500 block mb-2 text-center">Peti</label>
+                            <input 
+                              type="number" 
+                              inputMode="numeric"
+                              value={pickerPeti.toLocaleString()} 
+                              onChange={e => setPickerPeti(parseInt(e.target.value) || 0)}
+                              className="w-full px-3 py-3 bg-white border border-slate-200 rounded-xl font-black text-xl text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-[10px] font-black uppercase text-slate-500 block mb-2 text-center">Sisa Kg</label>
+                            <input 
+                              type="number" 
+                              inputMode="decimal"
+                              value={pickerKg.toLocaleString()} 
+                              onChange={e => {
+                                const v = parseInt(e.target.value) || 0;
+                                setPickerKg(v >= 15 ? v % 15 : v);
+                              }}
+                              className="w-full px-3 py-3 bg-white border border-slate-200 rounded-xl font-black text-xl text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
+                            />
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Pilih Button */}
+              <button 
+                onClick={handleAddCage}
+                disabled={!pickerSelectedCage || (pickerPeti === 0 && pickerKg === 0)}
+                className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl disabled:bg-slate-300 hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20 uppercase tracking-widest text-sm"
+              >
+                Alokasikan Stok
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {data.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-black text-slate-900">Transaksi Hari Ini</h3>
-            <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
+        <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <h3 className="font-black text-slate-900 uppercase tracking-tight text-sm sm:text-base">Log Penjualan Hari Ini</h3>
+            <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
               {data.length} Records
             </span>
           </div>
           <div className="divide-y divide-slate-50">
             {data.map((sale: any) => (
-              <div key={sale.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                <div>
-                  <h4 className="font-black text-slate-900 uppercase tracking-tight">{sale.customerName}</h4>
-                  <p className="text-xs text-slate-400 font-bold">{formatNumber(sale.jmlPeti)} Peti • {formatNumber(sale.totalKg % 15)} KG</p>
+              <div key={sale.id} className="p-5 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors active:bg-slate-50">
+                <div className="flex-1 min-w-0 pr-4">
+                  <h4 className="font-black text-slate-900 uppercase tracking-tight text-sm sm:text-base truncate">{sale.customerName}</h4>
+                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-black uppercase rounded-md">{formatNumber(sale.jmlPeti)} Peti</span>
+                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-black uppercase rounded-md">{formatNumber(sale.totalKg % 15)} KG</span>
+                  </div>
                   {sale.sourceCages && sale.sourceCages.length > 0 && (
-                    <p className="text-[10px] text-blue-500 font-bold mt-1">
-                      Dari: {sale.sourceCages.map((c: any) => `${c.kandang} (${c.jmlPeti} peti${c.jmlKg > 0 ? ` + ${Number(c.jmlKg).toFixed(2)}kg` : ''})`).join(', ')}
+                    <p className="text-[9px] text-blue-500 font-black uppercase tracking-widest mt-2 opacity-70">
+                      Via: {sale.sourceCages.map((c: any) => c.kandang).join(', ')}
                     </p>
                   )}
                 </div>
-                <div className="text-right">
-                  <p className="text-lg font-black text-slate-900 italic">{formatNumber(sale.subTotal)}</p>
-                  <p className="text-[8px] text-blue-500 font-black uppercase tracking-widest">Harga Jual: {formatNumber(sale.hargaJual)}</p>
+                <div className="text-right shrink-0">
+                  <p className="text-base sm:text-lg font-black text-slate-900 italic">Rp {formatNumber(sale.subTotal)}</p>
+                  <p className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">@{formatNumber(sale.hargaJual)}</p>
                 </div>
               </div>
             ))}

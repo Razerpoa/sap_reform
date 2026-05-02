@@ -217,37 +217,37 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
     return (
       <div
         key={key}
-        className="bg-white md:p-8 p-6 rounded-3xl border border-slate-200 shadow-sm overflow-hidden group"
+        className="bg-white md:p-8 p-5 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden group"
       >
-        <div className="flex items-center justify-between mb-6 md:mb-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-8">
           <div className="flex items-center gap-3 md:gap-4">
-            <div className="md:w-14 md:h-14 w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black md:text-lg text-base">
+            <div className="md:w-14 md:h-14 w-10 h-10 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black md:text-lg text-sm">
               {key}
             </div>
             <div>
-              <h3 className="md:text-2xl text-xl font-black text-slate-900">Kandang {key}</h3>
+              <h3 className="md:text-2xl text-lg font-black text-slate-900 uppercase tracking-tight">Kandang {key}</h3>
               {netStock.peti > 0 && (
-                <span className="text-xs font-bold text-blue-600">{netStock.peti} peti</span>
+                <span className="text-[10px] font-black uppercase text-blue-600 tracking-widest">{netStock.peti} peti stok</span>
               )}
             </div>
           </div>
         </div>
 
         {/* Header row */}
-        <div className="grid grid-cols-2 gap-3 mb-4 ml-9 md:text-sm text-xs font-black uppercase tracking-wider text-slate-400">
+        <div className="grid grid-cols-2 gap-3 mb-2 ml-10 md:text-sm text-[10px] font-black uppercase tracking-widest text-slate-400">
           <div className="text-center">Tray</div>
           <div className="text-center">Butir</div>
         </div>
 
         {/* 3 data rows */}
-        <div className="space-y-3 md:space-y-4">
+        <div className="space-y-2 md:space-y-4">
           {cageInfo.rows.map((row, rowIndex) => (
-            <div key={rowIndex} className="flex items-center gap-2 mb-3">
+            <div key={rowIndex} className="flex items-center gap-2 mb-2">
               <button
                 onClick={() => updatePeti(key, rowIndex, !row.peti)}
                 disabled={!isEditable}
-                className={`md:w-8 md:h-8 w-7 h-7 shrink-0 rounded-xl flex items-center justify-center transition-all ${
-                  row.peti ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-300"
+                className={`md:w-8 md:h-8 w-8 h-8 shrink-0 rounded-xl flex items-center justify-center transition-all ${
+                  row.peti ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "bg-slate-100 text-slate-300"
                 } ${!isEditable ? "cursor-not-allowed" : "hover:bg-slate-200"}`}
               >
                 {row.peti && <CheckCircle2 className="md:w-5 md:h-5 w-4 h-4" />}
@@ -262,9 +262,9 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
                   onChange={(e) => updateRowField(key, rowIndex, "tray", e.target.value.replace(/,/g, ""))}
                   disabled={!isEditable}
                   placeholder="0"
-                  className={`md:px-4 md:py-4 px-3 py-3 rounded-xl text-center font-black md:text-lg text-base w-full ${
+                  className={`md:px-4 md:py-4 px-3 py-2.5 rounded-xl text-center font-black md:text-lg text-sm w-full transition-all ${
                     isEditable
-                      ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                      ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50"
                       : "bg-slate-50 border border-slate-100 text-slate-600"
                   } ${!isEditable ? " cursor-not-allowed" : ""}`}
                 />
@@ -275,9 +275,9 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
                   onChange={(e) => updateRowField(key, rowIndex, "butir", e.target.value.replace(/,/g, ""))}
                   disabled={!isEditable}
                   placeholder="0"
-                  className={`md:px-4 md:py-4 px-3 py-3 rounded-xl text-center font-black md:text-lg text-base w-full ${
+                  className={`md:px-4 md:py-4 px-3 py-2.5 rounded-xl text-center font-black md:text-lg text-sm w-full transition-all ${
                     isEditable
-                      ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                      ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50"
                       : "bg-slate-50 border border-slate-100 text-slate-600"
                   } ${!isEditable ? " cursor-not-allowed" : ""}`}
                 />
@@ -287,10 +287,10 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
         </div>
 
         {/* Extra/footer row */}
-        <div className="mt-6 md:mt-8 pt-5 border-t border-slate-100">
-          <div className="grid grid-cols-3 gap-4 md:gap-6">
+        <div className="mt-4 md:mt-8 pt-4 border-t border-slate-100">
+          <div className="grid grid-cols-3 gap-3 md:gap-6">
             <div>
-              <label className="md:text-sm text-xs uppercase font-black tracking-wider block mb-2 md:mb-3 text-slate-400">
+              <label className="md:text-sm text-[9px] uppercase font-black tracking-widest block mb-1.5 md:mb-3 text-slate-400">
                 +Tray
               </label>
               <input
@@ -303,15 +303,15 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
                 }}
                 disabled={!isEditable}
                 placeholder="0"
-                className={`w-full md:px-4 md:py-4 px-3 py-3 rounded-xl font-black md:text-lg text-base ${
+                className={`w-full md:px-4 md:py-4 px-3 py-2.5 rounded-xl font-black md:text-lg text-sm text-center ${
                   isEditable
-                    ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                    ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50"
                     : "bg-slate-50 border border-slate-100 text-slate-600"
                 } ${!isEditable ? " cursor-not-allowed" : ""}`}
               />
             </div>
             <div>
-              <label className="md:text-sm text-xs uppercase font-black tracking-wider block mb-2 md:mb-3 text-slate-400">
+              <label className="md:text-sm text-[9px] uppercase font-black tracking-widest block mb-1.5 md:mb-3 text-slate-400">
                 +Butir
               </label>
               <input
@@ -324,15 +324,15 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
                 }}
                 disabled={!isEditable}
                 placeholder="0"
-                className={`w-full md:px-4 md:py-4 px-3 py-3 rounded-xl font-black md:text-lg text-base ${
+                className={`w-full md:px-4 md:py-4 px-3 py-2.5 rounded-xl font-black md:text-lg text-sm text-center ${
                   isEditable
-                    ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                    ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50"
                     : "bg-slate-50 border border-slate-100 text-slate-600"
                 } ${!isEditable ? " cursor-not-allowed" : ""}`}
               />
             </div>
             <div>
-              <label className="md:text-sm text-xs uppercase font-black tracking-wider block mb-2 md:mb-3 text-slate-400">
+              <label className="md:text-sm text-[9px] uppercase font-black tracking-widest block mb-1.5 md:mb-3 text-slate-400">
                 +Kg
               </label>
               <input
@@ -345,9 +345,9 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
                 }}
                 disabled={!isEditable}
                 placeholder="0"
-                className={`w-full md:px-4 md:py-4 px-3 py-3 rounded-xl font-black md:text-lg text-base ${
+                className={`w-full md:px-4 md:py-4 px-3 py-2.5 rounded-xl font-black md:text-lg text-sm text-center ${
                   isEditable
-                    ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                    ? "bg-slate-50 border border-slate-100 text-slate-900 placeholder-slate-300 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50"
                     : "bg-slate-50 border border-slate-100 text-slate-600"
                 } ${!isEditable ? " cursor-not-allowed" : ""}`}
               />

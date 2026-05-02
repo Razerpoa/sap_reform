@@ -33,7 +33,7 @@ export default async function DashboardPage() {
   });
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6 sm:space-y-10">
       {/* Stats Section */}
       <div className="space-y-6">
         {/* Hero Card: Sales Performance */}
@@ -70,6 +70,7 @@ export default async function DashboardPage() {
             subtitle="Terjual"
             icon={stats.salesTodayKg >= 0 ? TrendingUp : TrendingDown}
             color="bg-emerald-600"
+            href="/sales"
             breakdown={[
               { label: "Peti", value: `${formatNumber(stats.salesTodayPeti || 0)} Peti`, icon: Layers }
             ]}
@@ -93,6 +94,7 @@ export default async function DashboardPage() {
             subtitle="Live Balance"
             icon={Wallet}
             color="bg-blue-600"
+            href="/cashflow"
             breakdown={[
               { label: "Rekening", value: `Rp ${formatNumber(stats.cashFlowSaldoRekening || 0)}`, icon: Landmark },
               { label: "Cash", value: `Rp ${formatNumber(stats.cashFlowSaldoCash || 0)}`, icon: DollarSign }
@@ -102,35 +104,35 @@ export default async function DashboardPage() {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Tren Produksi</h3>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between mb-6 sm:mb-8">
+            <h3 className="text-lg sm:text-xl font-black text-slate-900 uppercase tracking-tight">Tren Produksi</h3>
             <div className="flex items-center gap-2">
-               <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-               <span className="text-xs font-bold text-slate-400">Total KG</span>
+               <div className="w-2.5 h-2.5 rounded-full bg-blue-600"></div>
+               <span className="text-[10px] font-bold text-slate-400">Total KG</span>
             </div>
           </div>
-          <div className="h-80 w-full min-h-80">
+          <div className="h-64 sm:h-80 w-full">
             <Charts data={chartData} type="production" />
           </div>
         </div>
 
-        <div className="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Kinerja Keuangan</h3>
-            <div className="flex items-center gap-4">
-               <div className="flex items-center gap-2">
-                 <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Profit</span>
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between mb-6 sm:mb-8">
+            <h3 className="text-lg sm:text-xl font-black text-slate-900 uppercase tracking-tight">Kinerja Keuangan</h3>
+            <div className="flex items-center gap-3 sm:gap-4">
+               <div className="flex items-center gap-1.5 sm:gap-2">
+                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Profit</span>
                </div>
-               <div className="flex items-center gap-2">
-                 <div className="w-3 h-3 rounded-full bg-rose-500"></div>
-                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Biaya</span>
+               <div className="flex items-center gap-1.5 sm:gap-2">
+                 <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
+                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Biaya</span>
                </div>
             </div>
           </div>
-          <div className="h-80 w-full min-h-80">
+          <div className="h-64 sm:h-80 w-full">
             <Charts data={chartData} type="finance" />
           </div>
         </div>
@@ -172,18 +174,18 @@ function PremiumStatCard({
     <Wrapper 
       href={isClickable ? href : undefined}
       className={cn(
-        "group block bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-2xl transition-all duration-300 text-white overflow-hidden relative animate-in fade-in zoom-in-95 hover:shadow-slate-500/10 hover:-translate-y-1 hover:border-slate-700",
+        "group block bg-slate-900 rounded-2xl sm:rounded-[2rem] border border-slate-800 shadow-2xl transition-all duration-300 text-white overflow-hidden relative animate-in fade-in zoom-in-95 hover:shadow-slate-500/10 hover:-translate-y-1 hover:border-slate-700",
         // Conditional Interactive Styles
         isClickable 
           ? "cursor-pointer" 
           : "cursor-default",
-        isHero ? "p-6 sm:p-8 mb-4" : isCompact ? "p-3 sm:p-5" : "p-6"
+        isHero ? "p-5 sm:p-8 mb-2 sm:mb-4" : isCompact ? "p-3 sm:p-5" : "p-5 sm:p-8"
       )}
     >
       {/* Dynamic Glow Ornament */}
       <div className={`absolute -top-10 -right-10 w-48 h-48 ${color.replace('bg-', 'bg-')}/10 rounded-full blur-[60px] group-hover:blur-[80px] group-hover:scale-125 transition-all duration-500 opacity-20`}></div>
       
-      <div className={cn("flex items-start justify-between relative z-10", isCompact ? "mb-3" : "mb-6")}>
+      <div className={cn("flex items-start justify-between relative z-10", isCompact ? "mb-2 sm:mb-3" : "mb-4 sm:mb-6")}>
         <div className={cn(
           color, 
           "rounded-xl shadow-lg ring-4 ring-slate-800 transition-transform duration-300",

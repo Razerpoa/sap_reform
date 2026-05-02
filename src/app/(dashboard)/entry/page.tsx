@@ -340,21 +340,21 @@ export default function EntryPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 pb-32">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:py-8 pb-32">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight capitalize">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+        <div className="text-center sm:text-left">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight capitalize">
             {titleMap[activeTab]}
           </h1>
-          <p className={cn("text-sm", isEditable ? "text-slate-500" : "text-amber-600 font-bold flex items-center gap-1")}>
-            {isEditable ? "Update catatan harian" : <><AlertCircle className="w-4 h-4" /> Baca-saja: Riwayat</>}
+          <p className={cn("text-xs sm:text-sm", isEditable ? "text-slate-500" : "text-amber-600 font-bold flex items-center justify-center sm:justify-start gap-1")}>
+            {isEditable ? "Update catatan harian" : <><AlertCircle className="w-3.5 h-3.5" /> Baca-saja: Riwayat</>}
           </p>
         </div>
         
         {activeTab !== "master" && (
-          <div className="flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-2xl shadow-sm self-start sm:self-auto">
-            <Calendar className="w-5 h-5 text-blue-500" />
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-2xl shadow-sm self-center sm:self-auto">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
             <input 
               type="date" 
               value={selectedDate}
@@ -366,26 +366,26 @@ export default function EntryPage() {
                   console.log("Browser does not support showPicker");
                 }
               }}
-              className="text-sm font-bold outline-none bg-transparent"
+              className="text-xs sm:text-sm font-bold outline-none bg-transparent"
             />
           </div>
         )}
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-8 overflow-x-auto no-scrollbar">
+      <div className="flex bg-slate-100 p-1 rounded-2xl mb-6 sm:mb-8 overflow-x-auto no-scrollbar scroll-smooth">
         {tabConfig.map((t) => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id as Tab)}
             className={cn(
-              "flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap flex-1 justify-center",
+              "flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-black transition-all whitespace-nowrap flex-1 justify-center uppercase tracking-tighter sm:tracking-normal",
               activeTab === t.id 
                 ? "bg-white text-blue-600 shadow-sm ring-1 ring-slate-200" 
                 : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
             )}
           >
-            <t.icon className="w-4 h-4" />
+            <t.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             {t.label}
           </button>
         ))}
@@ -460,10 +460,10 @@ export default function EntryPage() {
 
       {/* Draft Save Bar - only show when draft exists */}
       {isEditable && hasDraft && (activeTab === "production" || activeTab === "cashflow") && (
-        <div className="fixed bottom-27 sm:bottom-10 left-1/2 -translate-x-1/2 w-[90%] max-w-4xl bg-slate-900 text-white rounded-3xl shadow-2xl p-5 flex items-center justify-between z-40">
-          <div className="hidden sm:block">
-            <p className="text-[10px] uppercase font-black text-slate-400">Status</p>
-            <h4 className="text-sm font-bold flex items-center gap-2">
+        <div className="fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 w-[92%] max-w-4xl bg-slate-900 text-white rounded-[2.5rem] shadow-2xl p-4 sm:p-5 flex items-center justify-between z-40 border border-slate-700">
+          <div className="hidden md:block">
+            <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Status Data</p>
+            <h4 className="text-sm font-black flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
               Draft ditemukan
             </h4>
@@ -471,10 +471,10 @@ export default function EntryPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full sm:w-auto flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+            className="w-full md:w-auto flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white px-8 sm:px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-blue-500/20"
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-            Simpan Draft
+            {saving ? "Menyimpan..." : "Simpan Sekarang"}
           </button>
         </div>
       )}

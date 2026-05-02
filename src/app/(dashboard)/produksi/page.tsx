@@ -252,9 +252,9 @@ export default function Produksi() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 pb-32">
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8 pb-32">
       {/* Global Dropdowns */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4 mb-6 top-4 z-10">
+      <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-4 mb-4 sm:mb-6 sticky top-4 z-10">
         <div className="grid grid-cols-2 gap-3">
           {/* Timeframe Dropdown */}
           <div>
@@ -313,7 +313,7 @@ export default function Produksi() {
           return (
             <div
               key={item.kandang}
-              className={`bg-white rounded-3xl border border-slate-200 shadow-sm transition-all duration-300 overflow-hidden ${
+              className={`bg-white rounded-[2rem] border border-slate-200 shadow-sm transition-all duration-300 overflow-hidden ${
                 isExpanded ? "border-blue-500 ring-4 ring-blue-50" : "hover:border-slate-300"
               }`}
             >
@@ -323,16 +323,16 @@ export default function Produksi() {
                 className="w-full p-5 text-left"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4">
                     <div
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl"
+                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-lg sm:text-xl"
                       style={{ backgroundColor: cageColor, color: "white" }}
                     >
                       {item.kandang}
                     </div>
                     <div>
-                      <h4 className="font-black text-slate-900 text-lg">{item.kandang}</h4>
-                      <p className="text-xs text-slate-500 font-medium">
+                      <h4 className="font-black text-slate-900 text-base sm:text-lg">{item.kandang}</h4>
+                      <p className="text-[10px] sm:text-xs text-slate-500 font-medium">
                         {item.jmlAyam.toLocaleString()} ayam • {thirtyDayAvg[cageName]?.toFixed(1) || 0} kg/hari
                       </p>
                     </div>

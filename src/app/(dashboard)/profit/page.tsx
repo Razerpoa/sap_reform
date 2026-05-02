@@ -106,10 +106,10 @@ export default function Profit() {
   }
 
 return (
-    <div className="mx-auto max-w-4xl px-4 py-8 pb-32">
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Laba dan Rugi</h1>
-        <p className="text-sm text-slate-500">Ringkasan pendapatan dan pengeluaran</p>
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:py-8 pb-32">
+      <div className="mb-6 sm:mb-8 text-center sm:text-left">
+        <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Laba & Rugi</h1>
+        <p className="text-sm sm:text-base text-slate-500 font-medium">Ringkasan pendapatan & pengeluaran</p>
       </div>
 
       <div className="space-y-4">
@@ -278,28 +278,28 @@ function ProfitCard({
 
   return (
     <div className={cn(
-      "bg-white rounded-3xl border shadow-sm transition-all overflow-hidden",
+      "bg-white rounded-[2rem] sm:rounded-[3rem] border shadow-sm transition-all overflow-hidden",
       "border-slate-200"
     )}>
       {/* Card Header - Always Visible */}
-      <div className="w-full p-5 text-left">
+      <div className="w-full p-4 sm:p-5 text-left">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center",
+              "w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-sm",
               isProfit ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
             )}>
-              {isProfit ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
+              {isProfit ? <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" /> : <TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />}
             </div>
             <div>
-              <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Total</p>
+              <p className="text-[9px] uppercase font-black text-slate-400 tracking-wider">Total</p>
               <p className={cn(
-                "text-2xl font-black",
+                "text-xl sm:text-2xl font-black",
                 isProfit ? "text-emerald-600" : "text-red-600"
               )}>
                 {`Rp ${formatNumber(amount)}`}
               </p>
-              <p className="text-[10px] text-slate-400 font-medium">{transactionCount} transaksi</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{transactionCount} transaksi</p>
             </div>
           </div>
           
@@ -371,61 +371,58 @@ function ProfitCard({
 
           {/* Log View */}
           {viewMode === "log" && (
-            <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
+            <div className="max-h-[400px] sm:max-h-80 overflow-y-auto divide-y divide-slate-50">
               {transactions.length > 0 ? (
                 transactions.map((t, idx) => (
                   <div 
                     key={idx} 
                     onClick={() => t.type === "sale" && (t.sourceCages?.length ?? 0) > 0 && setSelectedTransaction(t)}
                     className={cn(
-                      "p-4 transition-colors",
-                      t.type === "sale" && (t.sourceCages?.length ?? 0) > 0 && "hover:bg-slate-50/50 cursor-pointer"
+                      "p-4 sm:p-5 transition-colors",
+                      t.type === "sale" && (t.sourceCages?.length ?? 0) > 0 && "hover:bg-slate-50/50 cursor-pointer active:bg-slate-50"
                     )}
                   >
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="font-black text-slate-900 text-sm truncate">{t.description}</p>
+                        <p className="font-black text-slate-900 text-sm sm:text-base uppercase tracking-tight truncate">{t.description}</p>
                         {t.type === "sale" && (
-                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                             {t.peti !== undefined && (
-                              <span className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-full">
+                              <span className="px-2.5 py-1 bg-slate-100 text-slate-700 text-[10px] font-black uppercase rounded-lg">
                                 {t.peti.toLocaleString()} peti
                               </span>
                             )}
                             {t.kg !== undefined && (
-                              <span className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-full">
+                              <span className="px-2.5 py-1 bg-slate-100 text-slate-700 text-[10px] font-black uppercase rounded-lg">
                                 {t.kg.toLocaleString()} kg
                               </span>
                             )}
                             {t.price !== undefined && (
-                              <span className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-full">
-                                Rp {t.price.toLocaleString()}
-                              </span>
-                            )}
-                            {t.sourceCages && t.sourceCages.length > 0 && (
-                              <span className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-full">
-                                Dari: {t.sourceCages.map(c => c.kandang).join(', ')}
+                              <span className="px-2.5 py-1 bg-slate-100 text-slate-700 text-[10px] font-black uppercase rounded-lg">
+                                @{formatNumber(t.price)}
                               </span>
                             )}
                           </div>
                         )}
-                        <p className="text-[10px] text-slate-400 font-medium mt-1">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1.5">
                           {format(t.date, "dd MMM yyyy", { locale: id })}
                         </p>
                       </div>
-                      <p className={cn(
-                        "text-base font-black shrink-0",
-                        isProfit ? "text-emerald-600" : "text-red-600"
-                      )}>
-                        {formatNumber(t.amount)}
-                      </p>
+                      <div className="text-right shrink-0">
+                        <p className={cn(
+                          "text-base sm:text-lg font-black",
+                          isProfit ? "text-emerald-600" : "text-red-600"
+                        )}>
+                          Rp {formatNumber(t.amount)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="p-8 text-center">
-                  <Package className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                  <p className="text-slate-400 font-medium text-sm">Tidak ada data</p>
+                <div className="p-12 text-center">
+                  <Package className="w-10 h-10 text-slate-100 mx-auto mb-3" />
+                  <p className="text-slate-400 font-black text-xs uppercase tracking-widest">Tidak ada data</p>
                 </div>
               )}
             </div>
@@ -489,65 +486,70 @@ function ProfitCard({
       {/* Transaction Detail Modal */}
       {selectedTransaction && selectedTransaction.type === "sale" && (
         <div 
-          className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300"
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelectedTransaction(null);
           }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-black text-lg">{selectedTransaction.description}</h3>
-              <button onClick={() => setSelectedTransaction(null)}>
-                <X className="w-5 h-5 text-slate-400 hover:text-slate-600" />
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-8 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                    <Package className="w-6 h-6" />
+                 </div>
+                 <div>
+                    <h3 className="font-black text-xl text-slate-900 uppercase tracking-tight truncate max-w-[200px]">{selectedTransaction.description}</h3>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">Detail Penjualan</p>
+                 </div>
+              </div>
+              <button 
+                onClick={() => setSelectedTransaction(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-400 transition-colors"
+              >
+                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4">
-              {/* Date */}
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500 font-medium">Tanggal</span>
-                <span className="font-bold">{format(selectedTransaction.date, "dd MMMM yyyy", { locale: id })}</span>
+            <div className="p-8 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tanggal</p>
+                    <p className="font-bold text-slate-900">{format(selectedTransaction.date, "dd MMM yyyy", { locale: id })}</p>
+                 </div>
+                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total</p>
+                    <p className="font-black text-emerald-600 italic">Rp {formatNumber(selectedTransaction.amount)}</p>
+                 </div>
               </div>
 
-              {/* Quantity Summary */}
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500 font-medium">Jumlah</span>
-                <div className="flex gap-2">
-                  <span className="font-bold">{selectedTransaction.peti?.toLocaleString()} peti</span>
-                  <span className="text-slate-300">|</span>
-                  <span className="font-bold">{selectedTransaction.kg?.toLocaleString()} kg</span>
-                </div>
-              </div>
-
-              {/* Price per kg */}
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500 font-medium">Harga per kg</span>
-                <span className="font-bold">Rp {selectedTransaction.price?.toLocaleString()}</span>
-              </div>
-
-              {/* Total */}
-              <div className="flex justify-between text-sm pt-2 border-t border-slate-100">
-                <span className="text-slate-500 font-medium">Total</span>
-                <span className="font-black text-emerald-600">Rp {selectedTransaction.amount?.toLocaleString()}</span>
+              <div className="space-y-4">
+                 <div className="flex items-center justify-between py-3 border-b border-slate-50">
+                    <span className="text-sm font-bold text-slate-400 uppercase tracking-tight">Volume</span>
+                    <span className="font-black text-slate-900">{formatNumber(selectedTransaction.kg || 0)} KG</span>
+                 </div>
+                 <div className="flex items-center justify-between py-3 border-b border-slate-50">
+                    <span className="text-sm font-bold text-slate-400 uppercase tracking-tight">Peti</span>
+                    <span className="font-black text-slate-900">{selectedTransaction.peti || 0} Peti</span>
+                 </div>
+                 <div className="flex items-center justify-between py-3 border-b border-slate-50">
+                    <span className="text-sm font-bold text-slate-400 uppercase tracking-tight">Harga / Kg</span>
+                    <span className="font-black text-slate-900">Rp {formatNumber(selectedTransaction.price || 0)}</span>
+                 </div>
               </div>
 
               {/* Source Cages Breakdown */}
               {selectedTransaction.sourceCages && selectedTransaction.sourceCages.length > 0 && (
-                <div className="pt-2 border-t border-slate-100">
-                  <p className="text-xs text-slate-500 font-medium mb-2">Sumber Telur:</p>
-                  <div className="space-y-2">
+                <div className="pt-2">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center">Distribusi Kandang</p>
+                  <div className="grid grid-cols-1 gap-2">
                     {selectedTransaction.sourceCages.map((cage: any, idx: number) => (
-                      <div key={idx} className="flex justify-between bg-slate-50 rounded-lg p-3">
-                        <span className="font-bold text-slate-700">{cage.kandang}</span>
-                        <span className="text-sm">
-                          <span className="font-bold">{cage.jmlPeti} peti</span>
-                          {cage.jmlKg > 0 && (
-                            <>
-                              <span className="text-slate-300 mx-1">|</span>
-                              <span className="font-bold">{cage.jmlKg} kg</span>
-                            </>
-                          )}
-                        </span>
+                      <div key={idx} className="flex justify-between items-center bg-blue-50/50 rounded-xl p-3 border border-blue-100/50">
+                        <span className="font-black text-blue-700 text-xs uppercase">{cage.kandang}</span>
+                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-600 uppercase tracking-tighter">
+                          <span>{cage.jmlPeti} Peti</span>
+                          <span className="text-slate-300">|</span>
+                          <span>{cage.jmlKg} KG</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -555,12 +557,14 @@ function ProfitCard({
               )}
             </div>
 
-            <button 
-              onClick={() => setSelectedTransaction(null)}
-              className="w-full mt-6 bg-slate-100 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-200 transition-colors"
-            >
-              Tutup
-            </button>
+            <div className="p-8 bg-slate-50 border-t border-slate-100">
+               <button 
+                 onClick={() => setSelectedTransaction(null)}
+                 className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20"
+               >
+                 Tutup
+               </button>
+            </div>
           </div>
         </div>
       )}

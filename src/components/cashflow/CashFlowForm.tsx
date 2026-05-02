@@ -133,12 +133,12 @@ export function CashFlowForm({
   return (
     <div className="space-y-6">
       {/* Main Expenses */}
-      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
-        <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
-          <Wallet className="w-6 h-6 text-blue-500" />
+      <div className="bg-white p-5 sm:p-8 rounded-[2rem] border border-slate-200 shadow-sm">
+        <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-6 flex items-center gap-2 uppercase tracking-tight">
+          <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500" />
           Pengeluaran Utama
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 sm:gap-6">
           <InputField label="Biaya Pakan" value={data.biayaPakan} onChange={(v) => updateField(`biayaPakan`, v)} readOnly={!isEditable} />
           <InputField label="Operasional" value={data.biayaOperasional} onChange={(v) => updateField(`biayaOperasional`, v)} readOnly={!isEditable} />
           <InputField label="UP" value={data.up} onChange={(v) => updateField(`up`, v)} readOnly={!isEditable} />
@@ -146,8 +146,8 @@ export function CashFlowForm({
       </div>
 
       {/* Salaries */}
-      <div className="bg-slate-900 p-6 sm:p-8 rounded-2xl text-white">
-        <h3 className="text-xl font-black mb-6">Salaries (Gaji)</h3>
+      <div className="bg-slate-900 p-5 sm:p-8 rounded-[2rem] text-white">
+        <h3 className="text-lg sm:text-xl font-black mb-6 uppercase tracking-tight">Salaries (Gaji)</h3>
         {workersLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-white" />
@@ -171,9 +171,9 @@ export function CashFlowForm({
       </div>
 
       {/* Balances & Dividends */}
-      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
-        <h3 className="text-xl font-black text-slate-900 mb-6">Balances & Dividends</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+      <div className="bg-white p-5 sm:p-8 rounded-[2rem] border border-slate-200 shadow-sm">
+        <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-6 uppercase tracking-tight">Balances & Dividends</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 sm:gap-6">
           <InputField label="Deviden A" value={data.devidenA} onChange={(v) => updateField(`devidenA`, v)} readOnly={!isEditable} />
           <InputField label="Deviden B" value={data.devidenB} onChange={(v) => updateField(`devidenB`, v)} readOnly={!isEditable} />
           <InputField label="Saldo Rekening" value={data.saldoKas} onChange={(v) => updateField(`saldoKas`, v)} readOnly={!isEditable} />
@@ -182,9 +182,9 @@ export function CashFlowForm({
       </div>
 
       {/* Other Expenses */}
-      <div className="bg-blue-50 p-6 sm:p-8 rounded-2xl border border-blue-100">
-        <h3 className="text-xl font-black text-blue-900 mb-6 flex items-center gap-2">
-          <Wallet className="w-6 h-6 text-blue-600" />
+      <div className="bg-blue-50 p-5 sm:p-8 rounded-[2rem] border border-blue-100">
+        <h3 className="text-lg sm:text-xl font-black text-blue-900 mb-6 flex items-center gap-2 uppercase tracking-tight">
+          <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
           Pengeluaran Lain
         </h3>
         
@@ -255,7 +255,7 @@ export function CashFlowForm({
           </div>
         )}
         {expenseSuccess && (
-          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-sm font-medium flex items-center gap-2">
+          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-[11px] font-black uppercase tracking-tight flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
             Pengeluaran berhasil disimpan
           </div>
