@@ -1,0 +1,4 @@
+date,customerName,jmlPeti,totalKg,hargaSentral,up,hargaJual,subTotal,totalKgHariIni,totalPetiHariIni,penjualanHariIni,totalProduksi,stockAkhir
+2025-01-15,Toko ABC,5,75,25000,2000,27000,135000,75,5,135000,100,25
+2025-01-15,Toko XYZ,3,45,25000,2000,27000,81000,120,8,216000,100,55
+2025-01-16,Toko ABC,4,60,25000,2000,27000,108000,60,4,108000,90,30

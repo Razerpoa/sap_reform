@@ -28,8 +28,51 @@ npm run dev
 | `npm run lint` | ESLint |
 | `npm run seed` | Seed database |
 | `npm run set-role <email> <admin\|whitelisted>` | Set user role |
+| `npm run import <table> <csv-file> [--force]` | Import CSV data into table |
 | `npm run test:api` | Run API integration tests (`tests/api-data-flow.js`) |
 | `npx prisma studio` | Open Prisma GUI |
+
+## CSV Import
+
+Import data from CSV files into the database.
+
+```bash
+npm run import <table> <csv-file> [--force]
+```
+
+**Options:**
+- `--force` - Clear existing data in the table before import
+
+**Supported Tables:**
+
+| Table | Required Columns | Description |
+|-------|-----------------|-------------|
+| `CageMaster` | `kandang` | Cage configuration |
+| `Worker` | `name` | Worker/employee list |
+| `OtherExpense` | `date`, `amount`, `description` | Miscellaneous expenses |
+| `Sales` | `date`, `customerName` | Sales records |
+| `CashFlow` | `date` | Cash flow entries |
+| `Production` | `date` | Daily production data |
+
+**Examples:**
+```bash
+# Import cages (upserts by kandang)
+npm run import CageMaster data/cages.csv
+
+# Import workers
+npm run import Worker data/workers.csv
+
+# Import production (clears existing first)
+npm run import Production data/production.csv --force
+
+# Import sales
+npm run import Sales data/sales.csv
+```
+
+**CSV Format Notes:**
+- Date formats: `YYYY-MM-DD`, `DD/MM/YYYY`, or `MM/DD/YYYY`
+- Production uses flattened cage columns (e.g., `B1 Kg`, `B1 Tray`, `B1 Butir`)
+- Sample templates in `templates/` folder
 
 ## Prisma Schema → Database
 
