@@ -350,8 +350,8 @@ export default function EntryPage() {
 
   const tabConfig = [
     { id: "production", icon: TrendingUp, label: "Produksi" },
-    { id: "cashflow", icon: Wallet, label: "Arus Kas" },
     { id: "sales", icon: ShoppingBag, label: "Penjualan" },
+    { id: "cashflow", icon: Wallet, label: "Arus Kas" },
     { id: "master", icon: Settings2, label: "Data Master" },
   ];
 
