@@ -282,17 +282,25 @@ async function recalculateStock() {
 /**
  * Get stock data for all cages
  * Returns cumulative production, sold, and stock per cage
+ * @param untilDate - Optional date string (YYYY-MM-DD) to filter records up to that date
  */
-export async function getCageStockData(): Promise<Record<string, { productionKg: number; soldKg: number; stockKg: number; stockPeti: number }>> {
+export async function getCageStockData(untilDate?: string): Promise<Record<string, { productionKg: number; soldKg: number; stockKg: number; stockPeti: number }>> {
   const result: Record<string, { productionKg: number; soldKg: number; stockKg: number; stockPeti: number }> = {};
 
-  // Get all production records
+  // Build date filter if untilDate is provided
+  const productionWhere = untilDate ? { date: { lte: new Date(untilDate) } } : {};
+  const salesWhere = untilDate ? { date: { lte: new Date(untilDate) } } : {};
+
+  // Get production records (filtered by date if untilDate provided)
   const allProduction = await prisma.production.findMany({
+    where: productionWhere,
     orderBy: { date: "asc" },
   });
 
-  // Get all sales records
-  const allSales = await prisma.sales.findMany({});
+  // Get sales records (filtered by date if untilDate provided)
+  const allSales = await prisma.sales.findMany({
+    where: salesWhere,
+  });
 
   // Calculate per-cage production from cageData
   const cageProduction = new Map<string, number>();

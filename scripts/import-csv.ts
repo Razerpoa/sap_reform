@@ -123,19 +123,44 @@ function parseProductionCageData(row: Record<string, any>): string | null {
 
   // Build exactly 3 rows
   const rows: { peti: boolean; tray: number; butir: number }[] = [];
+
+  // Accumulators for partial petis
+  let extraTray = 0;
+  let extraButir = 0;
+  let extraKg = 0;
+
   for (let i = 1; i <= 3; i++) {
     const kg = parseFloat(row[`Peti ${i} Kg`] || row[`Peti ${i} kg`] || 0) || 0;
     const tray = parseFloat(row[`Peti ${i} Tray`] || row[`Peti ${i} tray`] || 0) || 0;
     const butir = parseFloat(row[`Peti ${i} Butir`] || row[`Peti ${i} butir`] || 0) || 0;
-    rows.push({ peti: kg > 0, tray, butir });
+
+    if (kg >= 15) {
+      // Full peti - tray/butir stay, remainder kg goes to extra
+      rows.push({ peti: true, tray, butir });
+      extraKg += kg - 15;
+    } else if (kg > 0) {
+      // Partial peti - all to extra
+      rows.push({ peti: false, tray: 0, butir: 0 });
+      extraKg += kg;
+      extraTray += tray;
+      extraButir += butir;
+    } else {
+      // Empty peti
+      rows.push({ peti: false, tray: 0, butir: 0 });
+    }
   }
+
+  // Add existing Sisa columns on top of accumulated partials
+  const sisaTray = parseFloat(row["Sisa Tray"] || row["sisa tray"] || 0) || 0;
+  const sisaButir = parseFloat(row["Sisa Butir"] || row["sisa butir"] || 0) || 0;
+  const sisaKg = parseFloat(row["Sisa Kg"] || row["sisa kg"] || 0) || 0;
 
   return JSON.stringify({
     rows,
     extra: {
-      extraTray: parseFloat(row["Sisa Tray"] || row["sisa tray"] || 0) || 0,
-      extraButir: parseFloat(row["Sisa Butir"] || row["sisa butir"] || 0) || 0,
-      extraKg: parseFloat(row["Sisa Kg"] || row["sisa kg"] || 0) || 0,
+      extraTray: extraTray + sisaTray,
+      extraButir: extraButir + sisaButir,
+      extraKg: extraKg + sisaKg,
     },
   });
 }

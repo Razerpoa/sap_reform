@@ -121,7 +121,7 @@ export default function EntryPage() {
           // Fetch sales list to display existing records
           const [salesRes, stockRes, cagesRes] = await Promise.all([
             fetch(`/api/sales?date=${dateStr}&_t=${ts}`),
-            fetch(`/api/cage-stock?_t=${ts}`),
+            fetch(`/api/cage-stock?until=${dateStr}&_t=${ts}`),
             fetch(`/api/master?_t=${ts}`)
           ]);
           const salesData = await salesRes.json();
@@ -139,7 +139,7 @@ export default function EntryPage() {
         // No draft, fetch all data in parallel
         const [salesRes, stockRes, cagesRes] = await Promise.all([
           fetch(`/api/sales?date=${dateStr}&_t=${ts}`),
-          fetch(`/api/cage-stock?_t=${ts}`),
+          fetch(`/api/cage-stock?until=${dateStr}&_t=${ts}`),
           fetch(`/api/master?_t=${ts}`)
         ]);
 
@@ -173,7 +173,7 @@ export default function EntryPage() {
       if (activeTab === "production") {
         const [productionRes, stockRes] = await Promise.all([
           fetch(`/api/production?date=${dateStr}&_t=${ts}`),
-          fetch(`/api/cage-stock?_t=${ts}`),
+          fetch(`/api/cage-stock?until=${dateStr}&_t=${ts}`),
         ]);
         if (!productionRes.ok) throw new Error("production failed");
         const productionDataResponse = await productionRes.json();
@@ -246,7 +246,7 @@ export default function EntryPage() {
           const ts = Date.now();
           const [prodRes, stockRes] = await Promise.all([
             fetch(`/api/production?date=${selectedDate}&_t=${ts}`),
-            fetch(`/api/cage-stock?_t=${ts}`)
+            fetch(`/api/cage-stock?until=${selectedDate}&_t=${ts}`)
           ]);
           const prodData = await prodRes.json();
           const stockData = await stockRes.json();
@@ -261,7 +261,7 @@ export default function EntryPage() {
           const ts = Date.now();
           const [salesRes, stockRes] = await Promise.all([
             fetch(`/api/sales?date=${selectedDate}&_t=${ts}`),
-            fetch(`/api/cage-stock?_t=${ts}`)
+            fetch(`/api/cage-stock?until=${selectedDate}&_t=${ts}`)
           ]);
           const salesData = await salesRes.json();
           const stockData = await stockRes.json();

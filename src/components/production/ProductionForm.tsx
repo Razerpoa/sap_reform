@@ -73,24 +73,6 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
     return cageData;
   };
 
-  // Calculate cumulative production stats: just cumulative from database (no adding current unsaved entry)
-  // This calculates the current all-time cumulative production from stockData
-  const netStats: GlobalStats = useMemo(() => {
-    let totalKg = 0;
-    cages.forEach((cage) => {
-      const stock = stockData.find((s: any) => s.kandang === cage.kandang);
-      // Use cumulative PRODUCTION instead of stock
-      totalKg += stock?.productionKg || 0;
-    });
-    return {
-      totalKg,
-      totalPeti: Math.floor(totalKg / 15),
-      totalTray: 0,
-      totalButir: 0,
-      totalSisaKg: totalKg % 15,
-    };
-  }, [cages, stockData]);
-
   // Helper to get net stock for a specific cage (only from DB)
   const getCageNetStock = (kandang: string) => {
     const stock = stockData.find((s: any) => s.kandang === kandang);
@@ -110,28 +92,16 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
     return JSON.stringify(data) !== JSON.stringify(originalData);
   }, [data, originalData]);
 
-  // Calculate stats for the baseline (original) data
-  const originalGlobalStats: GlobalStats = useMemo(() => {
-    return calculateGlobalStats(cages, (key) => originalData?.cageData?.[key] || initializeCageData(key));
-  }, [cages, originalData]);
-
-  // DB cumulative production for this date (stored in production record)
-  const dbProductionKg = data.productionKg || 0;
-
-  // Calculate display stats (Live YTD Production)
+  // Calculate display stats (today's production from cageData)
   const displayStats = useMemo(() => {
-    const baseKg = dbProductionKg || netStats.totalKg;
-    const currentKg = hasUnsavedChanges
-      ? baseKg - (originalGlobalStats.totalKg || 0) + globalStats.totalKg
-      : baseKg;
-    
+    const todayKg = globalStats.totalKg;
     return {
-      totalKg: currentKg,
-      totalPeti: Math.floor(currentKg / 15),
-      totalSisaKg: currentKg % 15,
-      totalButir: hasUnsavedChanges ? globalStats.totalButir : (data.totalButir || 0) // Butir is usually just for today
+      totalKg: todayKg,
+      totalPeti: Math.floor(todayKg / 15),
+      totalSisaKg: todayKg % 15,
+      totalButir: globalStats.totalButir,
     };
-  }, [dbProductionKg, netStats.totalKg, hasUnsavedChanges, originalGlobalStats.totalKg, globalStats.totalKg, globalStats.totalButir, data.totalButir]);
+  }, [globalStats.totalKg, globalStats.totalButir]);
 
   const updatePeti = (key: string, rowIndex: number, checked: boolean) => {
     if (!isEditable) return;
@@ -384,19 +354,19 @@ export function ProductionForm({ data, originalData, setData, isEditable, date, 
             <div className={cn("md:text-4xl text-2xl font-black", hasUnsavedChanges && "text-blue-400")}>
               {formatNumber(displayStats.totalKg)}
             </div>
-            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Total Produksi (Kg)</div>
+            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Total Produksi (Kg) Hari Ini</div>
           </div>
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
             <div className={cn("md:text-4xl text-2xl font-black", hasUnsavedChanges && "text-blue-400")}>
               {formatNumber(displayStats.totalPeti)}
             </div>
-            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Total Produksi (Peti)</div>
+            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Total Produksi (Peti) Hari Ini</div>
           </div>
           <div className="bg-slate-800/50 md:p-6 p-4 rounded-xl text-center">
             <div className={cn("md:text-4xl text-2xl font-black", hasUnsavedChanges && "text-blue-400")}>
               {formatNumber(displayStats.totalSisaKg)}
             </div>
-            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Sisa Kg (YTD)</div>
+            <div className="md:text-sm text-[11px] uppercase font-medium text-slate-400">Sisa Kg</div>
           </div>
         </div>
       </div>
