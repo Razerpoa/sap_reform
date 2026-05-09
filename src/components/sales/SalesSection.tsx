@@ -100,10 +100,14 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showPickerModal]);
 
-  // Calculate global summary
+  // Calculate global summary (includes BG peti, uses BG sisaKg for consolidated view)
   const globalSummary = useMemo(() => {
-    const totalPeti = cageStocks.reduce((sum, c) => sum + c.peti, 0);
-    const totalSisaKg = Math.round(cageStocks.reduce((sum, c) => sum + c.sisaKg, 0) * 100) / 100;
+    const bgEntry = cageStocks.find(c => c.kandang === "BG");
+    const realCages = cageStocks.filter(c => c.kandang !== "BG");
+    const totalPeti = realCages.reduce((sum, c) => sum + c.peti, 0) + (bgEntry?.peti || 0);
+    const totalSisaKg = bgEntry
+      ? bgEntry.sisaKg
+      : Math.round(realCages.reduce((sum, c) => sum + c.sisaKg, 0) * 100) / 100;
     return { totalPeti, totalSisaKg };
   }, [cageStocks]);
 
@@ -261,8 +265,14 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
         {/* Per-cage stock display */}
         <div className="grid grid-cols-1 gap-2">
           {cageStocks.map((cage) => (
-            <div key={cage.kandang} className="flex items-center justify-between bg-slate-800/30 md:p-4 p-3 rounded-xl border border-slate-700/30">
-              <span className="font-black text-slate-300 uppercase text-xs">{cage.kandang}</span>
+            <div key={cage.kandang} className={`flex items-center justify-between md:p-4 p-3 rounded-xl border ${
+              cage.kandang === "BG"
+                ? "bg-blue-900/20 border-blue-500/40"
+                : "bg-slate-800/30 border-slate-700/30"
+            }`}>
+              <span className={`font-black uppercase text-xs ${
+                cage.kandang === "BG" ? "text-blue-300" : "text-slate-300"
+              }`}>{cage.kandang}</span>
               <div className="text-right">
                 <span className="font-black text-white text-sm">
                   {cage.peti} <span className="text-[10px] text-slate-500">Peti</span> <span className="text-slate-700 mx-1">|</span> {cage.sisaKg} <span className="text-[10px] text-slate-500">Kg</span>
@@ -442,6 +452,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             <div className="p-6 sm:p-8">
               <div className="grid grid-cols-2 gap-3 mb-6">
                 {cages.map((cage) => {
+                  const isBg = cage.kandang === "BG";
                   const remaining = remainingStocks.find(s => s.kandang === cage.kandang);
                   const isSelected = pickerSelectedCage === cage.kandang;
                   const isDisabled = (remaining?.remainingPeti || 0) === 0;
@@ -460,11 +471,16 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                           ? "border-blue-500 bg-blue-50 shadow-lg shadow-blue-500/10" 
                           : isDisabled
                             ? "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
-                            : "border-slate-100 hover:border-blue-200 hover:bg-slate-50"
+                            : isBg
+                              ? "border-teal-200 hover:border-teal-400 hover:bg-teal-50"
+                              : "border-slate-100 hover:border-blue-200 hover:bg-slate-50"
                       }`}
                     >
-                      <span className="font-black text-slate-900 text-lg block mb-1">{cage.kandang}</span>
-                      <div className={`text-[10px] font-black uppercase tracking-tighter ${isDisabled ? 'text-slate-400' : 'text-blue-600'}`}>
+                      <span className={`font-black text-lg block mb-1 ${isBg ? 'text-teal-700' : 'text-slate-900'}`}>
+                        {cage.kandang}
+                        {isBg && <span className="text-[9px] font-medium text-teal-500 ml-1 uppercase tracking-wider">(Sisa Kg)</span>}
+                      </span>
+                      <div className={`text-[10px] font-black uppercase tracking-tighter ${isDisabled ? 'text-slate-400' : isBg ? 'text-teal-600' : 'text-blue-600'}`}>
                         {remaining?.remainingPeti || 0} <span className="opacity-50 font-medium">Peti</span>
                       </div>
                     </button>
