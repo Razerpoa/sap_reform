@@ -28,7 +28,7 @@ npm run dev
 | `npm run lint` | ESLint |
 | `npm run seed` | Seed database |
 | `npm run set-role <email> <admin\|whitelisted>` | Set user role |
-| `npm run import <table> <csv-file> [--force]` | Import CSV data into table |
+| `npm run import <table> <csv-file> [--wipe-all]` | Import CSV data into table |
 | `npm run test:api` | Run API integration tests (`tests/api-data-flow.js`) |
 | `npx prisma studio` | Open Prisma GUI |
 
@@ -41,7 +41,7 @@ npm run import <table> <csv-file> [--force]
 ```
 
 **Options:**
-- `--force` - Clear existing data in the table before import
+- `--wipe-all` - Clear existing data in the table before import
 
 **Supported Tables:**
 
@@ -52,7 +52,7 @@ npm run import <table> <csv-file> [--force]
 | `OtherExpense` | `date`, `amount`, `description` | Miscellaneous expenses |
 | `Sales` | `date`, `customerName` | Sales records |
 | `CashFlow` | `date` | Cash flow entries |
-| `Production` | `date` | Daily production data |
+| `Production` | `Tanggal`, `Kandang` | Daily production data (one cage per file) |
 
 **Examples:**
 ```bash
@@ -63,7 +63,7 @@ npm run import CageMaster data/cages.csv
 npm run import Worker data/workers.csv
 
 # Import production (clears existing first)
-npm run import Production data/production.csv --force
+npm run import Production data/production.csv --wipe-all
 
 # Import sales
 npm run import Sales data/sales.csv
@@ -71,7 +71,7 @@ npm run import Sales data/sales.csv
 
 **CSV Format Notes:**
 - Date formats: `YYYY-MM-DD`, `DD/MM/YYYY`, or `MM/DD/YYYY`
-- Production uses flattened cage columns (e.g., `B1 Kg`, `B1 Tray`, `B1 Butir`)
+- Production: one CSV file per cage. Columns: `Tanggal`, `Kandang`, `Peti 1 Tray`, `Peti 1 Butir`, `Peti 1 Kg`, `Peti 2 Tray`, `Peti 2 Butir`, `Peti 2 Kg`, `Peti 3 Tray`, `Peti 3 Butir`, `Peti 3 Kg`, `Sisa Tray`, `Sisa Butir`, `Sisa Kg`. `Kandang` must exist in CageMaster. Multiple dates per file are supported. Import merges cage data per date (preserves other cages).
 - Sample templates in `templates/` folder
 
 ## Prisma Schema → Database

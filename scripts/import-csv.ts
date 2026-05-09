@@ -36,7 +36,7 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
   OtherExpense: ["date", "amount", "description"],
   Sales: ["date", "customerName"],
   CashFlow: ["date"],
-  Production: ["date"],
+  Production: ["Tanggal", "Kandang"],
 };
 
 // Parse date string to Date object
@@ -116,38 +116,28 @@ function parseSalaries(value: any): Record<string, number> {
   return result;
 }
 
-// Parse Production cage data from flattened columns
-function parseProductionCageData(row: Record<string, any>, cageNames: string[]): Record<string, any> {
-  const cageData: Record<string, any> = {};
-  
-  for (const cage of cageNames) {
-    const kg = parseFloat(row[`${cage} Kg`] || row[`${cage} kg`] || 0) || 0;
-    const tray = parseFloat(row[`${cage} Tray`] || row[`${cage} tray`] || 0) || 0;
-    const butir = parseFloat(row[`${cage} Butir`] || row[`${cage} butir`] || 0) || 0;
-    
-    if (kg > 0 || tray > 0 || butir > 0) {
-      // Convert kg to peti count (15 kg per peti), max 3 rows (frontend expects 3 rows)
-      const peti = Math.min(Math.floor(kg / 15), 3);
-      const remainingKg = kg % 15;
-      
-      // Build exactly 3 rows: peti rows + remaining as false
-      const rows = [];
-      for (let i = 0; i < 3; i++) {
-        rows.push({ peti: i < peti, tray: 0, butir: 0 });
-      }
-      
-      cageData[cage] = {
-        rows,
-        extra: {
-          extraTray: tray,
-          extraButir: butir,
-          extraKg: remainingKg,
-        },
-      };
-    }
+// Parse Production cage data from per-row peti columns
+function parseProductionCageData(row: Record<string, any>): string | null {
+  const kandang = String(row.Kandang || "").trim();
+  if (!kandang) return null;
+
+  // Build exactly 3 rows
+  const rows: { peti: boolean; tray: number; butir: number }[] = [];
+  for (let i = 1; i <= 3; i++) {
+    const kg = parseFloat(row[`Peti ${i} Kg`] || row[`Peti ${i} kg`] || 0) || 0;
+    const tray = parseFloat(row[`Peti ${i} Tray`] || row[`Peti ${i} tray`] || 0) || 0;
+    const butir = parseFloat(row[`Peti ${i} Butir`] || row[`Peti ${i} butir`] || 0) || 0;
+    rows.push({ peti: kg > 0, tray, butir });
   }
-  
-  return cageData;
+
+  return JSON.stringify({
+    rows,
+    extra: {
+      extraTray: parseFloat(row["Sisa Tray"] || row["sisa tray"] || 0) || 0,
+      extraButir: parseFloat(row["Sisa Butir"] || row["sisa butir"] || 0) || 0,
+      extraKg: parseFloat(row["Sisa Kg"] || row["sisa kg"] || 0) || 0,
+    },
+  });
 }
 
 // Import functions for each table
@@ -369,40 +359,63 @@ async function importCashFlow(rows: Record<string, any>[]) {
 async function importProduction(rows: Record<string, any>[]) {
   let inserted = 0;
   let updated = 0;
+  let skipped = 0;
   let errors = 0;
 
-  // Get existing cage names for parsing
+  // Validate all cages in CSV exist in CageMaster
   const cages = await prisma.cageMaster.findMany({ orderBy: { kandang: "asc" } });
-  const cageNames = cages.map(c => c.kandang);
+  const validKandang = new Set(cages.map(c => c.kandang));
 
   for (const row of rows) {
     try {
-      const date = parseDate(row.date);
+      const date = parseDate(row.Tanggal || row.date);
       if (!date) {
-        console.log(`  ⚠ Skipping row: missing date`);
+        console.log(`  ⚠ Skipping row: missing date (Tanggal)`);
         errors++;
         continue;
       }
 
-      const cageData = parseProductionCageData(row, cageNames);
-
-      // Calculate cageSummary from cageData
-      const cageSummary: Record<string, any> = {};
-      for (const [cageName, cage] of Object.entries(cageData)) {
-        const rows = (cage as any).rows || [];
-        const extra = (cage as any).extra || {};
-        
-        const totalKg = rows.filter((r: any) => r.peti).length * 15 + (extra.extraKg || 0);
-        const totalTray = rows.reduce((sum: number, r: any) => sum + (r.tray || 0), 0) + (extra.extraTray || 0);
-        const totalButir = rows.reduce((sum: number, r: any) => sum + (r.butir || 0), 0) + (extra.extraButir || 0);
-        
-        cageSummary[cageName] = { totalKg, totalTray, totalButir };
+      const parsed = parseProductionCageData(row);
+      if (!parsed) {
+        console.log(`  ⚠ Skipping row: missing Kandang`);
+        errors++;
+        continue;
       }
+
+      const cageData = JSON.parse(parsed);
+      const kandang = row.Kandang?.trim();
+
+      if (!validKandang.has(kandang)) {
+        console.log(`  ⚠ Skipping row: Kandang "${kandang}" not found in CageMaster`);
+        errors++;
+        continue;
+      }
+
+      // Find or create production record by date
+      let existing = await prisma.production.findUnique({ where: { date } });
+      
+      let newCageData: Record<string, any> = {};
+      let newCageSummary: Record<string, any> = {};
+
+      if (existing && existing.cageData && typeof existing.cageData === 'object') {
+        // Merge: preserve other cages, only update this one
+        newCageData = { ...existing.cageData };
+      }
+      newCageData[kandang] = cageData;
+
+      // Calculate cageSummary for this cage
+      const rows = cageData.rows || [];
+      const extra = cageData.extra || {};
+      const totalKg = rows.filter((r: any) => r.peti).length * 15 + (extra.extraKg || 0);
+      const totalTray = rows.reduce((sum: number, r: any) => sum + (r.tray || 0), 0) + (extra.extraTray || 0);
+      const totalButir = rows.reduce((sum: number, r: any) => sum + (r.butir || 0), 0) + (extra.extraButir || 0);
+      const existingSummary = (existing?.cageSummary && typeof existing.cageSummary === 'object') ? existing.cageSummary : {};
+      newCageSummary = { ...existingSummary, [kandang]: { totalKg, totalTray, totalButir } };
 
       const data: any = {
         date,
-        cageData: Object.keys(cageData).length > 0 ? cageData : {},
-        cageSummary: Object.keys(cageSummary).length > 0 ? cageSummary : {},
+        cageData: newCageData,
+        cageSummary: newCageSummary,
         up: parseFloat(row.up) || 0,
         operasional: parseFloat(row.operasional) || 0,
         profitDaily: parseFloat(row.profitDaily) || 0,
@@ -410,13 +423,8 @@ async function importProduction(rows: Record<string, any>[]) {
         soldKg: parseFloat(row.soldKg) || 0,
       };
 
-      const existing = await prisma.production.findUnique({ where: { date } });
-
       if (existing) {
-        await prisma.production.update({
-          where: { date },
-          data,
-        });
+        await prisma.production.update({ where: { date }, data });
         updated++;
       } else {
         await prisma.production.create({ data });
@@ -428,22 +436,22 @@ async function importProduction(rows: Record<string, any>[]) {
     }
   }
 
-  return { inserted, updated, errors };
+  return { inserted, updated, skipped, errors };
 }
 
 // Main function
 async function main() {
   const args = process.argv.slice(2);
   
-  // Check for --force flag
-  const forceIndex = args.indexOf("--force");
-  const force = forceIndex !== -1;
+  // Check for --wipe-all flag
+  const wipeAllIndex = args.indexOf("--wipe-all");
+  const wipeAll = wipeAllIndex !== -1;
   
-  // Remove --force from args for processing
-  const cleanArgs = force ? args.filter((_, i) => i !== forceIndex) : args;
+  // Remove --wipe-all from args for processing
+  const cleanArgs = wipeAll ? args.filter((_, i) => i !== wipeAllIndex) : args;
   
   if (cleanArgs.length < 2) {
-    console.error("Usage: npm run import <table> <csv-file> [--force]");
+    console.error("Usage: npm run import <table> <csv-file> [--wipe-all]");
     console.error("");
     console.error("Valid tables:");
     for (const table of VALID_TABLES) {
@@ -451,7 +459,7 @@ async function main() {
     }
     console.error("");
     console.error("Options:");
-    console.error("  --force  Clear existing data in the table before import");
+    console.error("  --wipe-all  Clear existing data in the table before import");
     process.exit(1);
   }
 
@@ -503,8 +511,8 @@ async function main() {
   console.log(`Importing ${tableName} from ${filePath}...`);
   console.log(`Found ${rows.length} rows`);
 
-  // Clear table if --force flag is used
-  if (force) {
+  // Clear table if --wipe-all flag is used
+  if (wipeAll) {
     console.log(`⚠ Clearing existing ${tableName} data...`);
     switch (tableName) {
       case "CageMaster":
