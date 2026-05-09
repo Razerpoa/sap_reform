@@ -284,6 +284,29 @@ export default function EntryPage() {
     }
   }
 
+  async function handleDeleteSale(id: string) {
+    try {
+      const res = await fetch(`/api/sales?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        // Re-fetch sales and stock data
+        const ts = Date.now();
+        const [salesRes, stockRes] = await Promise.all([
+          fetch(`/api/sales?date=${selectedDate}&_t=${ts}`),
+          fetch(`/api/cage-stock?until=${selectedDate}&_t=${ts}`)
+        ]);
+        const salesData = await salesRes.json();
+        const stockData = await stockRes.json();
+        setSalesData(salesData || []);
+        setStockData(Object.entries(stockData || {}).map(([kandang, v]: any) => ({ kandang: kandang, ...v })));
+      } else {
+        const err = await res.json();
+        setError(err.error || "Failed to delete");
+      }
+    } catch {
+      setError("Network error");
+    }
+  }
+
   // Helper functions to get data/setter based on tab
   function getDataSetter(tab: Tab): (data: any) => void {
     switch (tab) {
@@ -445,6 +468,7 @@ export default function EntryPage() {
               setNewSale={setNewSale} 
               isEditable={isEditable} 
               onSave={handleSave}
+              onDelete={handleDeleteSale}
               stockData={stockData}
               cages={cages}
             />

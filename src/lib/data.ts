@@ -138,6 +138,15 @@ export async function getTodaySales() {
   return entries;
 }
 
+/**
+ * Get a single sales entry by ID
+ */
+export async function getSalesById(id: string) {
+  return await prisma.sales.findUnique({
+    where: { id },
+  });
+}
+
 // ==================== MASTER DATA ====================
 
 /**
@@ -433,7 +442,12 @@ export async function saveSalesData(data: SalesSaveInput) {
     where: { date: data.date },
   });
 
-  const dailyTotals = calculateSalesTotals(existingEntries, {
+  // When updating, exclude self from totals to avoid double-counting
+  const filteredEntries = data.id
+    ? existingEntries.filter(e => e.id !== data.id)
+    : existingEntries;
+
+  const dailyTotals = calculateSalesTotals(filteredEntries, {
     totalKg: data.totalKg || 0,
     jmlPeti: data.jmlPeti || 0,
     hargaJual: data.hargaJual || 0,
@@ -593,5 +607,16 @@ export async function deleteOtherExpenseData(id: string) {
   await prisma.otherExpense.delete({
     where: { id },
   });
+  revalidatePath("/");
+}
+
+/**
+ * Delete sales data
+ */
+export async function deleteSalesData(id: string) {
+  await prisma.sales.delete({
+    where: { id },
+  });
+  await recalculateStock();
   revalidatePath("/");
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSalesData, saveSalesData } from "@/lib/data";
+import { getSalesData, saveSalesData, deleteSalesData, getSalesById } from "@/lib/data";
 import { z } from "zod";
 import { isTodayWIB } from "@/lib/date-utils";
 import { withAuth } from "@/lib/api-wrapper";
@@ -63,6 +63,36 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: messages.join(", ") }, { status: 400 });
       }
       throw error;
+    }
+  }, { requireAdmin: true });
+}
+
+export async function DELETE(request: Request) {
+  return withAuth(async () => {
+    try {
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get("id");
+
+      if (!id) {
+        return NextResponse.json({ error: "Missing id" }, { status: 400 });
+      }
+
+      // Check if entry exists to verify date
+      const existing = await getSalesById(id);
+      if (!existing) {
+        return NextResponse.json({ error: "Entry not found." }, { status: 404 });
+      }
+
+      const isTest = process.env.NODE_ENV === "test" || process.env.TESTING_MODE === "true";
+      const canEditPast = isTest || await canEditPastEntries();
+      if (!canEditPast && !isTodayWIB(new Date(existing.date))) {
+        return NextResponse.json({ error: "Modification of past entries is forbidden." }, { status: 403 });
+      }
+
+      await deleteSalesData(id);
+      return NextResponse.json({ success: true });
+    } catch (error) {
+      return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
   }, { requireAdmin: true });
 }

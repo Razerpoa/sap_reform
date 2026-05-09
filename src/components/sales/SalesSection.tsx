@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { ShoppingBag, CheckCircle2, X } from "lucide-react";
+import { ShoppingBag, CheckCircle2, X, Pencil, Trash2 } from "lucide-react";
 import { formatNumber } from "@/lib/format";
 
 type StockData = {
@@ -25,6 +25,7 @@ type SelectedCage = {
 };
 
 type SalesData = {
+  id?: string;
   customerName: string;
   hargaJual: number;
   jmlPeti: number;
@@ -38,17 +39,19 @@ type SalesSectionProps = {
   setNewSale: (sale: any) => void;
   isEditable: boolean;
   onSave: (saleData: SalesData) => void;
+  onDelete: (id: string) => void;
   stockData?: StockData[];
   cages?: CageData[];
 };
 
-export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, stockData = [], cages = [] }: SalesSectionProps) {
+export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, onDelete, stockData = [], cages = [] }: SalesSectionProps) {
   // New state for multi-cage selection
   const [selectedCages, setSelectedCages] = useState<SelectedCage[]>([]);
   const [showPickerModal, setShowPickerModal] = useState(false);
   const [pickerSelectedCage, setPickerSelectedCage] = useState<string | null>(null);
   const [pickerPeti, setPickerPeti] = useState(0);
   const [pickerKg, setPickerKg] = useState(0);
+  const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
 
   // Calculate stock for each cage (cumulative - all time production - all time sold)
   const cageStocks = useMemo(() => {
@@ -127,6 +130,51 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
     setSelectedCages(selectedCages.filter(c => c.kandang !== kandang));
   };
 
+  // Handle edit an existing sale record
+  const handleEditSale = (sale: any) => {
+    const sourceCages: SelectedCage[] = (sale.sourceCages || []).map((c: any) => ({
+      kandang: c.kandang,
+      jmlPeti: c.jmlPeti,
+      jmlKg: c.jmlKg,
+    }));
+    setNewSale({
+      ...newSale,
+      customerName: sale.customerName || "",
+      hargaJual: sale.hargaJual || 0,
+    });
+    setSelectedCages(sourceCages);
+    setEditingSaleId(sale.id);
+  };
+
+  // Handle delete a sale record
+  const handleDeleteSale = async (id: string) => {
+    if (!confirm("Hapus penjualan ini?")) return;
+    onDelete(id);
+  };
+
+  // Handle edit a cage card - remove and reopen modal
+  const handleCageEdit = (cage: SelectedCage) => {
+    removeCage(cage.kandang);
+    setPickerSelectedCage(cage.kandang);
+    setPickerPeti(cage.jmlPeti);
+    setPickerKg(cage.jmlKg);
+    setShowPickerModal(true);
+  };
+
+  // Cancel editing
+  const cancelEdit = () => {
+    setEditingSaleId(null);
+    setSelectedCages([]);
+    setNewSale({
+      ...newSale,
+      customerName: "",
+      hargaJual: 0,
+      jmlPeti: 0,
+      totalKg: 0,
+      sourceCages: [],
+    });
+  };
+
   // Handle add cage from modal
   const handleAddCage = () => {
     if (!pickerSelectedCage) return;
@@ -170,6 +218,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
 
     // Pass selected cage data directly to onSave callback (avoid async state issue)
     const saleData = {
+      ...(editingSaleId ? { id: editingSaleId } : {}),
       customerName: newSale.customerName || "",
       hargaJual: newSale.hargaJual || 0,
       jmlPeti: totalPeti,
@@ -182,6 +231,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
 
     // Reset after save
     setSelectedCages([]);
+    setEditingSaleId(null);
     setNewSale({
       ...newSale,
       customerName: "",
@@ -264,15 +314,25 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
             </div>
           </div>
 
-          {/* 4. Add Sale Record Button */}
-          <button
-            onClick={handleSave}
-            disabled={selectedCages.length === 0 || !newSale.customerName || newSale.hargaJual === 0}
-            className="w-full bg-blue-600 text-white font-black mb-4 py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
-          >
-            <CheckCircle2 className="w-5 h-5" />
-            Add Sale Record
-          </button>
+          {/* 4. Save / Update Button */}
+          <div className="flex gap-3 mb-4">
+            {editingSaleId && (
+              <button
+                onClick={cancelEdit}
+                className="flex-1 bg-slate-100 text-slate-600 font-black py-4 rounded-2xl hover:bg-slate-200 transition-colors"
+              >
+                Batal
+              </button>
+            )}
+            <button
+              onClick={handleSave}
+              disabled={selectedCages.length === 0 || !newSale.customerName || newSale.hargaJual === 0}
+              className={`${editingSaleId ? 'flex-1' : 'w-full'} bg-blue-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed`}
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              {editingSaleId ? "Update Penjualan" : "Tambah Penjualan"}
+            </button>
+          </div>
 
           {/* 1. "Pilih Kandang" Button - show availability status */}
           {!hasAnyStock ? (
@@ -308,12 +368,21 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
                           {remaining?.remainingPeti || 0} peti tersedia
                         </span>
                       </div>
-                      <button 
-                        onClick={() => removeCage(cage.kandang)} 
-                        className="text-red-400 hover:text-red-600 transition-colors"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={() => handleCageEdit(cage)} 
+                          className="text-slate-400 hover:text-blue-600 transition-colors"
+                          title="Edit alokasi"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => removeCage(cage.kandang)} 
+                          className="text-red-400 hover:text-red-600 transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                     <div className="flex gap-4 text-sm">
                       <span>Ambil: <strong>{cage.jmlPeti}</strong> peti</span>
@@ -469,7 +538,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
       {data.length > 0 ? (
         <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <h3 className="font-black text-slate-900 uppercase tracking-tight text-sm sm:text-base">Log Penjualan Hari Ini</h3>
+            <h3 className="font-black text-slate-900 uppercase tracking-tight text-sm sm:text-base">Penjualan Hari Ini</h3>
             <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
               {data.length} Records
             </span>
@@ -493,6 +562,24 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, st
                   <p className="text-base sm:text-lg font-black text-slate-900 italic">Rp {formatNumber(sale.subTotal)}</p>
                   <p className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">@{formatNumber(sale.hargaJual)}</p>
                 </div>
+                {isEditable && (
+                  <div className="flex flex-col gap-1 ml-3">
+                    <button
+                      onClick={() => handleEditSale(sale)}
+                      className="p-1.5 hover:bg-blue-50 rounded-lg text-blue-500 transition-colors"
+                      title="Edit"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSale(sale.id)}
+                      className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600 transition-colors"
+                      title="Hapus"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
