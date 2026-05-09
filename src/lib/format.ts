@@ -4,12 +4,13 @@
  */
 
 /**
- * Format a number into Indonesian abbreviation (Rb/Jt/M/T)
+ * Format a number into abbreviated or full Indonesian format
  * @param value - The number to format
  * @param suffix - Optional unit suffix (e.g., "kg", "telur"). If omitted, no unit shown.
- * @returns Formatted string, e.g., "1.5 Jt" or "1.5 Jt kg"
+ * @param abbreviate - Optional. Defaults to true. When true, abbreviates to rb/jt/M/T. When false, shows full number with Indonesian locale separators.
+ * @returns Formatted string, e.g., "1.5 jt" (abbreviate=true) or "1.500.000" (abbreviate=false), with optional suffix appended.
  */
-export function formatNumber(value: number, suffix?: string): string {
+export function formatNumber(value: number, suffix?: string, abbreviate?: boolean): string {
   if (value === 0) {
     return suffix ? `0 ${suffix}` : "0";
   }
@@ -17,9 +18,14 @@ export function formatNumber(value: number, suffix?: string): string {
   const absValue = Math.abs(value);
   const sign = value < 0 ? "-" : "";
 
+  abbreviate ??= false;
+
   let result: string;
 
-  if (absValue < 1000) {
+  if (!abbreviate) {
+    // Full number with Indonesian locale dot separators
+    result = absValue.toLocaleString("id-ID");
+  } else if (absValue < 1000) {
     // Below 1,000 - show as regular number
     result = absValue.toLocaleString("id-ID");
   } else if (absValue < 1000000) {
