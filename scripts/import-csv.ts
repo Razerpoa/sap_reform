@@ -345,11 +345,11 @@ async function importCashFlow(rows: Record<string, any>[]) {
         saldoCash: parseFloat(row.saldoCash) || 0,
       };
 
-      const existing = await prisma.cashFlow.findUnique({ where: { date } });
+      const existing = await prisma.cashFlow.findFirst({ where: { date } });
 
       if (existing) {
         await prisma.cashFlow.update({
-          where: { date },
+          where: { id: existing.id },
           data,
         });
         updated++;

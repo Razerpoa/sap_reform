@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { LogIn, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
@@ -22,7 +22,23 @@ function LoginContent() {
       <div className="sm:mx-auto sm:w-full sm:max-w-sm">
         <div className="flex justify-center">
           <div className="p-4 bg-blue-600 rounded-2xl shadow-lg shadow-blue-200">
-            <LogIn className="w-10 h-10 text-white" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-10 h-10 text-white"
+              suppressHydrationWarning
+            >
+              <path d="m10 17 5-5-5-5" />
+              <path d="M15 12H3" />
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+            </svg>
           </div>
         </div>
         <h2 className="mt-10 text-center text-3xl font-bold leading-9 tracking-tight text-slate-900">
@@ -52,7 +68,7 @@ function LoginContent() {
             onClick={() => signIn("google", { callbackUrl: "/" })}
             className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus-visible:ring-transparent transition-all active:scale-[0.98]"
           >
-            <svg className="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24">
+            <svg className="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24" suppressHydrationWarning>
               <path
                 d="M12.0003 4.75C13.7703 4.75 15.3553 5.36002 16.6053 6.54998L20.0303 3.125C17.9502 1.19 15.2353 0 12.0003 0C7.31028 0 3.25527 2.69 1.28027 6.60998L5.27028 9.70498C6.21028 6.86502 8.86528 4.75 12.0003 4.75Z"
                 fill="#EA4335"
