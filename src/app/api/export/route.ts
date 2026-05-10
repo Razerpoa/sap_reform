@@ -93,7 +93,7 @@ export async function GET(request: Request) {
     // Production sheet with dynamic cage columns
     if (production.length > 0) {
       // Build dynamic headers
-      const baseHeaders = ["Date", "UP", "Operasional", "Profit Daily"];
+      const baseHeaders = ["Date"];
       const cageHeaders: string[] = [];
       
       for (const cageName of cageNames) {
@@ -106,9 +106,6 @@ export async function GET(request: Request) {
         const totals = calculateCageTotals(entry.cageData);
         const baseRow = [
           format(entry.date, "yyyy-MM-dd"),
-          entry.up || 0,
-          entry.operasional || 0,
-          entry.profitDaily || 0,
         ];
         
         const cageRow = cageNames.map((cageName: string) => {
@@ -184,7 +181,7 @@ export async function GET(request: Request) {
 
   // Production sheet with dynamic cage columns
   if (production.length > 0) {
-    const baseHeaders = ["Date", "Harga Sentral", "UP", "Operasional", "Profit Daily"];
+    const baseHeaders = ["Date"];
     const cageHeaders: string[] = [];
     
     for (const cageName of cageNames) {
@@ -199,9 +196,6 @@ export async function GET(request: Request) {
         const totals = calculateCageTotals(entry.cageData);
         const baseRow = [
           format(entry.date, "yyyy-MM-dd"),
-          entry.up || 0,
-          entry.operasional || 0,
-          entry.profitDaily || 0,
         ];
         
         const cageRow = cageNames.map((cageName: string) => {

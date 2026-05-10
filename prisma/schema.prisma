@@ -41,9 +41,6 @@ model Production {
   cageMasterId  String?  @default("default")
   cageData      Json     @default("{}")
   cageSummary  Json     @default("{}")
-  up            Float    @default(0)
-  operasional  Float    @default(0)
-  profitDaily  Float    @default(0)
   productionKg Float    @default(0)  // cumulative production up to this date
   soldKg       Float    @default(0)  // cumulative sold up to this date
   createdAt     DateTime @default(now())

@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import "dotenv/config";
+import { recalculateStock } from "../src/lib/data";
 
 const createPrismaClient = () => {
   const url = "postgresql://" + process.env.DATABASE_USERNAME + ":" + process.env.DATABASE_PASSWORD + "@" + process.env.DATABASE_HOST + "/sap_reform?schema=public";
@@ -441,11 +442,6 @@ async function importProduction(rows: Record<string, any>[]) {
         date,
         cageData: newCageData,
         cageSummary: newCageSummary,
-        up: parseFloat(row.up) || 0,
-        operasional: parseFloat(row.operasional) || 0,
-        profitDaily: parseFloat(row.profitDaily) || 0,
-        productionKg: parseFloat(row.productionKg) || 0,
-        soldKg: parseFloat(row.soldKg) || 0,
       };
 
       if (existing) {
@@ -460,6 +456,9 @@ async function importProduction(rows: Record<string, any>[]) {
       errors++;
     }
   }
+
+  // Auto-calculate productionKg and soldKg for all dates
+  await recalculateStock();
 
   return { inserted, updated, skipped, errors };
 }

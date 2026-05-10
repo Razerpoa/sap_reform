@@ -204,9 +204,6 @@ export type ProductionSaveInput = {
   date: Date;
   cageData?: ProductionCageData;
   cageSummary?: ProductionCageData;
-  up?: number;
-  operasional?: number;
-  profitDaily?: number;
 };
 
 /**
@@ -238,7 +235,7 @@ export async function saveProductionData(data: ProductionSaveInput) {
  * Recalculate cumulative productionKg and soldKg for ALL dates
  * This runs after every production or sales save to ensure stock is always accurate
  */
-async function recalculateStock() {
+export async function recalculateStock() {
   // Get all production records sorted by date
   const allProduction = await prisma.production.findMany({
     orderBy: { date: "asc" },
