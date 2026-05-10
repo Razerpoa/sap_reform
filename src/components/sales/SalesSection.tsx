@@ -12,6 +12,13 @@ type StockData = {
   soldKg?: number;
   stockKg?: number;
   stockPeti?: number;
+  // Month-split FIFO stock fields (from getCageStockData)
+  lastMonthStockKg?: number;
+  lastMonthStockPeti?: number;
+  lastMonthSisaKg?: number;
+  currentMonthStockKg?: number;
+  currentMonthStockPeti?: number;
+  currentMonthSisaKg?: number;
 };
 
 type CageData = {
@@ -53,31 +60,54 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
   const [pickerKg, setPickerKg] = useState(0);
   const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
 
-  // Calculate stock for each cage (cumulative - all time production - all time sold)
+  // Calculate stock for each cage (cumulative + month-split FIFO)
   const cageStocks = useMemo(() => {
     return cages.map((cage) => {
       const stock = stockData.find((s) => s.kandang === cage.kandang);
       const stockKg = stock?.stockKg || 0;
       const peti = Math.floor(stockKg / 15);
       const sisaKg = Math.round((stockKg % 15) * 100) / 100; // Round to 2 decimals
+
+      // Month-split fields (from backend FIFO computation)
+      const lastStockKg = stock?.lastMonthStockKg ?? 0;
+      const lastPeti = stock?.lastMonthStockPeti ?? Math.floor(lastStockKg / 15);
+      const lastSisaKg = stock?.lastMonthSisaKg ?? Math.round((lastStockKg % 15) * 100) / 100;
+      const currStockKg = stock?.currentMonthStockKg ?? 0;
+      const currPeti = stock?.currentMonthStockPeti ?? Math.floor(currStockKg / 15);
+      const currSisaKg = stock?.currentMonthSisaKg ?? Math.round((currStockKg % 15) * 100) / 100;
+
       return {
         kandang: cage.kandang,
         stockKg,
         peti,
         sisaKg,
+        lastStockKg,
+        lastPeti,
+        lastSisaKg,
+        currStockKg,
+        currPeti,
+        currSisaKg,
       };
     });
   }, [cages, stockData]);
 
-  // Calculate remaining stock after in-session selections
+  // Calculate remaining stock after in-session selections (with FIFO month tracking)
   const remainingStocks = useMemo(() => {
     return cageStocks.map((cage) => {
       const selected = selectedCages.filter((s) => s.kandang === cage.kandang);
       const usedPeti = selected.reduce((sum, s) => sum + s.jmlPeti, 0);
       const remainingPeti = cage.peti - usedPeti;
+
+      // FIFO: consumed peti uses last month stock first, then current month
+      const usedFromLast = Math.min(usedPeti, cage.lastPeti);
+      const lastRemainingPeti = cage.lastPeti - usedFromLast;
+      const currRemainingPeti = cage.currPeti - (usedPeti - usedFromLast);
+
       return {
         ...cage,
         remainingPeti: remainingPeti < 0 ? 0 : remainingPeti,
+        lastMonthRemainingPeti: lastRemainingPeti < 0 ? 0 : lastRemainingPeti,
+        currentMonthRemainingPeti: currRemainingPeti < 0 ? 0 : currRemainingPeti,
         usedPeti,
       };
     });
@@ -100,15 +130,22 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showPickerModal]);
 
-  // Calculate global summary (includes BG peti, uses BG sisaKg for consolidated view)
-  const globalSummary = useMemo(() => {
+  // Calculate last month global summary (FIFO: unsold from before this month)
+  const lastMonthSummary = useMemo(() => {
     const bgEntry = cageStocks.find(c => c.kandang === "BG");
     const realCages = cageStocks.filter(c => c.kandang !== "BG");
-    const totalPeti = realCages.reduce((sum, c) => sum + c.peti, 0) + (bgEntry?.peti || 0);
-    const totalSisaKg = bgEntry
-      ? bgEntry.sisaKg
-      : Math.round(realCages.reduce((sum, c) => sum + c.sisaKg, 0) * 100) / 100;
-    return { totalPeti, totalSisaKg };
+    const totalPeti = realCages.reduce((sum, c) => sum + c.lastPeti, 0) + (bgEntry?.lastPeti || 0);
+    const totalSisaKg = realCages.reduce((sum, c) => sum + c.lastSisaKg, 0) + (bgEntry?.lastSisaKg || 0);
+    return { totalPeti, totalSisaKg: Math.round(totalSisaKg * 100) / 100 };
+  }, [cageStocks]);
+
+  // Calculate current month global summary
+  const currentMonthSummary = useMemo(() => {
+    const bgEntry = cageStocks.find(c => c.kandang === "BG");
+    const realCages = cageStocks.filter(c => c.kandang !== "BG");
+    const totalPeti = realCages.reduce((sum, c) => sum + c.currPeti, 0) + (bgEntry?.currPeti || 0);
+    const totalSisaKg = realCages.reduce((sum, c) => sum + c.currSisaKg, 0) + (bgEntry?.currSisaKg || 0);
+    return { totalPeti, totalSisaKg: Math.round(totalSisaKg * 100) / 100 };
   }, [cageStocks]);
 
   // Calculate totals from selectedCages
@@ -254,29 +291,46 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
           <h3 className="md:text-xl text-base font-black text-slate-400 uppercase tracking-tight">Status Stok</h3>
         </div>
 
-        {/* Global Summary */}
-        <div className="bg-slate-800/50 md:p-5 p-4 rounded-2xl mb-4 text-center">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Ketersediaan</span>
-            <div className="md:text-3xl text-2xl font-black mt-1 italic">
-              {globalSummary.totalPeti} <span className="text-sm font-black text-slate-500 uppercase not-italic">Peti</span> <span className="text-slate-700 mx-1">|</span> {globalSummary.totalSisaKg} <span className="text-sm font-black text-slate-500 uppercase not-italic">Kg</span>
+        {/* Global Summary — Split into Last Month / This Month */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-slate-800/50 md:p-5 p-4 rounded-2xl text-center">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Bulan Lalu</span>
+            <div className="md:text-2xl text-xl font-black mt-1 italic">
+              {lastMonthSummary.totalPeti} <span className="text-sm font-black text-slate-500 uppercase not-italic">Peti</span> <span className="text-slate-700 mx-1">|</span> {lastMonthSummary.totalSisaKg} <span className="text-sm font-black text-slate-500 uppercase not-italic">Kg</span>
             </div>
+          </div>
+          <div className="bg-slate-800/50 md:p-5 p-4 rounded-2xl text-center">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Bulan Ini</span>
+            <div className="md:text-2xl text-xl font-black mt-1 italic">
+              {currentMonthSummary.totalPeti} <span className="text-sm font-black text-slate-500 uppercase not-italic">Peti</span> <span className="text-slate-700 mx-1">|</span> {currentMonthSummary.totalSisaKg} <span className="text-sm font-black text-slate-500 uppercase not-italic">Kg</span>
+            </div>
+          </div>
         </div>
 
-        {/* Per-cage stock display */}
+        {/* Per-cage stock display — compact inline pills */}
         <div className="grid grid-cols-1 gap-2">
           {cageStocks.map((cage) => (
-            <div key={cage.kandang} className={`flex items-center justify-between md:p-4 p-3 rounded-xl border ${
+            <div key={cage.kandang} className={`flex items-center md:p-3 p-2.5 rounded-xl border gap-2 ${
               cage.kandang === "BG"
                 ? "bg-blue-900/20 border-blue-500/40"
                 : "bg-slate-800/30 border-slate-700/30"
             }`}>
-              <span className={`font-black uppercase text-xs ${
+              <span className={`font-black uppercase text-xs w-10 shrink-0 ${
                 cage.kandang === "BG" ? "text-blue-300" : "text-slate-300"
               }`}>{cage.kandang}</span>
-              <div className="text-right">
-                <span className="font-black text-white text-sm">
-                  {cage.peti} <span className="text-[10px] text-slate-500">Peti</span> <span className="text-slate-700 mx-1">|</span> {cage.sisaKg} <span className="text-[10px] text-slate-500">Kg</span>
-                </span>
+              <div className="flex items-center gap-2 flex-1 justify-end">
+                <div className="bg-slate-800/50 rounded-lg px-2.5 py-1.5 text-center">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">Bln Lalu</span>{' '}
+                  <span className="text-xs font-black text-white">{cage.lastPeti}<span className="text-[9px] font-bold text-slate-500">P</span></span>
+                  <span className="text-slate-700 mx-0.5">|</span>
+                  <span className="text-xs font-black text-white">{cage.lastSisaKg}<span className="text-[9px] font-bold text-slate-500">Kg</span></span>
+                </div>
+                <div className="bg-slate-800/50 rounded-lg px-2.5 py-1.5 text-center">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">Bln Ini</span>{' '}
+                  <span className="text-xs font-black text-white">{cage.currPeti}<span className="text-[9px] font-bold text-slate-500">P</span></span>
+                  <span className="text-slate-700 mx-0.5">|</span>
+                  <span className="text-xs font-black text-white">{cage.currSisaKg}<span className="text-[9px] font-bold text-slate-500">Kg</span></span>
+                </div>
               </div>
             </div>
           ))}
@@ -369,6 +423,9 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             <div className="space-y-3 mb-4">
               {selectedCages.map((cage) => {
                 const remaining = remainingStocks.find(s => s.kandang === cage.kandang);
+                // Show FIFO allocation breakdown
+                const fromLast = Math.min(cage.jmlPeti, (remaining as any)?.lastPeti ?? 0);
+                const fromCurr = cage.jmlPeti - fromLast;
                 return (
                   <div key={cage.kandang} className="bg-white border border-slate-200 rounded-xl p-4">
                     <div className="flex items-center justify-between mb-2">
@@ -398,6 +455,13 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                       <span>Ambil: <strong>{cage.jmlPeti}</strong> peti</span>
                       <span><strong>{cage.jmlKg}</strong> kg</span>
                     </div>
+                    {cage.jmlPeti > 0 && (
+                      <div className="mt-2 text-[10px] text-blue-600 font-medium">
+                        {fromLast > 0 ? `${fromLast} dari stok bulan lalu` : ''}
+                        {fromLast > 0 && fromCurr > 0 ? ', ' : ''}
+                        {fromCurr > 0 ? `${fromCurr} dari stok bulan ini` : ''}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -480,8 +544,15 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                         {cage.kandang}
                         {isBg && <span className="text-[9px] font-medium text-teal-500 ml-1 uppercase tracking-wider">(Sisa Kg)</span>}
                       </span>
-                      <div className={`text-[10px] font-black uppercase tracking-tighter ${isDisabled ? 'text-slate-400' : isBg ? 'text-teal-600' : 'text-blue-600'}`}>
-                        {remaining?.remainingPeti || 0} <span className="opacity-50 font-medium">Peti</span>
+                      <div className="text-[10px] font-black uppercase tracking-tighter">
+                        <div className={isDisabled ? 'text-slate-400' : isBg ? 'text-teal-600' : 'text-blue-600'}>
+                          {remaining?.remainingPeti || 0} <span className="opacity-50 font-medium">Peti</span>
+                        </div>
+                        {!isDisabled && (
+                          <div className="text-[8px] font-medium text-slate-400 mt-0.5">
+                            Bln Lalu: {remaining?.lastMonthRemainingPeti ?? 0} &middot; Bln Ini: {remaining?.currentMonthRemainingPeti ?? 0}
+                          </div>
+                        )}
                       </div>
                     </button>
                   );
@@ -494,6 +565,11 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                   {(() => {
                     const remaining = remainingStocks.find(s => s.kandang === pickerSelectedCage);
                     const exceedsStock = pickerPeti > (remaining?.remainingPeti || 0);
+                    // Strict FIFO: compute how many peti come from last month vs current month
+                    const lastAvail = remaining?.lastMonthRemainingPeti ?? 0;
+                    const entered = pickerPeti;
+                    const fromLast = Math.min(entered, lastAvail);
+                    const fromCurr = Math.max(0, entered - fromLast);
                     return (
                       <>
                         <div className="flex items-center gap-2 mb-4 justify-center">
@@ -532,6 +608,17 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                             />
                           </div>
                         </div>
+
+                        {/* Strict FIFO allocation display */}
+                        {entered > 0 && !exceedsStock && (
+                          <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl text-center">
+                            <span className="text-[10px] font-bold text-blue-800">
+                              {entered} peti → {fromLast > 0 ? `${fromLast} dari stok bulan lalu` : ''}
+                              {fromLast > 0 && fromCurr > 0 ? ', ' : ''}
+                              {fromCurr > 0 ? `${fromCurr} dari stok bulan ini` : ''}
+                            </span>
+                          </div>
+                        )}
                       </>
                     );
                   })()}

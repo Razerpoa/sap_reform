@@ -286,16 +286,32 @@ export async function recalculateStock() {
 }
 
 /**
- * Get stock data for all cages
- * Returns cumulative production, sold, and stock per cage
+ * Get stock data for all cages, with FIFO month-split breakdown
+ * Returns cumulative production, sold, stock per cage,
+ * plus last-month / current-month stock split using FIFO logic.
  * @param untilDate - Optional date string (YYYY-MM-DD) to filter records up to that date
  */
-export async function getCageStockData(untilDate?: string): Promise<Record<string, { productionKg: number; soldKg: number; stockKg: number; stockPeti: number }>> {
-  const result: Record<string, { productionKg: number; soldKg: number; stockKg: number; stockPeti: number }> = {};
+export async function getCageStockData(untilDate?: string): Promise<Record<string, {
+  productionKg: number;
+  soldKg: number;
+  stockKg: number;
+  stockPeti: number;
+  lastMonthStockKg: number;
+  lastMonthStockPeti: number;
+  lastMonthSisaKg: number;
+  currentMonthStockKg: number;
+  currentMonthStockPeti: number;
+  currentMonthSisaKg: number;
+}>> {
+  const result: Record<string, any> = {};
 
   // Build date filter if untilDate is provided
-  const productionWhere = untilDate ? { date: { lte: new Date(untilDate) } } : {};
-  const salesWhere = untilDate ? { date: { lte: new Date(untilDate) } } : {};
+  const refDate = untilDate ? new Date(untilDate) : new Date();
+  const productionWhere = untilDate ? { date: { lte: refDate } } : {};
+  const salesWhere = untilDate ? { date: { lte: refDate } } : {};
+
+  // Month boundary: everything before current month is "last month" stock
+  const currentMonthStart = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
 
   // Get production records (filtered by date if untilDate provided)
   const allProduction = await prisma.production.findMany({
@@ -308,17 +324,33 @@ export async function getCageStockData(untilDate?: string): Promise<Record<strin
     where: salesWhere,
   });
 
-  // Calculate per-cage production from cageData
+  // Calculate per-cage production from cageData (total + month-split)
   const cageProduction = new Map<string, number>();
+  const cagePrevProduction = new Map<string, number>();
+  const cageCurrentProduction = new Map<string, number>();
+
   for (const prod of allProduction) {
     const cageData = prod.cageData as Record<string, any>;
+    const isCurrent = prod.date >= currentMonthStart;
+
     for (const cageKey of Object.keys(cageData || {})) {
       const cageInfo = cageData[cageKey];
       if (!cageInfo) continue;
 
       const totalKg = calculateTotalKgFromCageData({ [cageKey]: cageInfo });
-      const current = cageProduction.get(cageKey) || 0;
-      cageProduction.set(cageKey, current + totalKg);
+
+      // Track total (all-time)
+      const currentTot = cageProduction.get(cageKey) || 0;
+      cageProduction.set(cageKey, currentTot + totalKg);
+
+      // Track by month bucket
+      if (isCurrent) {
+        const cur = cageCurrentProduction.get(cageKey) || 0;
+        cageCurrentProduction.set(cageKey, cur + totalKg);
+      } else {
+        const prev = cagePrevProduction.get(cageKey) || 0;
+        cagePrevProduction.set(cageKey, prev + totalKg);
+      }
     }
   }
 
@@ -338,35 +370,64 @@ export async function getCageStockData(untilDate?: string): Promise<Record<strin
   const allCages = new Set([...cageProduction.keys(), ...cageSold.keys()]);
 
   for (const cage of allCages) {
-    if (cage === "BG") continue; // BG is computed separately below
+    if (cage === "BG") continue;
     const productionKg = cageProduction.get(cage) || 0;
     const soldKg = cageSold.get(cage) || 0;
     const stockKg = productionKg - soldKg;
+
+    // FIFO month-split: sales consume last month's production first
+    const lastMonthProdKg = cagePrevProduction.get(cage) || 0;
+    const currentMonthProdKg = cageCurrentProduction.get(cage) || 0;
+    const soldFromLastMonth = Math.min(soldKg, lastMonthProdKg);
+    const lastMonthStockKg = lastMonthProdKg - soldFromLastMonth;
+    const currentMonthStockKg = currentMonthProdKg - (soldKg - soldFromLastMonth);
 
     result[cage] = {
       productionKg,
       soldKg,
       stockKg,
       stockPeti: Math.floor(stockKg / 15),
+      lastMonthStockKg,
+      lastMonthStockPeti: Math.floor(lastMonthStockKg / 15),
+      lastMonthSisaKg: Math.round((lastMonthStockKg % 15) * 100) / 100,
+      currentMonthStockKg,
+      currentMonthStockPeti: Math.floor(currentMonthStockKg / 15),
+      currentMonthSisaKg: Math.round((currentMonthStockKg % 15) * 100) / 100,
     };
   }
 
-  // Compute BG: sum of all sisaKg (stockKg % 15) from real cages, minus what was already sold as BG
+  // Compute BG: sum of all sisaKg (stockKg % 15) from real cages, minus BG sales
+  // Then split proportionally based on real cage month ratio
   let totalSisaKg = 0;
+  let lastMonthRealStockKg = 0;
+  let totalRealStockKg = 0;
   for (const cage of allCages) {
     if (cage === "BG") continue;
     const pKg = cageProduction.get(cage) || 0;
     const sKg = cageSold.get(cage) || 0;
     totalSisaKg += (pKg - sKg) % 15;
+    lastMonthRealStockKg += result[cage].lastMonthStockKg;
+    totalRealStockKg += result[cage].stockKg;
   }
   totalSisaKg = Math.round(totalSisaKg * 100) / 100;
   const bgSoldKg = cageSold.get("BG") || 0;
   const bgStockKg = Math.max(0, Math.round((totalSisaKg - bgSoldKg) * 100) / 100);
+
+  const ratio = totalRealStockKg > 0 ? lastMonthRealStockKg / totalRealStockKg : 0;
+  const lastMonthBgStockKg = Math.round(bgStockKg * ratio * 100) / 100;
+  const currentMonthBgStockKg = Math.round((bgStockKg - lastMonthBgStockKg) * 100) / 100;
+
   result["BG"] = {
     productionKg: totalSisaKg,
     soldKg: bgSoldKg,
     stockKg: bgStockKg,
     stockPeti: Math.floor(bgStockKg / 15),
+    lastMonthStockKg: lastMonthBgStockKg,
+    lastMonthStockPeti: Math.floor(lastMonthBgStockKg / 15),
+    lastMonthSisaKg: Math.round((lastMonthBgStockKg % 15) * 100) / 100,
+    currentMonthStockKg: currentMonthBgStockKg,
+    currentMonthStockPeti: Math.floor(currentMonthBgStockKg / 15),
+    currentMonthSisaKg: Math.round((currentMonthBgStockKg % 15) * 100) / 100,
   };
 
   return result;
