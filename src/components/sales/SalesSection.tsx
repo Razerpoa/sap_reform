@@ -354,16 +354,18 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
 
         {/* Global Summary — Split into Last Month / This Month */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-slate-800/50 md:p-5 p-4 rounded-2xl text-center">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Bulan Lalu</span>
-            <div className="md:text-2xl text-xl font-black mt-1 italic">
-              {lastMonthSummary.totalPeti} <span className="text-sm font-black text-slate-500 uppercase not-italic">Peti</span> <span className="text-slate-700 mx-1">|</span> {lastMonthSummary.totalSisaKg} <span className="text-sm font-black text-slate-500 uppercase not-italic">Kg</span>
+          {/* Last Month - Warm/Amber theme */}
+          <div className="bg-amber-900/15 border border-amber-800/30 md:p-5 p-4 rounded-2xl text-center">
+            <span className="text-xs font-black text-amber-400/80 uppercase tracking-widest">Sisa Bulan Lalu</span>
+            <div className="md:text-2xl text-xl font-black mt-1 italic text-amber-200">
+              {lastMonthSummary.totalPeti} <span className="text-sm font-black text-amber-400/70 uppercase not-italic">Peti</span> <span className="text-amber-700/50 mx-1">|</span> {lastMonthSummary.totalSisaKg} <span className="text-sm font-black text-amber-400/70 uppercase not-italic">Kg</span>
             </div>
           </div>
-          <div className="bg-slate-800/50 md:p-5 p-4 rounded-2xl text-center">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Bulan Ini</span>
-            <div className="md:text-2xl text-xl font-black mt-1 italic">
-              {currentMonthSummary.totalPeti} <span className="text-sm font-black text-slate-500 uppercase not-italic">Peti</span> <span className="text-slate-700 mx-1">|</span> {currentMonthSummary.totalSisaKg} <span className="text-sm font-black text-slate-500 uppercase not-italic">Kg</span>
+          {/* Current Month - Cool/Emerald theme */}
+          <div className="bg-emerald-900/15 border border-emerald-800/30 md:p-5 p-4 rounded-2xl text-center">
+            <span className="text-xs font-black text-emerald-400/80 uppercase tracking-widest">Sisa Bulan Ini</span>
+            <div className="md:text-2xl text-xl font-black mt-1 italic text-emerald-200">
+              {currentMonthSummary.totalPeti} <span className="text-sm font-black text-emerald-400/70 uppercase not-italic">Peti</span> <span className="text-emerald-700/50 mx-1">|</span> {currentMonthSummary.totalSisaKg} <span className="text-sm font-black text-emerald-400/70 uppercase not-italic">Kg</span>
             </div>
           </div>
         </div>
@@ -380,17 +382,19 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                 cage.kandang === "BG" ? "text-blue-300" : "text-slate-300"
               }`}>{cage.kandang}</span>
               <div className="flex items-center gap-2 flex-1 justify-end">
-                <div className="bg-slate-800/50 rounded-lg px-2.5 py-1.5 text-center">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase">Bln Lalu</span>{' '}
-                  <span className="text-xs font-black text-white">{cage.lastPeti}<span className="text-[9px] font-bold text-slate-500">P</span></span>
-                  <span className="text-slate-700 mx-0.5">|</span>
-                  <span className="text-xs font-black text-white">{cage.lastSisaKg}<span className="text-[9px] font-bold text-slate-500">Kg</span></span>
+                {/* Last Month - Warm/Amber pill */}
+                <div className="bg-amber-900/20 rounded-lg px-2.5 py-1.5 text-center">
+                  <span className="text-[11px] font-bold text-amber-400/80 uppercase">Bln Lalu</span>{' '}
+                  <span className="text-xs font-black text-amber-200">{cage.lastPeti}<span className="text-[11px] font-bold text-amber-400/60">P</span></span>
+                  <span className="text-amber-700/40 mx-0.5">|</span>
+                  <span className="text-xs font-black text-amber-200">{cage.lastSisaKg}<span className="text-[11px] font-bold text-amber-400/60">Kg</span></span>
                 </div>
-                <div className="bg-slate-800/50 rounded-lg px-2.5 py-1.5 text-center">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase">Bln Ini</span>{' '}
-                  <span className="text-xs font-black text-white">{cage.currPeti}<span className="text-[9px] font-bold text-slate-500">P</span></span>
-                  <span className="text-slate-700 mx-0.5">|</span>
-                  <span className="text-xs font-black text-white">{cage.currSisaKg}<span className="text-[9px] font-bold text-slate-500">Kg</span></span>
+                {/* Current Month - Cool/Emerald pill */}
+                <div className="bg-emerald-900/20 rounded-lg px-2.5 py-1.5 text-center">
+                  <span className="text-[11px] font-bold text-emerald-400/80 uppercase">Bln Ini</span>{' '}
+                  <span className="text-xs font-black text-emerald-200">{cage.currPeti}<span className="text-[11px] font-bold text-emerald-400/60">P</span></span>
+                  <span className="text-emerald-700/40 mx-0.5">|</span>
+                  <span className="text-xs font-black text-emerald-200">{cage.currSisaKg}<span className="text-[11px] font-bold text-emerald-400/60">Kg</span></span>
                 </div>
               </div>
             </div>
@@ -407,7 +411,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Customer */}
               <div className="space-y-2">
-                <label className="text-[10px] uppercase text-slate-400 font-black tracking-widest px-1">
+                <label className="text-xs uppercase text-slate-500 font-black tracking-widest px-1">
                   Nama Customer
                 </label>
                 <input
@@ -421,7 +425,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
 
               {/* Harga Jual */}
               <div className="space-y-2">
-                <label className="text-[10px] uppercase text-slate-400 font-black tracking-widest px-1">
+                <label className="text-xs uppercase text-slate-500 font-black tracking-widest px-1">
                   Harga Jual (Rp)
                 </label>
                 <input
@@ -584,7 +588,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                 <h3 className="font-black text-xl text-slate-900 uppercase tracking-tight">
                   {editingCageKey ? `Edit ${editingCageKey}` : 'Pilih Kandang'}
                 </h3>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                <p className="text-xs text-slate-500 font-black uppercase tracking-widest">
                   {editingCageKey ? 'Ubah alokasi stok' : 'Alokasi Stok Penjualan'}
                 </p>
               </div>
@@ -633,14 +637,14 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                     >
                       <span className={`font-black text-lg block mb-1 ${isBg ? 'text-teal-700' : 'text-slate-900'}`}>
                         {cage.kandang}
-                        {isBg && <span className="text-[9px] font-medium text-teal-500 ml-1 uppercase tracking-wider">(Sisa Kg)</span>}
+                        {isBg && <span className="text-xs font-medium text-teal-500 ml-1 uppercase tracking-wider">(Sisa Kg)</span>}
                       </span>
-                      <div className="text-[10px] font-black uppercase tracking-tighter">
+                      <div className="text-xs font-black uppercase tracking-tighter">
                         <div className={isDisabled ? 'text-slate-400' : isBg ? 'text-teal-600' : 'text-blue-600'}>
-                          {remaining?.remainingPeti || 0} <span className="opacity-50 font-medium">Peti</span>
+                          {remaining?.remainingPeti || 0} <span className="opacity-60 font-medium">Peti</span>
                         </div>
                         {!isDisabled && (
-                          <div className="text-[8px] font-medium text-slate-400 mt-0.5">
+                          <div className="text-[11px] font-medium text-slate-500 mt-0.5">
                             Bln Lalu: {remaining?.lastMonthRemainingPeti ?? 0} &middot; Bln Ini: {remaining?.currentMonthRemainingPeti ?? 0}
                           </div>
                         )}
@@ -666,19 +670,19 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                     return (
                       <>
                         <div className="flex items-center gap-2 mb-4 justify-center">
-                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Input Pengambilan</span>
+                           <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Input Pengambilan</span>
                            <div className="h-px flex-1 bg-slate-200"></div>
                         </div>
                         {exceedsStock && (
                           <div className="mb-4 p-2 bg-red-50 border border-red-200 rounded-xl text-center flex items-center justify-center gap-2">
-                            <span className="text-[10px] font-black text-red-600 uppercase">
+                            <span className="text-xs font-black text-red-600 uppercase">
                               ⚠️ Melebihi stok! (Max: {availablePeti})
                             </span>
                           </div>
                         )}
                         <div className="flex gap-4">
                           <div className="flex-1">
-                            <label className="text-[10px] font-black uppercase text-slate-500 block mb-2 text-center">Peti</label>
+                            <label className="text-xs font-black uppercase text-slate-600 block mb-2 text-center">Peti</label>
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
@@ -710,7 +714,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                             </div>
                           </div>
                           <div className="flex-1">
-                            <label className="text-[10px] font-black uppercase text-slate-500 block mb-2 text-center">Sisa Kg</label>
+                            <label className="text-xs font-black uppercase text-slate-600 block mb-2 text-center">Sisa Kg</label>
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
@@ -749,7 +753,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                         {/* Strict FIFO allocation display */}
                         {entered > 0 && !exceedsStock && (
                           <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl text-center">
-                            <span className="text-[10px] font-bold text-blue-800">
+                            <span className="text-xs font-bold text-blue-800">
                               {entered} peti → {fromLast > 0 ? `${fromLast} dari stok bulan lalu` : ''}
                               {fromLast > 0 && fromCurr > 0 ? ', ' : ''}
                               {fromCurr > 0 ? `${fromCurr} dari stok bulan ini` : ''}
@@ -779,7 +783,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
         <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <h3 className="font-black text-slate-900 uppercase tracking-tight text-sm sm:text-base">Penjualan Hari Ini</h3>
-            <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
+            <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
               {data.length} Records
             </span>
           </div>
@@ -789,18 +793,18 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                 <div className="flex-1 min-w-0 pr-4">
                   <h4 className="font-black text-slate-900 uppercase tracking-tight text-sm sm:text-base truncate">{sale.customerName}</h4>
                   <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-black uppercase rounded-md">{formatNumber(sale.jmlPeti)} Peti</span>
-                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[9px] font-black uppercase rounded-md">{formatNumber(sale.totalKg % 15)} KG</span>
+                    <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-black uppercase rounded-md">{formatNumber(sale.jmlPeti)} Peti</span>
+                    <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-black uppercase rounded-md">{formatNumber(sale.totalKg % 15)} KG</span>
                   </div>
                   {sale.sourceCages && sale.sourceCages.length > 0 && (
-                    <p className="text-[9px] text-blue-500 font-black uppercase tracking-widest mt-2 opacity-70">
+                    <p className="text-xs text-blue-600 font-bold uppercase tracking-widest mt-2">
                       Via: {sale.sourceCages.map((c: any) => `${c.kandang}(${c.jmlPeti})`).join(', ')}
                     </p>
                   )}
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-base sm:text-lg font-black text-slate-900 italic">Rp {formatNumber(sale.subTotal)}</p>
-                  <p className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">@{formatNumber(sale.hargaJual)}</p>
+                  <p className="text-xs text-slate-500 font-black uppercase tracking-tighter">@{formatNumber(sale.hargaJual)}</p>
                 </div>
                 {isEditable && (
                   <div className="flex flex-col gap-1 ml-3">
