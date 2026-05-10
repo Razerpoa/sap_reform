@@ -363,7 +363,7 @@ export default function EntryPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 sm:py-8 pb-32">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:py-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div className="text-center sm:text-left">
@@ -484,7 +484,7 @@ export default function EntryPage() {
 
       {/* Draft Save Bar - only show when draft exists */}
       {isEditable && hasDraft && (activeTab === "production" || activeTab === "cashflow") && (
-        <div className="fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 w-[92%] max-w-4xl bg-slate-900 text-white rounded-[2.5rem] shadow-2xl p-4 sm:p-5 flex items-center justify-between z-40 border border-slate-700">
+        <div className="w-full bg-slate-900 text-white rounded-2xl shadow-2xl p-4 sm:p-5 flex items-center justify-between z-40 border border-slate-700 mt-6">
           <div className="hidden md:block">
             <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Status Data</p>
             <h4 className="text-sm font-black flex items-center gap-2">
