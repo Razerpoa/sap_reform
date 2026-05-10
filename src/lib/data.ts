@@ -640,9 +640,38 @@ export async function deleteOtherExpenseData(id: string) {
  * Delete sales data
  */
 export async function deleteSalesData(id: string) {
+  // Get the sale first to know its date for CashFlow sync
+  const sale = await prisma.sales.findUnique({ where: { id } });
+  if (!sale) return;
+
   await prisma.sales.delete({
     where: { id },
   });
   await recalculateStock();
+
+  // Sync CashFlow: recalculate totalPenjualan for this date
+  const remainingSales = await prisma.sales.findMany({
+    where: { date: sale.date },
+  });
+  const totalRevenue = remainingSales.reduce((sum, s) => sum + (s.subTotal || 0), 0);
+
+  const existingCashFlow = await prisma.cashFlow.findFirst({
+    where: { date: sale.date }
+  });
+
+  if (existingCashFlow) {
+    await prisma.cashFlow.update({
+      where: { id: existingCashFlow.id },
+      data: { totalPenjualan: totalRevenue }
+    });
+  } else {
+    await prisma.cashFlow.create({
+      data: {
+        date: sale.date,
+        totalPenjualan: totalRevenue,
+      },
+    });
+  }
+
   revalidatePath("/");
 }
