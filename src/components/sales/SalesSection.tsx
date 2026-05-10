@@ -363,7 +363,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
           </div>
           {/* Current Month - Cool/Emerald theme - text aligns left */}
           <div className="bg-emerald-900/15 border border-emerald-800/30 md:p-5 p-4 rounded-2xl text-left">
-            <span className="text-xs font-black text-emerald-400/80 uppercase tracking-widest">Sisa Bulan Ini</span>
+            <span className="text-xs font-black text-emerald-400/80 uppercase tracking-widest">Stock Bulan Ini</span>
             <div className="md:text-2xl text-xl font-black mt-1 italic text-emerald-200">
               {currentMonthSummary.totalPeti} <span className="text-sm font-black text-emerald-400/70 uppercase not-italic">Peti</span> <span className="text-emerald-700/50 mx-1">|</span> {currentMonthSummary.totalSisaKg} <span className="text-sm font-black text-emerald-400/70 uppercase not-italic">Kg</span>
             </div>
@@ -386,14 +386,12 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
               <div className="flex items-center gap-2 justify-center w-full">
                 {/* Last Month - Warm/Amber pill - text aligns right */}
                 <div className="bg-amber-900/20 rounded-lg px-2.5 py-1.5 text-right flex-1 max-w-[160px] md:max-w-[280px]">
-                  <span className="text-[11px] font-bold text-amber-400/80 uppercase">Bln Lalu</span>{' '}
                   <span className="text-xs font-black text-amber-200">{cage.lastPeti}<span className="text-[11px] font-bold text-amber-400/60">P</span></span>
                   <span className="text-amber-700/40 mx-0.5">|</span>
                   <span className="text-xs font-black text-amber-200">{cage.lastSisaKg}<span className="text-[11px] font-bold text-amber-400/60">Kg</span></span>
                 </div>
                 {/* Current Month - Cool/Emerald pill - text aligns left */}
                 <div className="bg-emerald-900/20 rounded-lg px-2.5 py-1.5 text-left flex-1 max-w-[160px] md:max-w-[280px]">
-                  <span className="text-[11px] font-bold text-emerald-400/80 uppercase">Bln Ini</span>{' '}
                   <span className="text-xs font-black text-emerald-200">{cage.currPeti}<span className="text-[11px] font-bold text-emerald-400/60">P</span></span>
                   <span className="text-emerald-700/40 mx-0.5">|</span>
                   <span className="text-xs font-black text-emerald-200">{cage.currSisaKg}<span className="text-[11px] font-bold text-emerald-400/60">Kg</span></span>

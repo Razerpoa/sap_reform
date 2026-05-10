@@ -44,6 +44,13 @@ COPY --from=builder /app/prisma ./prisma
 
 COPY --from=builder /app/scripts ./scripts
 
+# Minimal source files for import script (tsx needs tsconfig.json for @/ path aliases)
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/src/lib/stock.ts ./src/lib/stock.ts
+COPY --from=builder /app/src/lib/prisma.ts ./src/lib/prisma.ts
+COPY --from=builder /app/src/lib/calculations.ts ./src/lib/calculations.ts
+COPY --from=builder /app/src/lib/date-utils.ts ./src/lib/date-utils.ts
+
 USER nextjs
 
 EXPOSE 3000
