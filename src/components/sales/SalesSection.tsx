@@ -581,7 +581,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             }
           }}
         >
-          <div ref={modalRef} className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-300">
+          <div ref={modalRef} className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
             {/* Header */}
             <div className="p-4 sm:p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between shrink-0">
               <div>
