@@ -385,14 +385,14 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
               {/* Pills centered below */}
               <div className="flex items-center gap-2 justify-center w-full">
                 {/* Last Month - Warm/Amber pill - text aligns right */}
-                <div className="bg-amber-900/20 rounded-lg px-2.5 py-1.5 text-right flex-1 max-w-[160px]">
+                <div className="bg-amber-900/20 rounded-lg px-2.5 py-1.5 text-right flex-1 max-w-[160px] md:max-w-[280px]">
                   <span className="text-[11px] font-bold text-amber-400/80 uppercase">Bln Lalu</span>{' '}
                   <span className="text-xs font-black text-amber-200">{cage.lastPeti}<span className="text-[11px] font-bold text-amber-400/60">P</span></span>
                   <span className="text-amber-700/40 mx-0.5">|</span>
                   <span className="text-xs font-black text-amber-200">{cage.lastSisaKg}<span className="text-[11px] font-bold text-amber-400/60">Kg</span></span>
                 </div>
                 {/* Current Month - Cool/Emerald pill - text aligns left */}
-                <div className="bg-emerald-900/20 rounded-lg px-2.5 py-1.5 text-left flex-1 max-w-[160px]">
+                <div className="bg-emerald-900/20 rounded-lg px-2.5 py-1.5 text-left flex-1 max-w-[160px] md:max-w-[280px]">
                   <span className="text-[11px] font-bold text-emerald-400/80 uppercase">Bln Ini</span>{' '}
                   <span className="text-xs font-black text-emerald-200">{cage.currPeti}<span className="text-[11px] font-bold text-emerald-400/60">P</span></span>
                   <span className="text-emerald-700/40 mx-0.5">|</span>
