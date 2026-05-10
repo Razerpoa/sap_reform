@@ -354,15 +354,15 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
 
         {/* Global Summary — Split into Last Month / This Month */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          {/* Last Month - Warm/Amber theme */}
-          <div className="bg-amber-900/15 border border-amber-800/30 md:p-5 p-4 rounded-2xl text-center">
+          {/* Last Month - Warm/Amber theme - text aligns right */}
+          <div className="bg-amber-900/15 border border-amber-800/30 md:p-5 p-4 rounded-2xl text-right">
             <span className="text-xs font-black text-amber-400/80 uppercase tracking-widest">Sisa Bulan Lalu</span>
             <div className="md:text-2xl text-xl font-black mt-1 italic text-amber-200">
               {lastMonthSummary.totalPeti} <span className="text-sm font-black text-amber-400/70 uppercase not-italic">Peti</span> <span className="text-amber-700/50 mx-1">|</span> {lastMonthSummary.totalSisaKg} <span className="text-sm font-black text-amber-400/70 uppercase not-italic">Kg</span>
             </div>
           </div>
-          {/* Current Month - Cool/Emerald theme */}
-          <div className="bg-emerald-900/15 border border-emerald-800/30 md:p-5 p-4 rounded-2xl text-center">
+          {/* Current Month - Cool/Emerald theme - text aligns left */}
+          <div className="bg-emerald-900/15 border border-emerald-800/30 md:p-5 p-4 rounded-2xl text-left">
             <span className="text-xs font-black text-emerald-400/80 uppercase tracking-widest">Sisa Bulan Ini</span>
             <div className="md:text-2xl text-xl font-black mt-1 italic text-emerald-200">
               {currentMonthSummary.totalPeti} <span className="text-sm font-black text-emerald-400/70 uppercase not-italic">Peti</span> <span className="text-emerald-700/50 mx-1">|</span> {currentMonthSummary.totalSisaKg} <span className="text-sm font-black text-emerald-400/70 uppercase not-italic">Kg</span>
@@ -370,27 +370,29 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
           </div>
         </div>
 
-        {/* Per-cage stock display — compact inline pills */}
+        {/* Per-cage stock display — stacked layout with centered cage name */}
         <div className="grid grid-cols-1 gap-2">
           {cageStocks.map((cage) => (
-            <div key={cage.kandang} className={`flex items-center md:p-3 p-2.5 rounded-xl border gap-2 ${
+            <div key={cage.kandang} className={`flex flex-col items-center md:p-3 p-2.5 rounded-xl border gap-1 ${
               cage.kandang === "BG"
                 ? "bg-blue-900/20 border-blue-500/40"
                 : "bg-slate-800/30 border-slate-700/30"
             }`}>
-              <span className={`font-black uppercase text-xs w-10 shrink-0 ${
+              {/* Cage name centered on top */}
+              <span className={`font-black uppercase text-xs ${
                 cage.kandang === "BG" ? "text-blue-300" : "text-slate-300"
               }`}>{cage.kandang}</span>
-              <div className="flex items-center gap-2 flex-1 justify-end">
-                {/* Last Month - Warm/Amber pill */}
-                <div className="bg-amber-900/20 rounded-lg px-2.5 py-1.5 text-center">
+              {/* Pills centered below */}
+              <div className="flex items-center gap-2 justify-center w-full">
+                {/* Last Month - Warm/Amber pill - text aligns right */}
+                <div className="bg-amber-900/20 rounded-lg px-2.5 py-1.5 text-right flex-1 max-w-[160px]">
                   <span className="text-[11px] font-bold text-amber-400/80 uppercase">Bln Lalu</span>{' '}
                   <span className="text-xs font-black text-amber-200">{cage.lastPeti}<span className="text-[11px] font-bold text-amber-400/60">P</span></span>
                   <span className="text-amber-700/40 mx-0.5">|</span>
                   <span className="text-xs font-black text-amber-200">{cage.lastSisaKg}<span className="text-[11px] font-bold text-amber-400/60">Kg</span></span>
                 </div>
-                {/* Current Month - Cool/Emerald pill */}
-                <div className="bg-emerald-900/20 rounded-lg px-2.5 py-1.5 text-center">
+                {/* Current Month - Cool/Emerald pill - text aligns left */}
+                <div className="bg-emerald-900/20 rounded-lg px-2.5 py-1.5 text-left flex-1 max-w-[160px]">
                   <span className="text-[11px] font-bold text-emerald-400/80 uppercase">Bln Ini</span>{' '}
                   <span className="text-xs font-black text-emerald-200">{cage.currPeti}<span className="text-[11px] font-bold text-emerald-400/60">P</span></span>
                   <span className="text-emerald-700/40 mx-0.5">|</span>
