@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import "dotenv/config";
-import { recalculateStock } from "../src/lib/data";
+import { recalculateStock } from "../src/lib/stock";
 
 const createPrismaClient = () => {
   const url = "postgresql://" + process.env.DATABASE_USERNAME + ":" + process.env.DATABASE_PASSWORD + "@" + process.env.DATABASE_HOST + "/sap_reform?schema=public";
