@@ -581,9 +581,9 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             }
           }}
         >
-          <div ref={modalRef} className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+          <div ref={modalRef} className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-300">
             {/* Header */}
-            <div className="p-6 sm:p-8 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+            <div className="p-6 sm:p-8 bg-slate-50 border-b border-slate-100 flex items-center justify-between shrink-0">
               <div>
                 <h3 className="font-black text-xl text-slate-900 uppercase tracking-tight">
                   {editingCageKey ? `Edit ${editingCageKey}` : 'Pilih Kandang'}
@@ -608,7 +608,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             </div>
 
             {/* Cage Grid */}
-            <div className="p-6 sm:p-8">
+            <div className="p-6 sm:p-8 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-3 mb-6">
                 {cages.map((cage) => {
                   const isBg = cage.kandang === "BG";
