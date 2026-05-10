@@ -683,70 +683,38 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                         <div className="flex gap-4">
                           <div className="flex-1">
                             <label className="text-xs font-black uppercase text-slate-600 block mb-2 text-center">Peti</label>
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setPickerPeti(Math.max(0, pickerPeti - 1))}
-                                className="w-10 h-10 rounded-xl bg-slate-200 text-slate-600 font-black text-lg hover:bg-slate-300 transition-colors flex items-center justify-center"
-                              >
-                                <Minus className="w-4 h-4" />
-                              </button>
-                              <input 
-                                type="number" 
-                                inputMode="numeric"
-                                value={pickerPeti.toLocaleString()} 
-                                onChange={e => setPickerPeti(parseInt(e.target.value) || 0)}
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    handleAddCage();
-                                  }
-                                }}
-                                className="flex-1 px-3 py-3 bg-white border border-slate-200 rounded-xl font-black text-xl text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setPickerPeti(pickerPeti + 1)}
-                                className="w-10 h-10 rounded-xl bg-blue-600 text-white font-black text-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-                              >
-                                <Plus className="w-4 h-4" />
-                              </button>
-                            </div>
+                            <input 
+                              type="number" 
+                              inputMode="numeric"
+                              value={pickerPeti.toLocaleString()} 
+                              onChange={e => setPickerPeti(parseInt(e.target.value) || 0)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddCage();
+                                }
+                              }}
+                              className="w-full px-3 py-3 bg-white border border-slate-200 rounded-xl font-black text-xl text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
+                            />
                           </div>
                           <div className="flex-1">
                             <label className="text-xs font-black uppercase text-slate-600 block mb-2 text-center">Sisa Kg</label>
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setPickerKg(Math.max(0, pickerKg - 1))}
-                                className="w-10 h-10 rounded-xl bg-slate-200 text-slate-600 font-black text-lg hover:bg-slate-300 transition-colors flex items-center justify-center"
-                              >
-                                <Minus className="w-4 h-4" />
-                              </button>
-                              <input 
-                                type="number" 
-                                inputMode="decimal"
-                                value={pickerKg.toLocaleString()} 
-                                onChange={e => {
-                                  const v = parseInt(e.target.value) || 0;
-                                  setPickerKg(v >= 15 ? v % 15 : v);
-                                }}
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    handleAddCage();
-                                  }
-                                }}
-                                className="flex-1 px-3 py-3 bg-white border border-slate-200 rounded-xl font-black text-xl text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setPickerKg(pickerKg >= 14 ? 0 : pickerKg + 1)}
-                                className="w-10 h-10 rounded-xl bg-blue-600 text-white font-black text-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-                              >
-                                <Plus className="w-4 h-4" />
-                              </button>
-                            </div>
+                            <input 
+                              type="number" 
+                              inputMode="decimal"
+                              value={pickerKg.toLocaleString()} 
+                              onChange={e => {
+                                const v = parseInt(e.target.value) || 0;
+                                setPickerKg(v >= 15 ? v % 15 : v);
+                              }}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddCage();
+                                }
+                              }}
+                              className="w-full px-3 py-3 bg-white border border-slate-200 rounded-xl font-black text-xl text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
+                            />
                           </div>
                         </div>
 
