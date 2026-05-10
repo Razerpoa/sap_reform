@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { ShoppingBag, CheckCircle2, X, Pencil, Trash2 } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { ShoppingBag, CheckCircle2, X, Pencil, Trash2, Plus, Minus, AlertCircle } from "lucide-react";
 import { formatNumber } from "@/lib/format";
 
 type StockData = {
@@ -59,6 +59,9 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
   const [pickerPeti, setPickerPeti] = useState(0);
   const [pickerKg, setPickerKg] = useState(0);
   const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [editingCageKey, setEditingCageKey] = useState<string | null>(null); // Track which cage is being edited in modal
+  const modalRef = useRef<HTMLDivElement>(null);
 
   // Calculate stock for each cage (cumulative + month-split FIFO)
   const cageStocks = useMemo(() => {
@@ -124,10 +127,43 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
         setPickerSelectedCage(null);
         setPickerPeti(0);
         setPickerKg(0);
+        setEditingCageKey(null);
+        setValidationError(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showPickerModal]);
+
+  // Focus trap for modal
+  useEffect(() => {
+    if (showPickerModal && modalRef.current) {
+      const focusableElements = modalRef.current.querySelectorAll(
+        'button, input, [tabindex]:not([tabindex="-1"])'
+      );
+      const firstElement = focusableElements[0] as HTMLElement;
+      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+      const handleTab = (e: KeyboardEvent) => {
+        if (e.key !== "Tab") return;
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement?.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement?.focus();
+          }
+        }
+      };
+
+      document.addEventListener("keydown", handleTab);
+      firstElement?.focus();
+
+      return () => document.removeEventListener("keydown", handleTab);
+    }
   }, [showPickerModal]);
 
   // Calculate last month global summary (FIFO: unsold from before this month)
@@ -193,19 +229,29 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
     onDelete(id);
   };
 
-  // Handle edit a cage card - remove and reopen modal
+  // Handle edit a cage card - open modal with existing values (non-destructive)
   const handleCageEdit = (cage: SelectedCage) => {
-    removeCage(cage.kandang);
+    setEditingCageKey(cage.kandang);
     setPickerSelectedCage(cage.kandang);
     setPickerPeti(cage.jmlPeti);
     setPickerKg(cage.jmlKg);
     setShowPickerModal(true);
   };
 
-  // Cancel editing
+  // Check if there are unsaved changes in the form
+  const hasUnsavedChanges = useMemo(() => {
+    return selectedCages.length > 0 || newSale.customerName !== "" || newSale.hargaJual !== 0;
+  }, [selectedCages, newSale]);
+
+  // Cancel editing with confirmation if there are unsaved changes
   const cancelEdit = () => {
+    if (hasUnsavedChanges && !confirm("Batalkan perubahan? Data yang sudah diisi akan hilang.")) {
+      return;
+    }
     setEditingSaleId(null);
     setSelectedCages([]);
+    setEditingCageKey(null);
+    setValidationError(null);
     setNewSale({
       ...newSale,
       customerName: "",
@@ -216,36 +262,50 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
     });
   };
 
-  // Handle add cage from modal
+  // Handle add/update cage from modal
   const handleAddCage = () => {
     if (!pickerSelectedCage) return;
     if (pickerPeti === 0 && pickerKg === 0) return;
 
-    // Prevent duplicate cage selection
-    if (selectedCages.some((c) => c.kandang === pickerSelectedCage)) {
-      alert("Kandang ini sudah dipilih! Hapus dulu dari daftar jika ingin mengubah.");
-      return;
-    }
-
-    // Check if exceeds remaining stock
+    // Check if exceeds remaining stock (account for current selection if editing)
     const remaining = remainingStocks.find((s) => s.kandang === pickerSelectedCage);
-    if (pickerPeti > (remaining?.remainingPeti || 0)) {
-      alert(`Stok tidak cukup! Tersedia: ${remaining?.remainingPeti || 0} peti`);
+    const currentSelection = selectedCages.find(c => c.kandang === pickerSelectedCage);
+    const availablePeti = (remaining?.remainingPeti || 0) + (editingCageKey ? (currentSelection?.jmlPeti || 0) : 0);
+    
+    if (pickerPeti > availablePeti) {
+      setValidationError(`Stok tidak cukup! Tersedia: ${availablePeti} peti`);
       return;
     }
 
-    setSelectedCages([
-      ...selectedCages,
-      {
-        kandang: pickerSelectedCage,
-        jmlPeti: pickerPeti,
-        jmlKg: pickerKg,
-      },
-    ]);
+    // Update existing or add new
+    if (editingCageKey) {
+      setSelectedCages(selectedCages.map(c => 
+        c.kandang === editingCageKey 
+          ? { ...c, jmlPeti: pickerPeti, jmlKg: pickerKg }
+          : c
+      ));
+    } else {
+      // Prevent duplicate cage selection for new adds
+      if (selectedCages.some((c) => c.kandang === pickerSelectedCage)) {
+        setValidationError("Kandang ini sudah dipilih! Klik edit untuk mengubah.");
+        return;
+      }
+      setSelectedCages([
+        ...selectedCages,
+        {
+          kandang: pickerSelectedCage,
+          jmlPeti: pickerPeti,
+          jmlKg: pickerKg,
+        },
+      ]);
+    }
+
     setShowPickerModal(false);
     setPickerSelectedCage(null);
     setPickerPeti(0);
     setPickerKg(0);
+    setEditingCageKey(null);
+    setValidationError(null);
   };
 
   // Handle save with validation
@@ -253,9 +313,10 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
     // Validate stock before save
     const validation = validateStock();
     if (!validation.valid) {
-      alert(validation.error);
+      setValidationError(validation.error || "Validasi gagal");
       return;
     }
+    setValidationError(null);
 
     // Pass selected cage data directly to onSave callback (avoid async state issue)
     const saleData = {
@@ -341,7 +402,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
         <div className="bg-white p-5 sm:p-8 rounded-[2rem] border border-slate-200 shadow-sm">
           <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-6 uppercase tracking-tight">Entri Penjualan</h3>
 
-          {/* 3. Input Fields */}
+          {/* 1. Input Fields */}
           <div className="bg-slate-50 rounded-[1.5rem] p-4 sm:p-6 mb-6 border border-slate-100">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Customer */}
@@ -378,27 +439,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             </div>
           </div>
 
-          {/* 4. Save / Update Button */}
-          <div className="flex gap-3 mb-4">
-            {editingSaleId && (
-              <button
-                onClick={cancelEdit}
-                className="flex-1 bg-slate-100 text-slate-600 font-black py-4 rounded-2xl hover:bg-slate-200 transition-colors"
-              >
-                Batal
-              </button>
-            )}
-            <button
-              onClick={handleSave}
-              disabled={selectedCages.length === 0 || !newSale.customerName || newSale.hargaJual === 0}
-              className={`${editingSaleId ? 'flex-1' : 'w-full'} bg-blue-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed`}
-            >
-              <CheckCircle2 className="w-5 h-5" />
-              {editingSaleId ? "Update Penjualan" : "Tambah Penjualan"}
-            </button>
-          </div>
-
-          {/* 1. "Pilih Kandang" Button - show availability status */}
+          {/* 2. "Pilih Kandang" Button - show availability status */}
           {!hasAnyStock ? (
             <div className="w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl p-4 text-center mb-4">
               <span className="inline-flex items-center gap-2 text-slate-400 font-bold">
@@ -408,7 +449,13 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             </div>
           ) : (
             <button
-              onClick={() => setShowPickerModal(true)}
+              onClick={() => {
+                setEditingCageKey(null);
+                setPickerSelectedCage(null);
+                setPickerPeti(0);
+                setPickerKg(0);
+                setShowPickerModal(true);
+              }}
               className="w-full bg-white border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors mb-4"
             >
               <span className="inline-flex items-center gap-2 text-slate-600 font-bold">
@@ -418,7 +465,15 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             </button>
           )}
 
-          {/* 2. Selected Cages Stacked Cards */}
+          {/* Visual hint when form is partially filled but no cages selected */}
+          {(newSale.customerName || newSale.hargaJual > 0) && selectedCages.length === 0 && hasAnyStock && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-amber-700 text-sm">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>Mohon pilih kandang untuk menyelesaikan entri</span>
+            </div>
+          )}
+
+          {/* 3. Selected Cages Stacked Cards */}
           {selectedCages.length > 0 && (
             <div className="space-y-3 mb-4">
               {selectedCages.map((cage) => {
@@ -468,7 +523,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             </div>
           )}
 
-          {/* 3. Total Summary */}
+          {/* 4. Total Summary */}
           {selectedCages.length > 0 && (
             <div className="bg-blue-100 rounded-xl p-4 text-center mb-4">
               <span className="text-sm font-bold text-blue-800">
@@ -476,6 +531,34 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
               </span>
             </div>
           )}
+
+          {/* 5. Validation Error */}
+          {validationError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700 text-sm">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{validationError}</span>
+            </div>
+          )}
+
+          {/* 6. Save / Update Button - now at bottom */}
+          <div className="flex gap-3">
+            {editingSaleId && (
+              <button
+                onClick={cancelEdit}
+                className="flex-1 bg-slate-100 text-slate-600 font-black py-4 rounded-2xl hover:bg-slate-200 transition-colors"
+              >
+                Batal
+              </button>
+            )}
+            <button
+              onClick={handleSave}
+              disabled={selectedCages.length === 0 || !newSale.customerName || newSale.hargaJual === 0}
+              className={`${editingSaleId ? 'flex-1' : 'w-full'} bg-blue-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed`}
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              {editingSaleId ? "Update Penjualan" : "Tambah Penjualan"}
+            </button>
+          </div>
         </div>
       )}
 
@@ -489,15 +572,21 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
               setPickerSelectedCage(null);
               setPickerPeti(0);
               setPickerKg(0);
+              setEditingCageKey(null);
+              setValidationError(null);
             }
           }}
         >
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+          <div ref={modalRef} className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
             {/* Header */}
             <div className="p-6 sm:p-8 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <h3 className="font-black text-xl text-slate-900 uppercase tracking-tight">Pilih Kandang</h3>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Alokasi Stok Penjualan</p>
+                <h3 className="font-black text-xl text-slate-900 uppercase tracking-tight">
+                  {editingCageKey ? `Edit ${editingCageKey}` : 'Pilih Kandang'}
+                </h3>
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                  {editingCageKey ? 'Ubah alokasi stok' : 'Alokasi Stok Penjualan'}
+                </p>
               </div>
               <button 
                 onClick={() => {
@@ -505,6 +594,8 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                   setPickerSelectedCage(null);
                   setPickerPeti(0);
                   setPickerKg(0);
+                  setEditingCageKey(null);
+                  setValidationError(null);
                 }}
                 className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-400 transition-colors"
               >
@@ -564,7 +655,9 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                 <div className="bg-slate-50 rounded-2xl p-5 mb-6 border border-slate-100 animate-in slide-in-from-top-2">
                   {(() => {
                     const remaining = remainingStocks.find(s => s.kandang === pickerSelectedCage);
-                    const exceedsStock = pickerPeti > (remaining?.remainingPeti || 0);
+                    const currentSelection = selectedCages.find(c => c.kandang === pickerSelectedCage);
+                    const availablePeti = (remaining?.remainingPeti || 0) + (editingCageKey ? (currentSelection?.jmlPeti || 0) : 0);
+                    const exceedsStock = pickerPeti > availablePeti;
                     // Strict FIFO: compute how many peti come from last month vs current month
                     const lastAvail = remaining?.lastMonthRemainingPeti ?? 0;
                     const entered = pickerPeti;
@@ -579,33 +672,77 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                         {exceedsStock && (
                           <div className="mb-4 p-2 bg-red-50 border border-red-200 rounded-xl text-center flex items-center justify-center gap-2">
                             <span className="text-[10px] font-black text-red-600 uppercase">
-                              ⚠️ Melebihi stok! (Max: {remaining?.remainingPeti || 0})
+                              ⚠️ Melebihi stok! (Max: {availablePeti})
                             </span>
                           </div>
                         )}
                         <div className="flex gap-4">
                           <div className="flex-1">
                             <label className="text-[10px] font-black uppercase text-slate-500 block mb-2 text-center">Peti</label>
-                            <input 
-                              type="number" 
-                              inputMode="numeric"
-                              value={pickerPeti.toLocaleString()} 
-                              onChange={e => setPickerPeti(parseInt(e.target.value) || 0)}
-                              className="w-full px-3 py-3 bg-white border border-slate-200 rounded-xl font-black text-xl text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
-                            />
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setPickerPeti(Math.max(0, pickerPeti - 1))}
+                                className="w-10 h-10 rounded-xl bg-slate-200 text-slate-600 font-black text-lg hover:bg-slate-300 transition-colors flex items-center justify-center"
+                              >
+                                <Minus className="w-4 h-4" />
+                              </button>
+                              <input 
+                                type="number" 
+                                inputMode="numeric"
+                                value={pickerPeti.toLocaleString()} 
+                                onChange={e => setPickerPeti(parseInt(e.target.value) || 0)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddCage();
+                                  }
+                                }}
+                                className="flex-1 px-3 py-3 bg-white border border-slate-200 rounded-xl font-black text-xl text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setPickerPeti(pickerPeti + 1)}
+                                className="w-10 h-10 rounded-xl bg-blue-600 text-white font-black text-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                           <div className="flex-1">
                             <label className="text-[10px] font-black uppercase text-slate-500 block mb-2 text-center">Sisa Kg</label>
-                            <input 
-                              type="number" 
-                              inputMode="decimal"
-                              value={pickerKg.toLocaleString()} 
-                              onChange={e => {
-                                const v = parseInt(e.target.value) || 0;
-                                setPickerKg(v >= 15 ? v % 15 : v);
-                              }}
-                              className="w-full px-3 py-3 bg-white border border-slate-200 rounded-xl font-black text-xl text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
-                            />
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setPickerKg(Math.max(0, pickerKg - 1))}
+                                className="w-10 h-10 rounded-xl bg-slate-200 text-slate-600 font-black text-lg hover:bg-slate-300 transition-colors flex items-center justify-center"
+                              >
+                                <Minus className="w-4 h-4" />
+                              </button>
+                              <input 
+                                type="number" 
+                                inputMode="decimal"
+                                value={pickerKg.toLocaleString()} 
+                                onChange={e => {
+                                  const v = parseInt(e.target.value) || 0;
+                                  setPickerKg(v >= 15 ? v % 15 : v);
+                                }}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddCage();
+                                  }
+                                }}
+                                className="flex-1 px-3 py-3 bg-white border border-slate-200 rounded-xl font-black text-xl text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setPickerKg(pickerKg >= 14 ? 0 : pickerKg + 1)}
+                                className="w-10 h-10 rounded-xl bg-blue-600 text-white font-black text-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         </div>
 
@@ -625,13 +762,13 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                 </div>
               )}
 
-              {/* Pilih Button */}
+              {/* Submit Button */}
               <button 
                 onClick={handleAddCage}
                 disabled={!pickerSelectedCage || (pickerPeti === 0 && pickerKg === 0)}
                 className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl disabled:bg-slate-300 hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20 uppercase tracking-widest text-sm"
               >
-                Alokasikan Stok
+                {editingCageKey ? 'Update Penjualan' : 'Tambah ke Penjualan'}
               </button>
             </div>
           </div>
@@ -657,7 +794,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                   </div>
                   {sale.sourceCages && sale.sourceCages.length > 0 && (
                     <p className="text-[9px] text-blue-500 font-black uppercase tracking-widest mt-2 opacity-70">
-                      Via: {sale.sourceCages.map((c: any) => c.kandang).join(', ')}
+                      Via: {sale.sourceCages.map((c: any) => `${c.kandang}(${c.jmlPeti})`).join(', ')}
                     </p>
                   )}
                 </div>
