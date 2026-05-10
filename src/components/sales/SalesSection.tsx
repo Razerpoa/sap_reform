@@ -581,11 +581,11 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             }
           }}
         >
-          <div ref={modalRef} className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-300">
+          <div ref={modalRef} className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-300">
             {/* Header */}
-            <div className="p-6 sm:p-8 bg-slate-50 border-b border-slate-100 flex items-center justify-between shrink-0">
+            <div className="p-4 sm:p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between shrink-0">
               <div>
-                <h3 className="font-black text-xl text-slate-900 uppercase tracking-tight">
+                <h3 className="font-black text-base sm:text-lg text-slate-900 uppercase tracking-tight">
                   {editingCageKey ? `Edit ${editingCageKey}` : 'Pilih Kandang'}
                 </h3>
                 <p className="text-xs text-slate-500 font-black uppercase tracking-widest">
@@ -608,7 +608,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             </div>
 
             {/* Cage Grid */}
-            <div className="p-6 sm:p-8 overflow-y-auto flex-1">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-3 mb-6">
                 {cages.map((cage) => {
                   const isBg = cage.kandang === "BG";
@@ -625,9 +625,9 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                         setPickerKg(0);
                       }}
                       disabled={isDisabled}
-                      className={`p-4 rounded-2xl border-2 text-left transition-all relative overflow-hidden group ${
+                      className={`p-3 rounded-xl border-2 text-left transition-all relative overflow-hidden group ${
                         isSelected 
-                          ? "border-blue-500 bg-blue-50 shadow-lg shadow-blue-500/10" 
+                          ? "border-blue-500 bg-blue-50 shadow shadow-blue-500/10" 
                           : isDisabled
                             ? "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
                             : isBg
@@ -635,28 +635,21 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                               : "border-slate-100 hover:border-blue-200 hover:bg-slate-50"
                       }`}
                     >
-                      <span className={`font-black text-lg block mb-1 ${isBg ? 'text-teal-700' : 'text-slate-900'}`}>
+                      <span className={`font-black text-sm sm:text-base block ${isBg ? 'text-teal-700' : 'text-slate-900'}`}>
                         {cage.kandang}
                         {isBg && <span className="text-xs font-medium text-teal-500 ml-1 uppercase tracking-wider">(Sisa Kg)</span>}
                       </span>
-                      <div className="text-xs font-black uppercase tracking-tighter">
-                        <div className={isDisabled ? 'text-slate-400' : isBg ? 'text-teal-600' : 'text-blue-600'}>
-                          {remaining?.remainingPeti || 0} <span className="opacity-60 font-medium">Peti</span>
-                        </div>
-                        {!isDisabled && (
-                          <div className="text-[11px] font-medium text-slate-500 mt-0.5">
-                            Bln Lalu: {remaining?.lastMonthRemainingPeti ?? 0} &middot; Bln Ini: {remaining?.currentMonthRemainingPeti ?? 0}
-                          </div>
-                        )}
+                      <div className={`text-[11px] sm:text-xs font-black ${isDisabled ? 'text-slate-400' : isBg ? 'text-teal-600' : 'text-blue-600'}`}>
+                        {remaining?.remainingPeti || 0} <span className="opacity-60 font-medium">Peti</span>
                       </div>
                     </button>
                   );
                 })}
               </div>
 
-              {/* Qty Input (only if cage selected) */}
+{/* Qty Input (only if cage selected) */}
               {pickerSelectedCage && (
-                <div className="bg-slate-50 rounded-2xl p-5 mb-6 border border-slate-100 animate-in slide-in-from-top-2">
+                <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-100 animate-in slide-in-from-top-2">
                   {(() => {
                     const remaining = remainingStocks.find(s => s.kandang === pickerSelectedCage);
                     const currentSelection = selectedCages.find(c => c.kandang === pickerSelectedCage);
@@ -669,18 +662,15 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                     const fromCurr = Math.max(0, entered - fromLast);
                     return (
                       <>
-                        <div className="flex items-center gap-2 mb-4 justify-center">
-                           <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Input Pengambilan</span>
-                           <div className="h-px flex-1 bg-slate-200"></div>
-                        </div>
+                        <div className="text-xs font-black text-slate-500 uppercase tracking-widest text-center mb-3">Input Pengambilan</div>
                         {exceedsStock && (
-                          <div className="mb-4 p-2 bg-red-50 border border-red-200 rounded-xl text-center flex items-center justify-center gap-2">
+                          <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-center">
                             <span className="text-xs font-black text-red-600 uppercase">
                               ⚠️ Melebihi stok! (Max: {availablePeti})
                             </span>
                           </div>
                         )}
-                        <div className="flex gap-4">
+                        <div className="flex gap-2 sm:gap-4">
                           <div className="flex-1">
                             <label className="text-xs font-black uppercase text-slate-600 block mb-2 text-center">Peti</label>
                             <input 
@@ -694,7 +684,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                                   handleAddCage();
                                 }
                               }}
-                              className="w-full px-3 py-3 bg-white border border-slate-200 rounded-xl font-black text-xl text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
+                              className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg font-black text-base sm:text-lg text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
                             />
                           </div>
                           <div className="flex-1">
@@ -713,14 +703,14 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                                   handleAddCage();
                                 }
                               }}
-                              className="w-full px-3 py-3 bg-white border border-slate-200 rounded-xl font-black text-xl text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
+                              className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg font-black text-base sm:text-lg text-center outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500" 
                             />
                           </div>
                         </div>
 
                         {/* Strict FIFO allocation display */}
                         {entered > 0 && !exceedsStock && (
-                          <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl text-center">
+                          <div className="mt-3 p-2 bg-blue-50 border border-blue-100 rounded-lg text-center">
                             <span className="text-xs font-bold text-blue-800">
                               {entered} peti → {fromLast > 0 ? `${fromLast} dari stok bulan lalu` : ''}
                               {fromLast > 0 && fromCurr > 0 ? ', ' : ''}
@@ -738,7 +728,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
               <button 
                 onClick={handleAddCage}
                 disabled={!pickerSelectedCage || (pickerPeti === 0 && pickerKg === 0)}
-                className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl disabled:bg-slate-300 hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20 uppercase tracking-widest text-sm"
+                className="w-full bg-slate-900 text-white font-black py-3 rounded-xl disabled:bg-slate-300 hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20 uppercase tracking-widest text-sm"
               >
                 {editingCageKey ? 'Update Penjualan' : 'Tambah ke Penjualan'}
               </button>
