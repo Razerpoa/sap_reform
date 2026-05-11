@@ -147,6 +147,21 @@ export async function getSalesById(id: string) {
   });
 }
 
+/**
+ * Get distinct customer names, optionally filtered by search query
+ */
+export async function getCustomerNames(search?: string) {
+  const result = await prisma.sales.groupBy({
+    by: ["customerName"],
+    where: search
+      ? { customerName: { contains: search, mode: "insensitive" } }
+      : undefined,
+    orderBy: { customerName: "asc" },
+    take: 20,
+  });
+  return result.map((r) => r.customerName);
+}
+
 // ==================== MASTER DATA ====================
 
 /**

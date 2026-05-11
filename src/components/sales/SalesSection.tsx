@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { ShoppingBag, CheckCircle2, X, Pencil, Trash2, Plus, Minus, AlertCircle } from "lucide-react";
 import { formatNumber } from "@/lib/format";
 
@@ -62,6 +62,15 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
   const [validationError, setValidationError] = useState<string | null>(null);
   const [editingCageKey, setEditingCageKey] = useState<string | null>(null); // Track which cage is being edited in modal
   const modalRef = useRef<HTMLDivElement>(null);
+
+  // Autocomplete state
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Calculate stock for each cage (cumulative + month-split FIFO)
   const cageStocks = useMemo(() => {
@@ -165,6 +174,88 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
       return () => document.removeEventListener("keydown", handleTab);
     }
   }, [showPickerModal]);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  // Fetch customer name suggestions
+  const fetchSuggestions = useCallback(async (query: string) => {
+    if (query.length < 1) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    setLoadingSuggestions(true);
+    try {
+      const res = await fetch(`/api/sales/customers?q=${encodeURIComponent(query)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setSuggestions(data.names || []);
+      setShowSuggestions(data.names?.length > 0);
+      setSelectedSuggestionIndex(-1);
+    } catch {
+      // Silently fail
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }, []);
+
+  // Handle customer name change with debounce
+  const handleCustomerNameChange = useCallback((value: string) => {
+    setNewSale({ ...newSale, customerName: value });
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchSuggestions(value);
+    }, 300);
+  }, [newSale, setNewSale, fetchSuggestions]);
+
+  // Handle keyboard navigation in suggestion list
+  const handleCustomerNameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setSelectedSuggestionIndex((prev) =>
+          prev < suggestions.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setSelectedSuggestionIndex((prev) =>
+          prev > 0 ? prev - 1 : suggestions.length - 1
+        );
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (selectedSuggestionIndex >= 0) {
+          const selected = suggestions[selectedSuggestionIndex];
+          setNewSale({ ...newSale, customerName: selected });
+          setShowSuggestions(false);
+          setSuggestions([]);
+        }
+        break;
+      case "Escape":
+        setShowSuggestions(false);
+        break;
+    }
+  }, [showSuggestions, suggestions, selectedSuggestionIndex, newSale, setNewSale]);
+
+  // Handle suggestion click
+  const selectSuggestion = useCallback((name: string) => {
+    setNewSale({ ...newSale, customerName: name });
+    setShowSuggestions(false);
+    setSuggestions([]);
+  }, [newSale, setNewSale]);
 
   // Calculate last month global summary (FIFO: unsold from before this month)
   const lastMonthSummary = useMemo(() => {
@@ -410,17 +501,51 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
           <div className="bg-slate-50 rounded-[1.5rem] p-4 sm:p-6 mb-6 border border-slate-100">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Customer */}
-              <div className="space-y-2">
+              <div className="space-y-2 relative" ref={dropdownRef}>
                 <label className="text-xs uppercase text-slate-500 font-black tracking-widest px-1">
                   Nama Customer
                 </label>
                 <input
+                  ref={inputRef}
                   type="text"
                   placeholder="e.g. Toko Berkah"
+                  autoComplete="off"
                   value={newSale.customerName}
-                  onChange={(e) => setNewSale({ ...newSale, customerName: e.target.value })}
+                  onChange={(e) => handleCustomerNameChange(e.target.value)}
+                  onKeyDown={handleCustomerNameKeyDown}
+                  onFocus={() => {
+                    if (suggestions.length > 0) setShowSuggestions(true);
+                  }}
                   className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-black text-sm text-center outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-medium placeholder:text-slate-300"
                 />
+                {/* Suggestion dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    {suggestions.map((name, i) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          selectSuggestion(name);
+                        }}
+                        onMouseEnter={() => setSelectedSuggestionIndex(i)}
+                        className={`w-full text-left px-4 py-2.5 text-sm font-bold transition-colors ${
+                          i === selectedSuggestionIndex
+                            ? "bg-blue-50 text-blue-700"
+                            : "text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {loadingSuggestions && (
+                  <div className="absolute top-full mt-1 left-0 right-0 flex items-center justify-center py-2 bg-white border border-slate-200 rounded-xl shadow-lg">
+                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
               </div>
 
               {/* Harga Jual */}
