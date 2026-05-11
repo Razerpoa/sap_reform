@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Plus, Settings2, Trash2, X, CheckCircle2, Loader2, XCircle, ShieldCheck, Save } from "lucide-react";
 import { InputField } from "@/components/InputField";
+import { formatNumberFull } from "@/lib/format";
 import Link from "next/link";
 
 type MasterFormProps = {
@@ -148,9 +149,10 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
           <div className="flex-1 relative">
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-black text-sm">Rp</div>
             <input
-              type="number"
-              value={hargaSentralValue}
-              onChange={(e) => setHargaSentralValue(parseFloat(e.target.value) || 0)}
+              type="text"
+              inputMode="numeric"
+              value={formatNumberFull(hargaSentralValue)}
+              onChange={(e) => setHargaSentralValue(parseFloat(e.target.value.replace(/\./g, "")) || 0)}
               disabled={!isAdmin || hargaSentralSaving}
               className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-slate-800/50 text-white text-2xl font-black outline-none focus:ring-4 focus:ring-blue-500/20 border border-slate-700 transition-all disabled:opacity-50"
               placeholder="0"
