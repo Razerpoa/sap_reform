@@ -24,13 +24,11 @@ services:
     networks:
       - default
     command: >
-      sh -c "if [ ! -d 'postgres_data' ]; then
-        node node_modules/prisma/build/index.js db push && 
-        node node_modules/prisma/build/index.js db seed && 
-        node server.js;
-      else
-        echo 'Folder exists, skipping command';
-      fi"
+      sh -c "
+        node node_modules/prisma/build/index.js db push &&
+        node node_modules/prisma/build/index.js db seed &&
+        node server.js
+      "
     environment:
       DATABASE_HOST: db
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}

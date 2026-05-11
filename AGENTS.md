@@ -130,9 +130,9 @@ Cage names (B1, B1+, etc.) come from the `CageMaster` table's `kandang` field. N
 - Role enforcement: both API (403 on write) and frontend (UI hidden/disabled).
 - `npm run set-role` requires the user to have signed in first (creates the User record).
 
-## Docker Startup Idempotency
+## Docker Startup
 
-`docker-compose.yml` app service checks if `postgres_data/` folder exists before running migrations. If it exists, it skips `prisma db push` and `prisma db seed` on restart.
+On startup, the app container runs `prisma db push` (idempotent schema sync) and `prisma db seed` (idempotent — uses upserts). Both are safe to run on every restart.
 
 ## Testing
 
