@@ -7,7 +7,7 @@ import { canEditPastEntries } from "@/lib/auth-helpers";
 
 const salesSchema = z.object({
   id: z.string().optional(),
-  date: z.string().transform((str) => new Date(str)),
+  date: z.string().min(1, "Date is required").transform((str) => new Date(str)),
   customerName: z.string().min(1),
   jmlPeti: z.number().default(0),
   totalKg: z.number().default(0),

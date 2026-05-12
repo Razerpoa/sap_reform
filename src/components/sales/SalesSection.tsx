@@ -23,6 +23,7 @@ type StockData = {
 
 type CageData = {
   kandang: string;
+  hargaSentral?: number;
 };
 
 type SelectedCage = {
@@ -124,6 +125,12 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
       };
     });
   }, [cageStocks, selectedCages]);
+
+  // Current global hargaSentral (same for all cages)
+  const hargaSentral = useMemo(() => {
+    const cage = cages.find(c => c.hargaSentral && c.hargaSentral > 0);
+    return cage?.hargaSentral || 0;
+  }, [cages]);
 
   // Check if any stock available
   const hasAnyStock = remainingStocks.some((s) => s.remainingPeti > 0);
@@ -579,6 +586,11 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                   }}
                   className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-black text-sm text-center outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-medium placeholder:text-slate-300"
                 />
+                {hargaSentral > 0 && (
+                  <div className="text-[10px] font-bold text-slate-400 mt-1 text-center">
+                    Harga Sentral: Rp {formatNumber(hargaSentral)}
+                  </div>
+                )}
               </div>
             </div>
           </div>

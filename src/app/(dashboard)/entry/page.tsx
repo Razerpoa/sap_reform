@@ -381,7 +381,7 @@ export default function EntryPage() {
             <input 
               type="date" 
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+               onChange={(e) => setSelectedDate(e.target.value || getWIBDateString())}
               onClick={(e) => {
                 try {
                   (e.target as HTMLInputElement).showPicker();
