@@ -575,22 +575,24 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                 <label className="text-xs uppercase text-slate-500 font-black tracking-widest px-1">
                   Harga Jual (Rp)
                 </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={newSale.hargaJual.toLocaleString() || ""}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/[^\d]/g, "");
-                    const num = parseInt(raw) || 0;
-                    setNewSale({ ...newSale, hargaJual: num });
-                  }}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-black text-sm text-center outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-medium placeholder:text-slate-300"
-                />
-                {hargaSentral > 0 && (
-                  <div className="text-[10px] font-bold text-slate-400 mt-1 text-center">
-                    Harga Sentral: Rp {formatNumber(hargaSentral)}
-                  </div>
-                )}
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={newSale.hargaJual.toLocaleString() || ""}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d]/g, "");
+                      const num = parseInt(raw) || 0;
+                      setNewSale({ ...newSale, hargaJual: num });
+                    }}
+                    className="w-full px-4 py-3 pr-28 bg-white border border-slate-200 rounded-xl font-black text-sm text-center outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-medium placeholder:text-slate-300"
+                  />
+                  {hargaSentral > 0 && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-black text-slate-700 bg-slate-200/70 px-2 py-0.5 rounded-md pointer-events-none select-none whitespace-nowrap">
+                      Rp {formatNumber(hargaSentral)}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
