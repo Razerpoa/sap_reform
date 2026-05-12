@@ -154,6 +154,18 @@ export async function POST(request: Request) {
 }
 ```
 
+## Git Workflow
+
+After implementing any set of changes, verify the build succeeds (`npm run build`), then commit with a descriptive message following conventional commits format (`feat:`, `fix:`, `refactor:`, `perf:`, etc.). Include a scope in parentheses when relevant (e.g. `feat(sales):`).
+
+```bash
+npm run build                    # verify first
+git add <files>                  # stage relevant changes
+git commit -m "type(scope): message"
+```
+
+Commit immediately once changes are working as expected — don't batch multiple unrelated changes into one commit.
+
 ## Tech Stack
 
 - Next.js 16 (App Router) · Prisma 7 · PostgreSQL · Tailwind CSS v4

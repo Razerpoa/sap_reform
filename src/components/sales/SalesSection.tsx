@@ -461,31 +461,46 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
           </div>
         </div>
 
-        {/* Per-cage stock display — stacked layout with centered cage name */}
-        <div className="grid grid-cols-1 gap-2">
+        {/* Per-cage stock display — grid of cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {cageStocks.map((cage) => (
-            <div key={cage.kandang} className={`flex flex-col items-center md:p-3 p-2.5 rounded-xl border gap-1 ${
+            <div key={cage.kandang} className={`md:p-4 p-3 rounded-xl border ${
               cage.kandang === "BG"
-                ? "bg-blue-900/20 border-blue-500/40"
-                : "bg-slate-800/30 border-slate-700/30"
+                ? "bg-blue-900/30 border-blue-500/40"
+                : "bg-slate-800/40 border-slate-700/40"
             }`}>
-              {/* Cage name centered on top */}
-              <span className={`font-black uppercase text-xs ${
-                cage.kandang === "BG" ? "text-blue-300" : "text-slate-300"
-              }`}>{cage.kandang}</span>
-              {/* Pills centered below */}
-              <div className="flex items-center gap-2 justify-center w-full">
-                {/* Last Month - Warm/Amber pill - text aligns right */}
-                <div className="bg-amber-900/20 rounded-lg px-2.5 py-1.5 text-right flex-1 max-w-[160px] md:max-w-[280px]">
-                  <span className="text-xs font-black text-amber-200">{cage.lastPeti}<span className="text-[11px] font-bold text-amber-400/60">P</span></span>
-                  <span className="text-amber-700/40 mx-0.5">|</span>
-                  <span className="text-xs font-black text-amber-200">{cage.lastSisaKg}<span className="text-[11px] font-bold text-amber-400/60">Kg</span></span>
+              {/* Header: cage name + total */}
+              <div className="flex items-center justify-between mb-3">
+                <span className={`font-black uppercase text-sm md:text-base ${
+                  cage.kandang === "BG" ? "text-blue-300" : "text-slate-200"
+                }`}>{cage.kandang}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Total: {cage.peti}P | {cage.sisaKg}Kg
+                </span>
+              </div>
+              {/* Two sub-cards side by side */}
+              <div className="grid grid-cols-2 gap-2">
+                {/* Last Month - Amber */}
+                <div className="bg-amber-900/40 rounded-lg p-3 text-center space-y-1">
+                  <div className="text-[10px] font-black text-amber-400/80 uppercase tracking-widest">
+                    Sisa Bln Lalu
+                  </div>
+                  <div className="text-sm md:text-base font-black text-amber-50">
+                    {cage.lastPeti}<span className="text-xs font-bold text-amber-300/80">P</span>
+                    <span className="text-amber-600/40 mx-1">|</span>
+                    {cage.lastSisaKg}<span className="text-xs font-bold text-amber-300/80">Kg</span>
+                  </div>
                 </div>
-                {/* Current Month - Cool/Emerald pill - text aligns left */}
-                <div className="bg-emerald-900/20 rounded-lg px-2.5 py-1.5 text-left flex-1 max-w-[160px] md:max-w-[280px]">
-                  <span className="text-xs font-black text-emerald-200">{cage.currPeti}<span className="text-[11px] font-bold text-emerald-400/60">P</span></span>
-                  <span className="text-emerald-700/40 mx-0.5">|</span>
-                  <span className="text-xs font-black text-emerald-200">{cage.currSisaKg}<span className="text-[11px] font-bold text-emerald-400/60">Kg</span></span>
+                {/* This Month - Emerald */}
+                <div className="bg-emerald-900/40 rounded-lg p-3 text-center space-y-1">
+                  <div className="text-[10px] font-black text-emerald-400/80 uppercase tracking-widest">
+                    Stock Bln Ini
+                  </div>
+                  <div className="text-sm md:text-base font-black text-emerald-50">
+                    {cage.currPeti}<span className="text-xs font-bold text-emerald-300/80">P</span>
+                    <span className="text-emerald-600/40 mx-1">|</span>
+                    {cage.currSisaKg}<span className="text-xs font-bold text-emerald-300/80">Kg</span>
+                  </div>
                 </div>
               </div>
             </div>
