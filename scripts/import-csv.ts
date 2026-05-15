@@ -81,18 +81,18 @@ function parseJson(value: any, defaultValue: any = {}): any {
   }
 }
 
-// Calculate CageMaster derived fields
-function calculateCageMasterFields(data: Record<string, any>) {
-  const jmlAyam = parseFloat(data.jmlAyam) || 0;
-  const jmlEmber = parseFloat(data.jmlEmber) || 0;
-  const jmlPakan = parseFloat(data.jmlPakan) || 0;
-  const hargaPakan = parseFloat(data.hargaPakan) || 0;
+// Parse optional float — returns undefined if cell is empty/null/NaN
+function optionalFloat(value: any): number | undefined {
+  if (value === "" || value === null || value === undefined) return undefined;
+  const n = parseFloat(value);
+  return isNaN(n) ? undefined : n;
+}
 
-  const gramEkor = jmlAyam > 0 ? jmlPakan / jmlAyam : 0;
-  const beratPakan = jmlPakan * hargaPakan;
-  const volEmber = jmlEmber > 0 ? jmlPakan / jmlEmber : 0;
-
-  return { gramEkor, beratPakan, volEmber };
+// Parse optional int — returns undefined if cell is empty/null/NaN
+function optionalInt(value: any): number | undefined {
+  if (value === "" || value === null || value === undefined) return undefined;
+  const n = parseInt(value);
+  return isNaN(n) ? undefined : n;
 }
 
 // Parse salaries string to JSON (format: "workerName:amount,workerName2:amount2")
@@ -181,32 +181,75 @@ async function importCageMaster(rows: Record<string, any>[]) {
         continue;
       }
 
-      const data: any = {
-        kandang: String(kandang),
-        jmlAyam: parseFloat(row.jmlAyam) || 0,
-        jmlEmber: parseFloat(row.jmlEmber) || 0,
-        jmlPakan: parseFloat(row.jmlPakan) || 0,
-        hargaPakan: parseFloat(row.hargaPakan) || 0,
-        hargaSentral: parseFloat(row.hargaSentral) || 0,
-        mortality: parseInt(row.mortality) || 0,
-        faktorPakan: parseFloat(row.faktorPakan) || 13,
-      };
+      const csvJmlAyam = optionalFloat(row.jmlAyam);
+      const csvJmlEmber = optionalFloat(row.jmlEmber);
+      const csvJmlPakan = optionalFloat(row.jmlPakan);
+      const csvHargaPakan = optionalFloat(row.hargaPakan);
+      const csvHargaSentral = optionalFloat(row.hargaSentral);
+      const csvMortality = optionalInt(row.mortality);
+      const csvFaktorPakan = optionalFloat(row.faktorPakan);
 
-      const derived = calculateCageMasterFields(data);
-      data.gramEkor = derived.gramEkor;
-      data.beratPakan = derived.beratPakan;
-      data.volEmber = derived.volEmber;
+      const existing = await prisma.cageMaster.findUnique({ where: { kandang: String(kandang) } });
 
-      const existing = await prisma.cageMaster.findUnique({ where: { kandang: data.kandang } });
-      
       if (existing) {
+        // Merge: CSV values take precedence, missing cells keep existing DB values
+        const mergedJmlAyam = csvJmlAyam ?? existing.jmlAyam;
+        const mergedJmlEmber = csvJmlEmber ?? existing.jmlEmber;
+        const mergedJmlPakan = csvJmlPakan ?? existing.jmlPakan;
+        const mergedHargaPakan = csvHargaPakan ?? existing.hargaPakan ?? 0;
+        const mergedHargaSentral = csvHargaSentral ?? existing.hargaSentral;
+        const mergedMortality = csvMortality ?? existing.mortality;
+        const mergedFaktorPakan = csvFaktorPakan ?? existing.faktorPakan;
+
+        // Compute derived from merged values
+        const gramEkor = mergedJmlAyam > 0 ? mergedJmlPakan / mergedJmlAyam : 0;
+        const beratPakan = mergedJmlPakan * mergedHargaPakan;
+        const volEmber = mergedJmlEmber > 0 ? mergedJmlPakan / mergedJmlEmber : 0;
+
+        // Build update data: only include explicitly provided fields + always include derived
+        const data: any = { gramEkor, beratPakan, volEmber };
+        if (csvJmlAyam !== undefined) data.jmlAyam = csvJmlAyam;
+        if (csvJmlEmber !== undefined) data.jmlEmber = csvJmlEmber;
+        if (csvJmlPakan !== undefined) data.jmlPakan = csvJmlPakan;
+        if (csvHargaPakan !== undefined) data.hargaPakan = csvHargaPakan;
+        if (csvHargaSentral !== undefined) data.hargaSentral = csvHargaSentral;
+        if (csvMortality !== undefined) data.mortality = csvMortality;
+        if (csvFaktorPakan !== undefined) data.faktorPakan = csvFaktorPakan;
+
         await prisma.cageMaster.update({
-          where: { kandang: data.kandang },
+          where: { kandang: String(kandang) },
           data,
         });
         updated++;
       } else {
-        await prisma.cageMaster.create({ data });
+        // Create: missing values default to 0 (or 13 for faktorPakan)
+        const jmlAyam = csvJmlAyam ?? 0;
+        const jmlEmber = csvJmlEmber ?? 0;
+        const jmlPakan = csvJmlPakan ?? 0;
+        const hargaPakan = csvHargaPakan ?? 0;
+        const hargaSentral = csvHargaSentral ?? 0;
+        const mortality = csvMortality ?? 0;
+        const faktorPakan = csvFaktorPakan ?? 13;
+
+        const gramEkor = jmlAyam > 0 ? jmlPakan / jmlAyam : 0;
+        const beratPakan = jmlPakan * hargaPakan;
+        const volEmber = jmlEmber > 0 ? jmlPakan / jmlEmber : 0;
+
+        await prisma.cageMaster.create({
+          data: {
+            kandang: String(kandang),
+            jmlAyam,
+            jmlEmber,
+            jmlPakan,
+            hargaPakan,
+            hargaSentral,
+            mortality,
+            faktorPakan,
+            gramEkor,
+            beratPakan,
+            volEmber,
+          },
+        });
         inserted++;
       }
     } catch (e: any) {
@@ -306,17 +349,17 @@ async function importSales(rows: Record<string, any>[]) {
       const data: any = {
         date,
         customerName: String(customerName),
-        jmlPeti: parseFloat(row.jmlPeti) || 0,
-        totalKg: parseFloat(row.totalKg) || 0,
-        hargaSentral: parseFloat(row.hargaSentral) || 0,
-        up: parseFloat(row.up) || 0,
-        hargaJual: parseFloat(row.hargaJual) || 0,
-        subTotal: parseFloat(row.subTotal) || 0,
-        totalKgHariIni: parseFloat(row.totalKgHariIni) || 0,
-        totalPetiHariIni: parseFloat(row.totalPetiHariIni) || 0,
-        penjualanHariIni: parseFloat(row.penjualanHariIni) || 0,
-        totalProduksi: parseFloat(row.totalProduksi) || 0,
-        stockAkhir: parseFloat(row.stockAkhir) || 0,
+        jmlPeti: optionalFloat(row.jmlPeti) ?? 0,
+        totalKg: optionalFloat(row.totalKg) ?? 0,
+        hargaSentral: optionalFloat(row.hargaSentral) ?? 0,
+        up: optionalFloat(row.up) ?? 0,
+        hargaJual: optionalFloat(row.hargaJual) ?? 0,
+        subTotal: optionalFloat(row.subTotal) ?? 0,
+        totalKgHariIni: optionalFloat(row.totalKgHariIni) ?? 0,
+        totalPetiHariIni: optionalFloat(row.totalPetiHariIni) ?? 0,
+        penjualanHariIni: optionalFloat(row.penjualanHariIni) ?? 0,
+        totalProduksi: optionalFloat(row.totalProduksi) ?? 0,
+        stockAkhir: optionalFloat(row.stockAkhir) ?? 0,
         sourceCages: parseJson(row.sourceCages, []),
       };
 
@@ -336,6 +379,13 @@ async function importCashFlow(rows: Record<string, any>[]) {
   let updated = 0;
   let errors = 0;
 
+  // All numeric cashflow fields
+  const numericFields = [
+    "totalPenjualan", "biayaPakan", "biayaOperasional", "up",
+    "devidenA", "devidenB", "saldoKas", "saldoPemasukan",
+    "saldoKewajiban", "saldoRekening", "saldoCash",
+  ] as const;
+
   for (const row of rows) {
     try {
       const date = parseDate(row.date);
@@ -345,31 +395,33 @@ async function importCashFlow(rows: Record<string, any>[]) {
         continue;
       }
 
-      const data: any = {
-        date,
-        totalPenjualan: parseFloat(row.totalPenjualan) || 0,
-        biayaPakan: parseFloat(row.biayaPakan) || 0,
-        biayaOperasional: parseFloat(row.biayaOperasional) || 0,
-        up: parseFloat(row.up) || 0,
-        salaries: parseSalaries(row.salaries),
-        devidenA: parseFloat(row.devidenA) || 0,
-        devidenB: parseFloat(row.devidenB) || 0,
-        saldoKas: parseFloat(row.saldoKas) || 0,
-        saldoPemasukan: parseFloat(row.saldoPemasukan) || 0,
-        saldoKewajiban: parseFloat(row.saldoKewajiban) || 0,
-        saldoRekening: parseFloat(row.saldoRekening) || 0,
-        saldoCash: parseFloat(row.saldoCash) || 0,
-      };
+      // Parse all optional numeric fields at once
+      const csvValues: Record<string, number | undefined> = {};
+      for (const field of numericFields) {
+        csvValues[field] = optionalFloat(row[field]);
+      }
 
       const existing = await prisma.cashFlow.findFirst({ where: { date } });
 
+      const data: any = { date, salaries: parseSalaries(row.salaries) };
+
       if (existing) {
+        // Update: only include explicitly provided numeric fields
+        for (const field of numericFields) {
+          if (csvValues[field] !== undefined) {
+            data[field] = csvValues[field];
+          }
+        }
         await prisma.cashFlow.update({
           where: { id: existing.id },
           data,
         });
         updated++;
       } else {
+        // Create: missing fields default to 0
+        for (const field of numericFields) {
+          data[field] = csvValues[field] ?? 0;
+        }
         await prisma.cashFlow.create({ data });
         inserted++;
       }
