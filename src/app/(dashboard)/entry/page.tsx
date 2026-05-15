@@ -130,7 +130,7 @@ export default function EntryPage() {
 
           setSalesData(salesData || []);
           setStockData(Object.entries(stockData || {}).map(([kandang, v]: any) => ({ kandang: kandang, ...v })));
-          setCages([...(cagesData || []), { kandang: "BG" }]);
+          setCages([...(cagesData || [])]);
 
           setLoading(false);
           return;
@@ -149,7 +149,7 @@ export default function EntryPage() {
 
         setSalesData(salesData || []);
         setStockData(Object.entries(stockData || {}).map(([kandang, v]: any) => ({ kandang: kandang, ...v })));
-        setCages([...(cagesData || []), { kandang: "BG" }]);
+        setCages([...(cagesData || [])]);
         // Reset newSale to empty and set as original baseline
         const emptySale = { customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, sourceCages: [] };
         setNewSale(emptySale);

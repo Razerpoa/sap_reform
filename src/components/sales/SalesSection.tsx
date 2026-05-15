@@ -266,19 +266,15 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
 
   // Calculate last month global summary (FIFO: unsold from before this month)
   const lastMonthSummary = useMemo(() => {
-    const bgEntry = cageStocks.find(c => c.kandang === "BG");
-    const realCages = cageStocks.filter(c => c.kandang !== "BG");
-    const totalPeti = realCages.reduce((sum, c) => sum + c.lastPeti, 0) + (bgEntry?.lastPeti || 0);
-    const totalSisaKg = realCages.reduce((sum, c) => sum + c.lastSisaKg, 0) + (bgEntry?.lastSisaKg || 0);
+    const totalPeti = cageStocks.reduce((sum, c) => sum + c.lastPeti, 0);
+    const totalSisaKg = cageStocks.reduce((sum, c) => sum + c.lastSisaKg, 0);
     return { totalPeti, totalSisaKg: Math.round(totalSisaKg * 100) / 100 };
   }, [cageStocks]);
 
   // Calculate current month global summary
   const currentMonthSummary = useMemo(() => {
-    const bgEntry = cageStocks.find(c => c.kandang === "BG");
-    const realCages = cageStocks.filter(c => c.kandang !== "BG");
-    const totalPeti = realCages.reduce((sum, c) => sum + c.currPeti, 0) + (bgEntry?.currPeti || 0);
-    const totalSisaKg = realCages.reduce((sum, c) => sum + c.currSisaKg, 0) + (bgEntry?.currSisaKg || 0);
+    const totalPeti = cageStocks.reduce((sum, c) => sum + c.currPeti, 0);
+    const totalSisaKg = cageStocks.reduce((sum, c) => sum + c.currSisaKg, 0);
     return { totalPeti, totalSisaKg: Math.round(totalSisaKg * 100) / 100 };
   }, [cageStocks]);
 
@@ -471,16 +467,10 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
         {/* Per-cage stock display — grid of cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {cageStocks.map((cage) => (
-            <div key={cage.kandang} className={`md:p-4 p-3 rounded-xl border ${
-              cage.kandang === "BG"
-                ? "bg-blue-900/30 border-blue-500/40"
-                : "bg-slate-800/40 border-slate-700/40"
-            }`}>
+            <div key={cage.kandang} className="md:p-4 p-3 rounded-xl border bg-slate-800/40 border-slate-700/40">
               {/* Header: cage name + total */}
               <div className="flex items-center justify-between mb-3">
-                <span className={`font-black uppercase text-sm md:text-base ${
-                  cage.kandang === "BG" ? "text-blue-300" : "text-slate-200"
-                }`}>{cage.kandang}</span>
+                <span className="font-black uppercase text-sm md:text-base text-slate-200">{cage.kandang}</span>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Total: {cage.peti}P | {cage.sisaKg}Kg
                 </span>
@@ -765,7 +755,6 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             <div className="p-4 sm:p-6 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-3 mb-6">
                 {cages.map((cage) => {
-                  const isBg = cage.kandang === "BG";
                   const remaining = remainingStocks.find(s => s.kandang === cage.kandang);
                   const isSelected = pickerSelectedCage === cage.kandang;
                   const isDisabled = (remaining?.remainingPeti || 0) === 0;
@@ -784,16 +773,13 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                           ? "border-blue-500 bg-blue-50 shadow shadow-blue-500/10" 
                           : isDisabled
                             ? "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
-                            : isBg
-                              ? "border-teal-200 hover:border-teal-400 hover:bg-teal-50"
-                              : "border-slate-100 hover:border-blue-200 hover:bg-slate-50"
+                            : "border-slate-100 hover:border-blue-200 hover:bg-slate-50"
                       }`}
                     >
-                      <span className={`font-black text-sm sm:text-base block ${isBg ? 'text-teal-700' : 'text-slate-900'}`}>
+                      <span className="font-black text-sm sm:text-base block text-slate-900">
                         {cage.kandang}
-                        {isBg && <span className="text-xs font-medium text-teal-500 ml-1 uppercase tracking-wider">(Sisa Kg)</span>}
                       </span>
-                      <div className={`text-[11px] sm:text-xs font-black ${isDisabled ? 'text-slate-400' : isBg ? 'text-teal-600' : 'text-blue-600'}`}>
+                      <div className={`text-[11px] sm:text-xs font-black ${isDisabled ? 'text-slate-400' : 'text-blue-600'}`}>
                         {remaining?.remainingPeti || 0} <span className="opacity-60 font-medium">Peti</span>
                       </div>
                     </button>

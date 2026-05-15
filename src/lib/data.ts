@@ -334,7 +334,6 @@ export async function getCageStockData(untilDate?: string): Promise<Record<strin
   const allCages = new Set([...cageProduction.keys(), ...cageSold.keys()]);
 
   for (const cage of allCages) {
-    if (cage === "BG") continue;
     const productionKg = cageProduction.get(cage) || 0;
     const soldKg = cageSold.get(cage) || 0;
     const stockKg = productionKg - soldKg;
@@ -360,39 +359,7 @@ export async function getCageStockData(untilDate?: string): Promise<Record<strin
     };
   }
 
-  // Compute BG: sum of all sisaKg (stockKg % 15) from real cages, minus BG sales
-  // Then split proportionally based on real cage month ratio
-  let totalSisaKg = 0;
-  let lastMonthRealStockKg = 0;
-  let totalRealStockKg = 0;
-  for (const cage of allCages) {
-    if (cage === "BG") continue;
-    const pKg = cageProduction.get(cage) || 0;
-    const sKg = cageSold.get(cage) || 0;
-    totalSisaKg += (pKg - sKg) % 15;
-    lastMonthRealStockKg += result[cage].lastMonthStockKg;
-    totalRealStockKg += result[cage].stockKg;
-  }
-  totalSisaKg = Math.round(totalSisaKg * 100) / 100;
-  const bgSoldKg = cageSold.get("BG") || 0;
-  const bgStockKg = Math.max(0, Math.round((totalSisaKg - bgSoldKg) * 100) / 100);
 
-  const ratio = totalRealStockKg > 0 ? lastMonthRealStockKg / totalRealStockKg : 0;
-  const lastMonthBgStockKg = Math.round(bgStockKg * ratio * 100) / 100;
-  const currentMonthBgStockKg = Math.round((bgStockKg - lastMonthBgStockKg) * 100) / 100;
-
-  result["BG"] = {
-    productionKg: totalSisaKg,
-    soldKg: bgSoldKg,
-    stockKg: bgStockKg,
-    stockPeti: Math.floor(bgStockKg / 15),
-    lastMonthStockKg: lastMonthBgStockKg,
-    lastMonthStockPeti: Math.floor(lastMonthBgStockKg / 15),
-    lastMonthSisaKg: Math.round((lastMonthBgStockKg % 15) * 100) / 100,
-    currentMonthStockKg: currentMonthBgStockKg,
-    currentMonthStockPeti: Math.floor(currentMonthBgStockKg / 15),
-    currentMonthSisaKg: Math.round((currentMonthBgStockKg % 15) * 100) / 100,
-  };
 
   return result;
 }
