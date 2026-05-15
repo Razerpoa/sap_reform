@@ -853,7 +853,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                               inputMode="decimal"
                               value={pickerKg.toLocaleString()} 
                               onChange={e => {
-                                const v = parseInt(e.target.value) || 0;
+                                const v = parseFloat(e.target.value) || 0;
                                 setPickerKg(v >= 15 ? v % 15 : v);
                               }}
                               onKeyDown={e => {
