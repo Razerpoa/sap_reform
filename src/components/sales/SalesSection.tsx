@@ -629,6 +629,9 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                 // Show FIFO allocation breakdown
                 const fromLast = Math.min(cage.jmlPeti, (remaining as any)?.lastPeti ?? 0);
                 const fromCurr = cage.jmlPeti - fromLast;
+                // Kg FIFO
+                const fromLastKg = Math.min(cage.jmlKg, (remaining as any)?.lastSisaKg ?? 0);
+                const fromCurrKg = Math.max(0, cage.jmlKg - fromLastKg);
                 return (
                   <div key={cage.kandang} className="bg-white border border-slate-200 rounded-xl p-4">
                     <div className="flex items-center justify-between mb-2">
@@ -658,11 +661,22 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                       <span>Ambil: <strong>{cage.jmlPeti}</strong> peti</span>
                       <span><strong>{cage.jmlKg}</strong> kg</span>
                     </div>
-                    {cage.jmlPeti > 0 && (
-                      <div className="mt-2 text-[10px] text-blue-600 font-medium">
-                        {fromLast > 0 ? `${fromLast} dari stok bulan lalu` : ''}
-                        {fromLast > 0 && fromCurr > 0 ? ', ' : ''}
-                        {fromCurr > 0 ? `${fromCurr} dari stok bulan ini` : ''}
+                    {(cage.jmlPeti > 0 || cage.jmlKg > 0) && (
+                      <div className="mt-2 text-[10px] text-blue-600 font-medium space-y-1">
+                        {cage.jmlPeti > 0 && (
+                          <div>
+                            {fromLast > 0 ? `${fromLast} peti dari stok bulan lalu` : ''}
+                            {fromLast > 0 && fromCurr > 0 ? ', ' : ''}
+                            {fromCurr > 0 ? `${fromCurr} peti dari stok bulan ini` : ''}
+                          </div>
+                        )}
+                        {cage.jmlKg > 0 && (
+                          <div>
+                            {cage.jmlKg} kg → {fromLastKg > 0 ? `${fromLastKg} kg dari stok bulan lalu` : ''}
+                            {fromLastKg > 0 && fromCurrKg > 0 ? ', ' : ''}
+                            {fromCurrKg > 0 ? `${fromCurrKg} kg dari stok bulan ini` : ''}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -675,7 +689,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
           {selectedCages.length > 0 && (
             <div className="bg-blue-100 rounded-xl p-4 text-center mb-4">
               <span className="text-sm font-bold text-blue-800">
-                Total: {formatNumber(totalPeti)} peti | {formatNumber(totalKg)} kg
+                {formatNumber(totalPeti)} Peti + {formatNumber(selectedCages.reduce((sum, c) => sum + c.jmlKg, 0))} Kg
               </span>
             </div>
           )}
@@ -781,6 +795,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                       </span>
                       <div className={`text-[11px] sm:text-xs font-black ${isDisabled ? 'text-slate-400' : 'text-blue-600'}`}>
                         {remaining?.remainingPeti || 0} <span className="opacity-60 font-medium">Peti</span>
+                        {remaining && remaining.sisaKg > 0 && <> | {remaining.sisaKg} <span className="opacity-60 font-medium">Kg</span></>}
                       </div>
                     </button>
                   );
@@ -800,6 +815,10 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                     const entered = pickerPeti;
                     const fromLast = Math.min(entered, lastAvail);
                     const fromCurr = Math.max(0, entered - fromLast);
+                    // Kg FIFO
+                    const lastSisaKg = remaining?.lastSisaKg ?? 0;
+                    const fromLastKg = Math.min(pickerKg, lastSisaKg);
+                    const fromCurrKg = Math.max(0, pickerKg - fromLastKg);
                     return (
                       <>
                         <div className="text-xs font-black text-slate-500 uppercase tracking-widest text-center mb-3">Input Pengambilan</div>
@@ -849,13 +868,22 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                         </div>
 
                         {/* Strict FIFO allocation display */}
-                        {entered > 0 && !exceedsStock && (
-                          <div className="mt-3 p-2 bg-blue-50 border border-blue-100 rounded-lg text-center">
-                            <span className="text-xs font-bold text-blue-800">
-                              {entered} peti → {fromLast > 0 ? `${fromLast} dari stok bulan lalu` : ''}
-                              {fromLast > 0 && fromCurr > 0 ? ', ' : ''}
-                              {fromCurr > 0 ? `${fromCurr} dari stok bulan ini` : ''}
-                            </span>
+                        {(entered > 0 || pickerKg > 0) && !exceedsStock && (
+                          <div className="mt-3 p-2 bg-blue-50 border border-blue-100 rounded-lg text-center space-y-1">
+                            {entered > 0 && (
+                              <div className="text-xs font-bold text-blue-800">
+                                {entered} peti → {fromLast > 0 ? `${fromLast} peti dari stok bulan lalu` : ''}
+                                {fromLast > 0 && fromCurr > 0 ? ', ' : ''}
+                                {fromCurr > 0 ? `${fromCurr} peti dari stok bulan ini` : ''}
+                              </div>
+                            )}
+                            {pickerKg > 0 && (
+                              <div className="text-xs font-bold text-blue-800">
+                                {pickerKg} kg → {fromLastKg > 0 ? `${fromLastKg} kg dari stok bulan lalu` : ''}
+                                {fromLastKg > 0 && fromCurrKg > 0 ? ', ' : ''}
+                                {fromCurrKg > 0 ? `${fromCurrKg} kg dari stok bulan ini` : ''}
+                              </div>
+                            )}
                           </div>
                         )}
                       </>
