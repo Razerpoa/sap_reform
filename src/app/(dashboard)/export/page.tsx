@@ -143,9 +143,23 @@ export default function ExportPage() {
             </div>
           </div>
         </div>
-        <p className=" text-xs text-slate-400 mt-3">
-          Leave empty to export all data
-        </p>
+        <div className="mt-4 flex items-center gap-4">
+          <button
+            onClick={() => {
+              setStartDate("");
+              setEndDate("");
+              handleExport();
+            }}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 text-slate-500 hover:text-blue-600 px-5 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all disabled:opacity-50 disabled:pointer-events-none"
+          >
+            <Download className="w-4 h-4" />
+            Export All Data
+          </button>
+          <p className="text-xs text-slate-400">
+            Clears date filter and exports all records
+          </p>
+        </div>
       </div>
 
       {/* Messages */}
