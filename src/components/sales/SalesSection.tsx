@@ -569,7 +569,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                   <input
                     type="text"
                     inputMode="numeric"
-                    value={newSale.hargaJual.toLocaleString() || ""}
+                    value={formatNumber(newSale.hargaJual) || ""}
                     onChange={(e) => {
                       const raw = e.target.value.replace(/[^\d]/g, "");
                       const num = parseInt(raw) || 0;
@@ -835,7 +835,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                             <input 
                               type="number" 
                               inputMode="numeric"
-                              value={pickerPeti.toLocaleString()} 
+                              value={pickerPeti} 
                               onChange={e => setPickerPeti(parseInt(e.target.value) || 0)}
                               onKeyDown={e => {
                                 if (e.key === 'Enter') {
@@ -851,7 +851,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                             <input 
                               type="number" 
                               inputMode="decimal"
-                              value={pickerKg.toLocaleString()} 
+                              value={pickerKg} 
                               onChange={e => {
                                 const v = parseFloat(e.target.value) || 0;
                                 setPickerKg(v >= 15 ? v % 15 : v);
