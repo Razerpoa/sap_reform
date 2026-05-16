@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { getWIBDateString } from "@/lib/date-utils";
-import { ArrowLeft, Save, Loader2, Calendar, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Save, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
+import DateSelector from "@/components/DateSelector";
 
 type SeatKey = `${number}-${number}`; // "baris-kolom" format, e.g. "3-7"
+type ConsistencyMap = Record<SeatKey, number>; // 0.0 (never) → 1.0 (always producing)
 
 export default function CageCheckPage() {
   const params = useParams();
@@ -20,12 +22,29 @@ export default function CageCheckPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [originalChecks, setOriginalChecks] = useState("");
+  const [historyData, setHistoryData] = useState<any[]>([]);
 
   const KOLOM_PER_BARIS = 8;
 
   const totalCages = cageMaster?.jmlAyam || 0;
   const totalBaris = Math.ceil(totalCages / KOLOM_PER_BARIS);
   const producingCount = Object.values(checks).filter(Boolean).length;
+
+  // Calculate per-seat consistency from historical data
+  const consistency = useMemo<ConsistencyMap>(() => {
+    const scores: Record<string, { producing: number; total: number }> = {};
+    for (const check of historyData) {
+      const key = seatKey(check.baris, check.kolom);
+      if (!scores[key]) scores[key] = { producing: 0, total: 0 };
+      scores[key].total += 1;
+      if (check.isProducing) scores[key].producing += 1;
+    }
+    const result: ConsistencyMap = {};
+    for (const [key, s] of Object.entries(scores)) {
+      result[key as SeatKey] = s.producing / s.total;
+    }
+    return result;
+  }, [historyData]);
 
   function seatKey(baris: number, kolom: number): SeatKey {
     return `${baris}-${kolom}`;
@@ -46,10 +65,20 @@ export default function CageCheckPage() {
       setCageMaster(masterData);
 
       if (masterData?.id && masterData?.jmlAyam > 0) {
+        // Fetch current day + 14-day history for consistency tracking
+        const d = new Date(selectedDate);
+        d.setDate(d.getDate() - 14);
+        const fromDate = d.toISOString().split("T")[0];
+
         const checksRes = await fetch(
-          `/api/cage-check?date=${selectedDate}&cageMasterId=${masterData.id}&_t=${Date.now()}`
+          `/api/cage-check?date=${selectedDate}&cageMasterId=${masterData.id}&fromDate=${fromDate}&_t=${Date.now()}`
         );
-        const checksData = await checksRes.json();
+        const response = await checksRes.json();
+
+        // Response is { current: [...], history: [...] } when fromDate provided
+        const currentChecks = response?.current ?? response ?? [];
+        const history = response?.history ?? [];
+        setHistoryData(history);
 
         // Initialize all positions as producing by default
         // Calculate locally (don't use render-time totalBaris which is stale on first render)
@@ -66,7 +95,7 @@ export default function CageCheckPage() {
         }
 
         // Override with saved data from DB
-        (checksData || []).forEach((c: any) => {
+        (currentChecks || []).forEach((c: any) => {
           checkMap[seatKey(c.baris, c.kolom)] = c.isProducing;
         });
 
@@ -198,10 +227,20 @@ export default function CageCheckPage() {
                 {[1, 2, 3, 4].map((kolom) => {
                   const occupied = occupiedKoloms.includes(kolom);
                   const key = seatKey(baris, kolom);
+                  const seatConsistency = key in consistency ? consistency[key] : 0.5;
+                  const seatOpacity = 0.3 + seatConsistency * 0.7;
+                  const consistencyPct =
+                    key in consistency ? Math.round(consistency[key] * 100) : null;
                   return (
                     <button
                       key={`l-${kolom}`}
                       onClick={() => occupied && toggleCage(baris, kolom)}
+                      title={
+                        occupied && consistencyPct !== null
+                          ? `${consistencyPct}% produksi (14 hari)`
+                          : undefined
+                      }
+                      style={{ opacity: occupied ? seatOpacity : 1 }}
                       className={`h-9 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 ${
                         occupied
                           ? checks[key]
@@ -231,10 +270,20 @@ export default function CageCheckPage() {
                 {[5, 6, 7, 8].map((kolom) => {
                   const occupied = occupiedKoloms.includes(kolom);
                   const key = seatKey(baris, kolom);
+                  const seatConsistency = key in consistency ? consistency[key] : 0.5;
+                  const seatOpacity = 0.3 + seatConsistency * 0.7;
+                  const consistencyPct =
+                    key in consistency ? Math.round(consistency[key] * 100) : null;
                   return (
                     <button
                       key={`r-${kolom}`}
                       onClick={() => occupied && toggleCage(baris, kolom)}
+                      title={
+                        occupied && consistencyPct !== null
+                          ? `${consistencyPct}% produksi (14 hari)`
+                          : undefined
+                      }
+                      style={{ opacity: occupied ? seatOpacity : 1 }}
                       className={`h-9 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 ${
                         occupied
                           ? checks[key]
@@ -261,7 +310,7 @@ export default function CageCheckPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8 pb-32">
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8 pb-40 sm:pb-32">
       {/* Back link */}
       <Link
         href="/entry?tab=master"
@@ -287,15 +336,10 @@ export default function CageCheckPage() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl self-start">
-          <Calendar className="w-4 h-4 text-blue-500 shrink-0" />
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value || getWIBDateString())}
-            className="text-xs sm:text-sm font-bold outline-none bg-transparent w-28 sm:w-32"
-          />
-        </div>
+        <DateSelector
+          value={selectedDate}
+          onChange={(d) => setSelectedDate(d || getWIBDateString())}
+        />
       </div>
 
       {/* Summary Card */}
@@ -361,7 +405,7 @@ export default function CageCheckPage() {
 
             {/* Legend */}
             {totalCages > 0 && (
-              <div className="flex items-center justify-center gap-6 mt-5 pt-4 border-t border-slate-100">
+              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-5 pt-4 border-t border-slate-100">
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
                   <div className="w-3.5 h-3.5 rounded-md bg-emerald-500" />
                   Produksi
@@ -370,13 +414,17 @@ export default function CageCheckPage() {
                   <div className="w-3.5 h-3.5 rounded-md bg-rose-100" />
                   Tidak Produksi
                 </div>
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
+                  <div className="w-8 h-1.5 rounded-full bg-gradient-to-r from-slate-200 via-slate-400 to-slate-600" />
+                  Riwayat 14 hari
+                </div>
               </div>
             )}
           </div>
 
           {/* Sticky Save Button */}
           {hasChanges && (
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent z-40">
+            <div className="fixed bottom-24 sm:bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent z-[60]">
               <div className="mx-auto max-w-2xl">
                 <button
                   onClick={handleSave}
@@ -388,7 +436,7 @@ export default function CageCheckPage() {
                   ) : (
                     <Save className="w-5 h-5" />
                   )}
-                  {saving ? "Menyimpan..." : "Simpan Cek Hari Ini"}
+                  {saving ? "Menyimpan..." : "Simpan"}
                 </button>
               </div>
             </div>

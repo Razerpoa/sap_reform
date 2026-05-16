@@ -575,6 +575,25 @@ export async function getCageCheckData(date: string, cageMasterId: string) {
 }
 
 /**
+ * Fetch cage check history for a date range (used for consistency tracking)
+ * Returns all checks for the cage between fromDate and toDate (inclusive)
+ */
+export async function getCageCheckHistory(
+  fromDate: string,
+  toDate: string,
+  cageMasterId: string
+) {
+  const checks = await prisma.cageCheck.findMany({
+    where: {
+      cageMasterId,
+      date: { gte: new Date(fromDate), lte: new Date(toDate) },
+    },
+    orderBy: [{ date: "asc" }, { baris: "asc" }, { kolom: "asc" }],
+  });
+  return checks;
+}
+
+/**
  * Save cage check data for a specific date and cage group
  * Deletes existing checks for that date+cageMasterId, then inserts new ones
  */

@@ -9,7 +9,6 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Loader2, 
-  Calendar,
   ShoppingBag,
   Wallet,
   Settings2,
@@ -21,6 +20,7 @@ import { ProductionForm } from "@/components/production/ProductionForm";
 import { CashFlowForm } from "@/components/cashflow/CashFlowForm";
 import { SalesSection } from "@/components/sales/SalesSection";
 import { MasterForm } from "@/components/master/MasterForm";
+import DateSelector from "@/components/DateSelector";
 import { useDraft } from "@/hooks/useDraft";
 import { useUserRole } from "@/hooks/useUserRole";
 
@@ -376,22 +376,10 @@ export default function EntryPage() {
         </div>
         
         {activeTab !== "master" && (
-          <div className="flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-2xl shadow-sm self-center sm:self-auto">
-            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
-            <input 
-              type="date" 
-              value={selectedDate}
-               onChange={(e) => setSelectedDate(e.target.value || getWIBDateString())}
-              onClick={(e) => {
-                try {
-                  (e.target as HTMLInputElement).showPicker();
-                } catch (error) {
-                  console.log("Browser does not support showPicker");
-                }
-              }}
-              className="text-xs sm:text-sm font-bold outline-none bg-transparent"
-            />
-          </div>
+          <DateSelector
+            value={selectedDate}
+            onChange={(d) => setSelectedDate(d || getWIBDateString())}
+          />
         )}
       </div>
 

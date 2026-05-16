@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTestSession, requireAdmin, getSession } from "@/lib/auth-helpers";
-import { getCageCheckData, saveCageCheckData } from "@/lib/data";
+import { getCageCheckData, getCageCheckHistory, saveCageCheckData } from "@/lib/data";
 import { z } from "zod";
 
 const checkItemSchema = z.object({
@@ -23,9 +23,16 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date");
   const cageMasterId = searchParams.get("cageMasterId");
+  const fromDate = searchParams.get("fromDate");
 
   if (!date || !cageMasterId) {
     return NextResponse.json({ error: "date and cageMasterId required" }, { status: 400 });
+  }
+
+  // If fromDate is provided, also return history for consistency tracking
+  if (fromDate) {
+    const history = await getCageCheckHistory(fromDate, date, cageMasterId);
+    return NextResponse.json({ current: await getCageCheckData(date, cageMasterId), history });
   }
 
   const data = await getCageCheckData(date, cageMasterId);
