@@ -23,6 +23,7 @@ model CageMaster {
   id          String   @id @default(cuid())
   kandang     String   @unique
   jmlAyam     Int      @default(0)
+  jmlKandang  Int      @default(0)
   jmlEmber    Float    @default(0)
   jmlPakan    Float    @default(0)
   gramEkor    Float    @default(0)

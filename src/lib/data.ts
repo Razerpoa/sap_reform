@@ -506,6 +506,7 @@ export type MasterSaveInput = {
   id?: string;
   kandang: string;
   jmlAyam?: number;
+  jmlKandang?: number;
   jmlEmber?: number;
   jmlPakan?: number;
   gramEkor?: number;

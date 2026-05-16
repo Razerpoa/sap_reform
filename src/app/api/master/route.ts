@@ -9,6 +9,7 @@ const cageMasterSchema = z.object({
   id: z.string().optional(),
   kandang: z.string().min(1),
   jmlAyam: z.number().int().default(0),
+  jmlKandang: z.number().int().default(0),
   jmlEmber: z.number().default(0),
   jmlPakan: z.number().default(0),
   gramEkor: z.number().default(0),
