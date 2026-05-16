@@ -55,12 +55,12 @@ async function main() {
 
   // Seed CageMaster with initial data from CSV
   const cages = [
-    { kandang: "B1", jmlAyam: 777, jmlEmber: 7, jmlPakan: 91, hargaPakan: 7300 },
-    { kandang: "B1+", jmlAyam: 963, jmlEmber: 8.5, jmlPakan: 110.5, hargaPakan: 7300 },
-    { kandang: "B2", jmlAyam: 828, jmlEmber: 7, jmlPakan: 91, hargaPakan: 7300 },
-    { kandang: "B2+", jmlAyam: 775, jmlEmber: 7, jmlPakan: 91, hargaPakan: 7300 },
-    { kandang: "B3", jmlAyam: 822, jmlEmber: 7, jmlPakan: 91, hargaPakan: 7300 },
-    { kandang: "B3+", jmlAyam: 911, jmlEmber: 9.5, jmlPakan: 123.5, hargaPakan: 7300 },
+    { kandang: "B1", jmlAyam: 777, jmlKandang: 777, jmlEmber: 7, jmlPakan: 91, hargaPakan: 7300 },
+    { kandang: "B1+", jmlAyam: 963, jmlKandang: 963, jmlEmber: 8.5, jmlPakan: 110.5, hargaPakan: 7300 },
+    { kandang: "B2", jmlAyam: 828, jmlKandang: 828, jmlEmber: 7, jmlPakan: 91, hargaPakan: 7300 },
+    { kandang: "B2+", jmlAyam: 775, jmlKandang: 775, jmlEmber: 7, jmlPakan: 91, hargaPakan: 7300 },
+    { kandang: "B3", jmlAyam: 822, jmlKandang: 822, jmlEmber: 7, jmlPakan: 91, hargaPakan: 7300 },
+    { kandang: "B3+", jmlAyam: 911, jmlKandang: 911, jmlEmber: 9.5, jmlPakan: 123.5, hargaPakan: 7300 },
   ];
 
   for (const cage of cages) {
