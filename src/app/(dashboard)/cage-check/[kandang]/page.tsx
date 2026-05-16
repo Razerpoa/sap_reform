@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { getWIBDateString } from "@/lib/date-utils";
-import { ArrowLeft, Save, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Save, Loader2, CheckCircle2, XCircle, X } from "lucide-react";
 import Link from "next/link";
 import DateSelector from "@/components/DateSelector";
 
 type SeatKey = `${number}-${number}`; // "baris-kolom" format, e.g. "3-7"
-type ConsistencyMap = Record<SeatKey, number>; // 0.0 (never) → 1.0 (always producing)
+type SeatStatus = "PRODUCING" | "NOT_PRODUCING" | "EMPTY";
 
 export default function CageCheckPage() {
   const params = useParams();
@@ -16,7 +16,7 @@ export default function CageCheckPage() {
 
   const [selectedDate, setSelectedDate] = useState(getWIBDateString());
   const [cageMaster, setCageMaster] = useState<any>(null);
-  const [checks, setChecks] = useState<Record<SeatKey, boolean>>({});
+  const [checks, setChecks] = useState<Record<SeatKey, SeatStatus>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -26,25 +26,36 @@ export default function CageCheckPage() {
 
   const KOLOM_PER_BARIS = 8;
 
-  const totalCages = cageMaster?.jmlAyam || 0;
+  const totalCages = cageMaster?.jmlKandang || cageMaster?.jmlAyam || 0;
   const totalBaris = Math.ceil(totalCages / KOLOM_PER_BARIS);
-  const producingCount = Object.values(checks).filter(Boolean).length;
+  const producingCount = Object.values(checks).filter((s) => s === "PRODUCING").length;
 
-  // Calculate per-seat consistency from historical data
-  const consistency = useMemo<ConsistencyMap>(() => {
-    const scores: Record<string, { producing: number; total: number }> = {};
-    for (const check of historyData) {
-      const key = seatKey(check.baris, check.kolom);
-      if (!scores[key]) scores[key] = { producing: 0, total: 0 };
-      scores[key].total += 1;
-      if (check.isProducing) scores[key].producing += 1;
+  const selectedDateRef = useRef(selectedDate);
+  const historyRef = useRef(historyData);
+  useEffect(() => { selectedDateRef.current = selectedDate; }, [selectedDate]);
+  useEffect(() => { historyRef.current = historyData; }, [historyData]);
+
+  function getConsecutiveWeeksNotProducing(baris: number, kolom: number): number {
+    const history = historyRef.current;
+    const currentDate = selectedDateRef.current;
+    const records = history
+      .filter((r: any) => r.baris === baris && r.kolom === kolom)
+      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const currentDateStr = new Date(currentDate).toISOString().split("T")[0];
+    const currentIdx = records.findIndex(
+      (r: any) => new Date(r.date).toISOString().split("T")[0] === currentDateStr
+    );
+    if (currentIdx === -1) return 0;
+    if (records[currentIdx].status !== "NOT_PRODUCING") return 0;
+
+    let weeks = 0;
+    for (let i = currentIdx; i < records.length; i++) {
+      if (records[i].status === "NOT_PRODUCING") weeks++;
+      else break;
     }
-    const result: ConsistencyMap = {};
-    for (const [key, s] of Object.entries(scores)) {
-      result[key as SeatKey] = s.producing / s.total;
-    }
-    return result;
-  }, [historyData]);
+    return weeks;
+  }
 
   function seatKey(baris: number, kolom: number): SeatKey {
     return `${baris}-${kolom}`;
@@ -64,10 +75,12 @@ export default function CageCheckPage() {
       const masterData = await masterRes.json();
       setCageMaster(masterData);
 
-      if (masterData?.id && masterData?.jmlAyam > 0) {
-        // Fetch current day + 14-day history for consistency tracking
+      if (masterData?.id && (masterData?.jmlKandang > 0 || masterData?.jmlAyam > 0)) {
+        // Fetch current day + 8 weeks history for consecutive week tracking
+        const localTotalKandang = masterData.jmlKandang || masterData.jmlAyam;
+        const localTotalBaris = Math.ceil(localTotalKandang / KOLOM_PER_BARIS);
         const d = new Date(selectedDate);
-        d.setDate(d.getDate() - 14);
+        d.setDate(d.getDate() - 56); // 8 weeks back
         const fromDate = d.toISOString().split("T")[0];
 
         const checksRes = await fetch(
@@ -80,15 +93,13 @@ export default function CageCheckPage() {
         const history = response?.history ?? [];
         setHistoryData(history);
 
-        // Initialize all positions as producing by default
-        // Calculate locally (don't use render-time totalBaris which is stale on first render)
-        const localTotalBaris = Math.ceil(masterData.jmlAyam / KOLOM_PER_BARIS);
-        const checkMap: Record<SeatKey, boolean> = {};
+        // Initialize all positions as PRODUCING by default
+        const checkMap: Record<SeatKey, SeatStatus> = {};
         let pos = 0;
         for (let baris = 1; baris <= localTotalBaris; baris++) {
           for (let kolom = 1; kolom <= KOLOM_PER_BARIS; kolom++) {
-            if (pos < masterData.jmlAyam) {
-              checkMap[seatKey(baris, kolom)] = true;
+            if (pos < localTotalKandang) {
+              checkMap[seatKey(baris, kolom)] = "PRODUCING";
               pos++;
             }
           }
@@ -96,7 +107,7 @@ export default function CageCheckPage() {
 
         // Override with saved data from DB
         (currentChecks || []).forEach((c: any) => {
-          checkMap[seatKey(c.baris, c.kolom)] = c.isProducing;
+          checkMap[seatKey(c.baris, c.kolom)] = c.status;
         });
 
         setChecks(checkMap);
@@ -111,7 +122,34 @@ export default function CageCheckPage() {
 
   function toggleCage(baris: number, kolom: number) {
     const key = seatKey(baris, kolom);
-    setChecks((prev) => ({ ...prev, [key]: !prev[key] }));
+    setChecks((prev) => {
+      const current = prev[key];
+      return {
+        ...prev,
+        [key]: current === "PRODUCING" ? "NOT_PRODUCING" : "PRODUCING",
+      };
+    });
+  }
+
+  function handleDoubleClick(baris: number, kolom: number) {
+    const key = seatKey(baris, kolom);
+    setChecks((prev) => ({ ...prev, [key]: "EMPTY" }));
+  }
+
+  function getSeatColor(status: SeatStatus, baris: number, kolom: number): string {
+    if (status === "EMPTY") return "bg-gray-900 text-white";
+    if (status === "PRODUCING") return "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30";
+    const weeks = getConsecutiveWeeksNotProducing(baris, kolom);
+    if (weeks >= 3) return "bg-red-500 text-white";
+    if (weeks === 2) return "bg-amber-400 text-white";
+    return "bg-blue-500 text-white";
+  }
+
+  function renderSeatIcon(status: SeatStatus, baris: number, kolom: number) {
+    if (status === "EMPTY") return <X className="w-3.5 h-3.5" />;
+    if (status === "PRODUCING") return <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4" />;
+    const weeks = getConsecutiveWeeksNotProducing(baris, kolom);
+    return <span className="text-xs font-black">{weeks}w</span>;
   }
 
   const hasChanges = JSON.stringify(checks) !== originalChecks;
@@ -123,9 +161,9 @@ export default function CageCheckPage() {
     try {
       const checksArray = Object.entries(checks)
         .filter(([k]) => k.includes("-"))
-        .map(([key, val]) => {
+        .map(([key, status]) => {
           const [b, k] = key.split("-");
-          return { baris: parseInt(b), kolom: parseInt(k), isProducing: val };
+          return { baris: parseInt(b), kolom: parseInt(k), status };
         });
 
       const res = await fetch("/api/cage-check", {
@@ -157,7 +195,7 @@ export default function CageCheckPage() {
     if (!cageMaster || totalCages === 0) {
       return (
         <div className="text-center py-12 text-slate-400 font-medium bg-white rounded-2xl border border-slate-200">
-          Kandang ini tidak memiliki ayam. Atur jumlah ayam di Data Master.
+          Kandang ini tidak memiliki kandang. Atur jumlah kandang di Data Master.
         </div>
       );
     }
@@ -227,34 +265,19 @@ export default function CageCheckPage() {
                 {[1, 2, 3, 4].map((kolom) => {
                   const occupied = occupiedKoloms.includes(kolom);
                   const key = seatKey(baris, kolom);
-                  const seatConsistency = key in consistency ? consistency[key] : 0.5;
-                  const seatOpacity = 0.3 + seatConsistency * 0.7;
-                  const consistencyPct =
-                    key in consistency ? Math.round(consistency[key] * 100) : null;
                   return (
                     <button
                       key={`l-${kolom}`}
                       onClick={() => occupied && toggleCage(baris, kolom)}
-                      title={
-                        occupied && consistencyPct !== null
-                          ? `${consistencyPct}% produksi (14 hari)`
-                          : undefined
-                      }
-                      style={{ opacity: occupied ? seatOpacity : 1 }}
-                      className={`h-9 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 ${
+                      onDoubleClick={() => occupied && handleDoubleClick(baris, kolom)}
+                      title={occupied ? `Baris ${baris} Kolom ${kolom}` : undefined}
+                      className={`h-9 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 active:scale-95 ${
                         occupied
-                          ? checks[key]
-                            ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30 hover:bg-emerald-400 active:bg-emerald-600"
-                            : "bg-rose-100 text-rose-400 hover:bg-rose-200 active:bg-rose-300"
+                          ? getSeatColor(checks[key], baris, kolom)
                           : "bg-slate-50 border border-dashed border-slate-200"
-                      } active:scale-95`}
+                      }`}
                     >
-                      {occupied &&
-                        (checks[key] ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                        ) : (
-                          <XCircle className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                        ))}
+                      {occupied && renderSeatIcon(checks[key], baris, kolom)}
                     </button>
                   );
                 })}
@@ -270,34 +293,19 @@ export default function CageCheckPage() {
                 {[5, 6, 7, 8].map((kolom) => {
                   const occupied = occupiedKoloms.includes(kolom);
                   const key = seatKey(baris, kolom);
-                  const seatConsistency = key in consistency ? consistency[key] : 0.5;
-                  const seatOpacity = 0.3 + seatConsistency * 0.7;
-                  const consistencyPct =
-                    key in consistency ? Math.round(consistency[key] * 100) : null;
                   return (
                     <button
                       key={`r-${kolom}`}
                       onClick={() => occupied && toggleCage(baris, kolom)}
-                      title={
-                        occupied && consistencyPct !== null
-                          ? `${consistencyPct}% produksi (14 hari)`
-                          : undefined
-                      }
-                      style={{ opacity: occupied ? seatOpacity : 1 }}
-                      className={`h-9 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 ${
+                      onDoubleClick={() => occupied && handleDoubleClick(baris, kolom)}
+                      title={occupied ? `Baris ${baris} Kolom ${kolom}` : undefined}
+                      className={`h-9 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 active:scale-95 ${
                         occupied
-                          ? checks[key]
-                            ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30 hover:bg-emerald-400 active:bg-emerald-600"
-                            : "bg-rose-100 text-rose-400 hover:bg-rose-200 active:bg-rose-300"
+                          ? getSeatColor(checks[key], baris, kolom)
                           : "bg-slate-50 border border-dashed border-slate-200"
-                      } active:scale-95`}
+                      }`}
                     >
-                      {occupied &&
-                        (checks[key] ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                        ) : (
-                          <XCircle className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                        ))}
+                      {occupied && renderSeatIcon(checks[key], baris, kolom)}
                     </button>
                   );
                 })}
@@ -331,7 +339,8 @@ export default function CageCheckPage() {
             {cageMaster && (
               <span className="text-slate-400">
                 {" "}
-                &bull; {totalBaris} baris &bull; {totalCages} ayam
+                &bull; {totalBaris} baris &bull; {cageMaster.jmlKandang || totalCages} kandang &bull;{" "}
+                {cageMaster.jmlAyam} ayam
               </span>
             )}
           </p>
@@ -348,7 +357,7 @@ export default function CageCheckPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">
-                Produksi Hari Ini
+                Cek Minggu Ini
               </p>
               <p className="text-2xl md:text-3xl font-black mt-1">
                 {producingCount}
@@ -369,22 +378,22 @@ export default function CageCheckPage() {
             <div
               className="h-full bg-emerald-500 rounded-full transition-all duration-500 ease-out"
               style={{
-                width: `${
-                  totalCages > 0 ? (producingCount / totalCages) * 100 : 0
-                }%`,
+                width: `${totalCages > 0 ? (producingCount / totalCages) * 100 : 0}%`,
               }}
             />
           </div>
         </div>
       )}
 
-      {/* Messages */}
+      {/* Error message */}
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm font-medium flex items-center gap-2">
           <XCircle className="w-4 h-4 shrink-0" />
           {error}
         </div>
       )}
+
+      {/* Success message */}
       {success && (
         <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-sm font-medium flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -407,16 +416,19 @@ export default function CageCheckPage() {
             {totalCages > 0 && (
               <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-5 pt-4 border-t border-slate-100">
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                  <div className="w-3.5 h-3.5 rounded-md bg-emerald-500" />
-                  Produksi
+                  <div className="w-3.5 h-3.5 rounded-md bg-emerald-500" /> Produksi
                 </div>
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                  <div className="w-3.5 h-3.5 rounded-md bg-rose-100" />
-                  Tidak Produksi
+                  <div className="w-3.5 h-3.5 rounded-md bg-blue-500" /> 1 Mg
                 </div>
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
-                  <div className="w-8 h-1.5 rounded-full bg-gradient-to-r from-slate-200 via-slate-400 to-slate-600" />
-                  Riwayat 14 hari
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                  <div className="w-3.5 h-3.5 rounded-md bg-amber-400" /> 2 Mg
+                </div>
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                  <div className="w-3.5 h-3.5 rounded-md bg-red-500" /> 3+ Mg
+                </div>
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                  <div className="w-3.5 h-3.5 rounded-md bg-gray-900" /> Kosong
                 </div>
               </div>
             )}
