@@ -6,7 +6,7 @@ import { z } from "zod";
 const checkItemSchema = z.object({
   baris: z.number().int().min(1),
   kolom: z.number().int().min(1).max(8),
-  isProducing: z.boolean(),
+  status: z.enum(["PRODUCING", "NOT_PRODUCING", "EMPTY"]),
 });
 
 const cageCheckSchema = z.object({
