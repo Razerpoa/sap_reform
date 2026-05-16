@@ -559,56 +559,65 @@ export async function saveMasterData(data: MasterSaveInput) {
 // ==================== CAGE CHECK DATA ====================
 
 export type CageCheckInput = {
+  date: Date;
   cageMasterId: string;
   checks: { baris: number; kolom: number; status: "PRODUCING" | "NOT_PRODUCING" | "EMPTY" }[];
 };
 
 /**
- * Fetch all cage check records for a cage group
- * Each position (baris, kolom) has at most one record (latest state)
- * Missing positions = PRODUCING (default)
+ * Fetch cage check state as of a given date (cumulative).
+ * Returns the latest record per position with date <= selected date.
+ * Missing positions = PRODUCING (default, never saved).
  */
-export async function getCageCheckData(cageMasterId: string) {
+export async function getCageCheckData(date: string, cageMasterId: string) {
   const checks = await prisma.cageCheck.findMany({
-    where: { cageMasterId },
-    orderBy: [{ baris: "asc" }, { kolom: "asc" }],
+    where: { cageMasterId, date: { lte: new Date(date) } },
+    orderBy: [{ baris: "asc" }, { kolom: "asc" }, { date: "desc" }],
   });
-  return checks;
+
+  // Deduplicate: keep only the latest record per position (most recent date)
+  const seen = new Set<string>();
+  const latest: typeof checks = [];
+  for (const c of checks) {
+    const key = `${c.baris}-${c.kolom}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      latest.push(c);
+    }
+  }
+
+  return latest;
 }
 
 /**
- * Save cage check changes — only tracks non-default states.
- * - PRODUCING = default → DELETE any existing record (back to default)
- * - NOT_PRODUCING / EMPTY → UPSERT the record (sparse storage)
+ * Save cage check — creates a NEW record for each changed position.
+ * Every explicit user toggle creates a record.
+ * Records are sparse: only positions the user actually changed get saved.
+ * Missing records = PRODUCING (default).
+ * If a record already exists for the same (date, position), it is replaced.
  */
 export async function saveCageCheckData(data: CageCheckInput) {
-  const { cageMasterId, checks } = data;
+  const { date, cageMasterId, checks } = data;
 
-  for (const c of checks) {
-    if (c.status === "PRODUCING") {
-      // PRODUCING = default, remove any saved record for this position
-      await prisma.cageCheck.deleteMany({
-        where: { cageMasterId, baris: c.baris, kolom: c.kolom },
-      });
-    } else {
-      // NOT_PRODUCING or EMPTY = non-default, upsert
-      await prisma.cageCheck.upsert({
-        where: {
-          cageMasterId_baris_kolom: { cageMasterId, baris: c.baris, kolom: c.kolom },
-        },
-        create: {
-          date: new Date(),
-          cageMasterId,
-          baris: c.baris,
-          kolom: c.kolom,
-          status: c.status,
-        },
-        update: {
-          date: new Date(),
-          status: c.status,
-        },
-      });
-    }
+  if (checks.length > 0) {
+    // Delete any existing records for these positions on this date (in case of re-save)
+    const orConditions = checks.map((c) => ({
+      baris: c.baris,
+      kolom: c.kolom,
+    }));
+    await prisma.cageCheck.deleteMany({
+      where: { date, cageMasterId, OR: orConditions },
+    });
+
+    await prisma.cageCheck.createMany({
+      data: checks.map((c) => ({
+        date,
+        cageMasterId,
+        baris: c.baris,
+        kolom: c.kolom,
+        status: c.status,
+      })),
+    });
   }
 
   revalidatePath("/");

@@ -118,8 +118,8 @@ model CageCheck {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  @@unique([cageMasterId, baris, kolom])
-  @@index([cageMasterId])
+  @@unique([date, cageMasterId, baris, kolom])
+  @@index([cageMasterId, date])
   @@index([date])
 }
 

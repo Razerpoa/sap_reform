@@ -10,6 +10,7 @@ const checkItemSchema = z.object({
 });
 
 const cageCheckSchema = z.object({
+  date: z.string().min(1),
   cageMasterId: z.string().min(1),
   checks: z.array(checkItemSchema),
 });
@@ -20,13 +21,14 @@ export async function GET(request: Request) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
+  const date = searchParams.get("date");
   const cageMasterId = searchParams.get("cageMasterId");
 
-  if (!cageMasterId) {
-    return NextResponse.json({ error: "cageMasterId required" }, { status: 400 });
+  if (!date || !cageMasterId) {
+    return NextResponse.json({ error: "date and cageMasterId required" }, { status: 400 });
   }
 
-  const data = await getCageCheckData(cageMasterId);
+  const data = await getCageCheckData(date, cageMasterId);
   return NextResponse.json(data);
 }
 
@@ -42,6 +44,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validated = cageCheckSchema.parse(body);
     const result = await saveCageCheckData({
+      date: new Date(validated.date),
       cageMasterId: validated.cageMasterId,
       checks: validated.checks,
     });

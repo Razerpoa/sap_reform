@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
+import { getWIBDateString } from "@/lib/date-utils";
 import { ArrowLeft, Save, Loader2, CheckCircle2, XCircle, X } from "lucide-react";
 import Link from "next/link";
+import DateSelector from "@/components/DateSelector";
 
 type SeatKey = `${number}-${number}`; // "baris-kolom" format, e.g. "3-7"
 type SeatStatus = "PRODUCING" | "NOT_PRODUCING" | "EMPTY";
@@ -12,6 +14,7 @@ export default function CageCheckPage() {
   const params = useParams();
   const kandang = decodeURIComponent(params.kandang as string);
 
+  const [selectedDate, setSelectedDate] = useState(getWIBDateString());
   const [cageMaster, setCageMaster] = useState<any>(null);
   const [checks, setChecks] = useState<Record<SeatKey, SeatStatus>>({});
   const [loading, setLoading] = useState(true);
@@ -19,7 +22,9 @@ export default function CageCheckPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [originalChecks, setOriginalChecks] = useState("");
-  const [records, setRecords] = useState<any[]>([]); // raw records from DB (sparse, non-PRODUCING only)
+
+  // All records loaded from DB (sparse — only explicitly saved positions)
+  const [dbRecords, setDbRecords] = useState<any[]>([]);
 
   const KOLOM_PER_BARIS = 8;
 
@@ -28,12 +33,12 @@ export default function CageCheckPage() {
   const producingCount = Object.values(checks).filter((s) => s === "PRODUCING").length;
 
   // Ref for calendar-week calculation (avoids stale closure in render)
-  const recordsRef = useRef(records);
-  useEffect(() => { recordsRef.current = records; }, [records]);
+  const dbRecordsRef = useRef(dbRecords);
+  useEffect(() => { dbRecordsRef.current = dbRecords; }, [dbRecords]);
 
   useEffect(() => {
     fetchData();
-  }, [kandang]);
+  }, [selectedDate, kandang]);
 
   async function fetchData() {
     setLoading(true);
@@ -49,20 +54,21 @@ export default function CageCheckPage() {
         const localTotalKandang = masterData.jmlKandang || masterData.jmlAyam;
         const localTotalBaris = Math.ceil(localTotalKandang / KOLOM_PER_BARIS);
 
-        // Fetch all records for this cage group (sparse — only non-PRODUCING)
+        // Fetch records cumulatively: state as of selectedDate
         const checksRes = await fetch(
-          `/api/cage-check?cageMasterId=${masterData.id}&_t=${Date.now()}`
+          `/api/cage-check?date=${selectedDate}&cageMasterId=${masterData.id}&_t=${Date.now()}`
         );
         const recordsData = await checksRes.json();
-        setRecords(recordsData);
+        setDbRecords(recordsData);
 
-        // Build a lookup: baris-kolom → status from DB records
+        // Build lookup: baris-kolom → status from DB records
+        // (records are already deduplicated — latest per position)
         const recordMap: Record<string, SeatStatus> = {};
         for (const r of recordsData) {
           recordMap[seatKey(r.baris, r.kolom)] = r.status;
         }
 
-        // Initialize all positions: use DB record if exists, otherwise PRODUCING (default)
+        // Initialize: use DB record if saved, otherwise PRODUCING (default)
         const checkMap: Record<SeatKey, SeatStatus> = {};
         let pos = 0;
         for (let baris = 1; baris <= localTotalBaris; baris++) {
@@ -90,19 +96,17 @@ export default function CageCheckPage() {
   }
 
   /**
-   * Count calendar weeks since the NOT_PRODUCING streak started.
-   * Uses the `date` field of the earliest NOT_PRODUCING record (oldest in chain).
-   * If no NOT_PRODUCING records, returns 0.
+   * Compute calendar weeks since the NOT_PRODUCING streak started.
+   * Uses the oldest NOT_PRODUCING record for this position in the DB.
    */
   function getCalendarWeeksSinceStreak(baris: number, kolom: number): number {
-    const data = recordsRef.current;
+    const data = dbRecordsRef.current;
     const seatRecords = data
       .filter((r: any) => r.baris === baris && r.kolom === kolom && r.status === "NOT_PRODUCING")
       .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     if (seatRecords.length === 0) return 0;
 
-    // Oldest NOT_PRODUCING record = streak start
     const streakStart = new Date(seatRecords[0].date);
     streakStart.setHours(0, 0, 0, 0);
 
@@ -113,7 +117,6 @@ export default function CageCheckPage() {
       (today.getTime() - streakStart.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    // 0-6 days → 1 (blue), 7-13 days → 2 (yellow), 14+ → 3+ (red)
     if (daysSince < 7) return 1;
     if (daysSince < 14) return 2;
     return 3;
@@ -149,24 +152,36 @@ export default function CageCheckPage() {
 
   const hasChanges = JSON.stringify(checks) !== originalChecks;
 
+  /** Only send the positions that actually changed (diff-based save) */
+  function computeChangedPositions(): { baris: number; kolom: number; status: SeatStatus }[] {
+    const original: Record<SeatKey, SeatStatus> = JSON.parse(originalChecks);
+    const changes: { baris: number; kolom: number; status: SeatStatus }[] = [];
+    for (const key of Object.keys(checks)) {
+      const sk = key as SeatKey;
+      if (checks[sk] !== original[sk]) {
+        const [b, k] = key.split("-");
+        changes.push({ baris: parseInt(b), kolom: parseInt(k), status: checks[sk] });
+      }
+    }
+    return changes;
+  }
+
   async function handleSave() {
     if (!cageMaster?.id || !hasChanges) return;
+
+    const changedPositions = computeChangedPositions();
+    if (changedPositions.length === 0) return;
+
     setSaving(true);
     setError(null);
     try {
-      const checksArray = Object.entries(checks)
-        .filter(([k]) => k.includes("-"))
-        .map(([key, status]) => {
-          const [b, k] = key.split("-");
-          return { baris: parseInt(b), kolom: parseInt(k), status };
-        });
-
       const res = await fetch("/api/cage-check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          date: selectedDate,
           cageMasterId: cageMaster.id,
-          checks: checksArray,
+          checks: changedPositions,
         }),
       });
 
@@ -252,7 +267,7 @@ export default function CageCheckPage() {
                     <button
                       key={`l-${kolom}`}
                       onClick={() => occupied && toggleCage(baris, kolom)}
-                      title={occupied ? `Baris ${baris} Kolom ${kolom} — klik untuk ganti status` : undefined}
+                      title={occupied ? `Baris ${baris} Kolom ${kolom}` : undefined}
                       className={`h-9 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 active:scale-95 ${
                         occupied
                           ? getSeatColor(checks[key], baris, kolom)
@@ -279,7 +294,7 @@ export default function CageCheckPage() {
                     <button
                       key={`r-${kolom}`}
                       onClick={() => occupied && toggleCage(baris, kolom)}
-                      title={occupied ? `Baris ${baris} Kolom ${kolom} — klik untuk ganti status` : undefined}
+                      title={occupied ? `Baris ${baris} Kolom ${kolom}` : undefined}
                       className={`h-9 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 active:scale-95 ${
                         occupied
                           ? getSeatColor(checks[key], baris, kolom)
@@ -324,6 +339,10 @@ export default function CageCheckPage() {
             )}
           </p>
         </div>
+        <DateSelector
+          value={selectedDate}
+          onChange={(d) => setSelectedDate(d || getWIBDateString())}
+        />
       </div>
 
       {/* Summary Card */}
@@ -332,7 +351,7 @@ export default function CageCheckPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">
-                Produksi Sekarang
+                Produksi ({selectedDate})
               </p>
               <p className="text-2xl md:text-3xl font-black mt-1">
                 {producingCount}
@@ -348,13 +367,10 @@ export default function CageCheckPage() {
               </p>
             </div>
           </div>
-          {/* Progress bar */}
           <div className="mt-4 h-2.5 bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-emerald-500 rounded-full transition-all duration-500 ease-out"
-              style={{
-                width: `${totalCages > 0 ? (producingCount / totalCages) * 100 : 0}%`,
-              }}
+              style={{ width: `${totalCages > 0 ? (producingCount / totalCages) * 100 : 0}%` }}
             />
           </div>
         </div>
