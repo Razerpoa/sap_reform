@@ -560,7 +560,7 @@ export async function saveMasterData(data: MasterSaveInput) {
 export type CageCheckInput = {
   date: Date;
   cageMasterId: string;
-  checks: { baris: number; kolom: number; isProducing: boolean }[];
+  checks: { baris: number; kolom: number; status: "PRODUCING" | "NOT_PRODUCING" | "EMPTY" }[];
 };
 
 /**
@@ -613,7 +613,7 @@ export async function saveCageCheckData(data: CageCheckInput) {
         cageMasterId,
         baris: c.baris,
         kolom: c.kolom,
-        isProducing: c.isProducing,
+        status: c.status,
       })),
     });
   }
