@@ -15,7 +15,7 @@ type MasterFormProps = {
 export function MasterForm({ data, onSave }: MasterFormProps) {
   const [editing, setEditing] = useState<any>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [newCage, setNewCage] = useState({ kandang: "", jmlAyam: 0, jmlEmber: 0, jmlPakan: 0, hargaPakan: 7300 });
+  const [newCage, setNewCage] = useState({ kandang: "", jmlAyam: 0, jmlKandang: 0, jmlEmber: 0, jmlPakan: 0, hargaPakan: 7300 });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const { isAdmin } = useUserRole();
@@ -117,7 +117,7 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
     });
     if (res.ok) {
       setIsAddingNew(false);
-      setNewCage({ kandang: "", jmlAyam: 0, jmlEmber: 0, jmlPakan: 0, hargaPakan: 7300 });
+      setNewCage({ kandang: "", jmlAyam: 0, jmlKandang: 0, jmlEmber: 0, jmlPakan: 0, hargaPakan: 7300 });
       onSave();
     }
   };
@@ -201,6 +201,7 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
               )}
             </div>
             <InputField label="Jml Ayam" value={newCage.jmlAyam} onChange={(v) => setNewCage({...newCage, jmlAyam: parseInt(v) || 0})} />
+            <InputField label="Jml Kandang" value={newCage.jmlKandang} onChange={(v) => setNewCage({...newCage, jmlKandang: parseInt(v) || 0})} />
             <InputField label="Jml Ember" value={newCage.jmlEmber} onChange={(v) => setNewCage({...newCage, jmlEmber: parseFloat(v) || 0})} />
             <InputField label="Harga Pakan" value={newCage.hargaPakan} onChange={(v) => setNewCage({...newCage, hargaPakan: parseFloat(v) || 0})} />
           </div>
@@ -227,7 +228,9 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
                 </div>
                 <div>
                   <h4 className="font-black text-slate-900 uppercase tracking-tight">Kandang {item.kandang}</h4>
-                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{item.jmlAyam?.toLocaleString()} Ayam</p>
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                    {item.jmlAyam?.toLocaleString()} Ayam &bull; {item.jmlKandang || item.jmlAyam || 0} Kandang
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
@@ -309,6 +312,17 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
                     inputMode="numeric"
                     value={editing.jmlAyam}
                     onChange={(e) => setEditing({...editing, jmlAyam: parseInt(e.target.value) || 0})}
+                    disabled={saving}
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-black outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-black text-slate-400 tracking-widest px-1">Jumlah Kandang</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={editing.jmlKandang}
+                    onChange={(e) => setEditing({...editing, jmlKandang: parseInt(e.target.value) || 0})}
                     disabled={saving}
                     className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-black outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
                   />
