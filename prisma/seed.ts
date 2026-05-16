@@ -75,6 +75,7 @@ async function main() {
       create: {
         kandang: cage.kandang,
         jmlAyam: cage.jmlAyam,
+        jmlKandang: cage.jmlKandang,
         jmlEmber: cage.jmlEmber,
         jmlPakan: cage.jmlPakan,
         hargaPakan: cage.hargaPakan,
