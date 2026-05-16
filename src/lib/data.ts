@@ -555,6 +555,54 @@ export async function saveMasterData(data: MasterSaveInput) {
   return entry;
 }
 
+// ==================== CAGE CHECK DATA ====================
+
+export type CageCheckInput = {
+  date: Date;
+  cageMasterId: string;
+  checks: { baris: number; kolom: number; isProducing: boolean }[];
+};
+
+/**
+ * Fetch cage check data for a specific date and cage group
+ */
+export async function getCageCheckData(date: string, cageMasterId: string) {
+  const checks = await prisma.cageCheck.findMany({
+    where: { date: new Date(date), cageMasterId },
+    orderBy: [{ baris: "asc" }, { kolom: "asc" }],
+  });
+  return checks;
+}
+
+/**
+ * Save cage check data for a specific date and cage group
+ * Deletes existing checks for that date+cageMasterId, then inserts new ones
+ */
+export async function saveCageCheckData(data: CageCheckInput) {
+  const { date, cageMasterId, checks } = data;
+
+  // Delete existing checks for this date+cageMasterId
+  await prisma.cageCheck.deleteMany({
+    where: { date, cageMasterId },
+  });
+
+  // Insert new checks
+  if (checks.length > 0) {
+    await prisma.cageCheck.createMany({
+      data: checks.map((c) => ({
+        date,
+        cageMasterId,
+        baris: c.baris,
+        kolom: c.kolom,
+        isProducing: c.isProducing,
+      })),
+    });
+  }
+
+  revalidatePath("/");
+  return { success: true, count: checks.length };
+}
+
 // ==================== OTHER EXPENSES DATA ====================
 
 /**

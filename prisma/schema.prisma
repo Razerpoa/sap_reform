@@ -101,6 +101,21 @@ model Sales {
   @@index([customerName])
 }
 
+model CageCheck {
+  id           String   @id @default(cuid())
+  date         DateTime @db.Date
+  cageMasterId String
+  baris        Int
+  kolom        Int
+  isProducing  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([date, cageMasterId, baris, kolom])
+  @@index([date])
+  @@index([cageMasterId])
+}
+
 model OtherExpense {
   id          String   @id @default(cuid())
   date        DateTime @db.Date

@@ -3,171 +3,143 @@
 ## Quick Start
 
 ```bash
-# 1. Start database
-docker compose up -d db
-
-# 2. Generate Prisma client (after schema changes — ALWAYS do this before build)
-npx prisma generate
-
-# 3. Push schema to database (use --accept-data-loss for breaking changes)
-npx prisma db push --accept-data-loss
-
-# 4. Seed data
-npx tsx prisma/seed.ts
-
-# 5. Start dev server
-npm run dev
+docker compose up -d db                    # Start PostgreSQL
+npx prisma generate                         # After ANY schema change
+npx prisma db push --accept-data-loss       # Push schema to DB
+npx tsx prisma/seed.ts                      # Seed cage data + admin users
+npm run dev                                 # Dev server on port 3000
 ```
 
 ## Commands
 
-| Command | Description |
+| Command | What it does |
 |---------|-------------|
-| `npm run dev` | Dev server on port 3000 (uses `nodemon`, watches `src`) |
-| `npm run build` | Production build (no separate typecheck step) |
-| `npm run lint` | ESLint |
-| `npm run seed` | Seed database |
-| `npm run set-role <email> <admin\|whitelisted>` | Set user role |
-| `npm run import <table> <csv-file> [--wipe-all]` | Import CSV data into table |
-| `npm run test:api` | Run API integration tests (`tests/api-data-flow.js`) |
-| `npx prisma studio` | Open Prisma GUI |
+| `npm run dev` | `nodemon --watch src --ext ts,tsx --exec 'next dev'` (hot reload) |
+| `npm run build` | `next build` (no separate typecheck step) |
+| `npm run lint` | ESLint (flat config, `eslint.config.mjs`) |
+| `npm run test:api` | `NODE_ENV=test node tests/api-data-flow.js` |
+| `npm run seed` | `npx tsx prisma/seed.ts` |
+| `npm run set-role <email> <admin\|whitelisted>` | Change user role (user must exist first) |
+| `npm run import <table> <csv> [--wipe-all]` | Bulk CSV import |
+| `npx prisma studio` | Prisma GUI |
 
-## CSV Import
+## Schema Changes
 
-Import data from CSV files into the database.
-
-```bash
-npm run import <table> <csv-file> [--force]
-```
-
-**Options:**
-- `--wipe-all` - Clear existing data in the table before import
-
-**Supported Tables:**
-
-| Table | Required Columns | Description |
-|-------|-----------------|-------------|
-| `CageMaster` | `kandang` | Cage configuration |
-| `Worker` | `name` | Worker/employee list |
-| `OtherExpense` | `date`, `amount`, `description` | Miscellaneous expenses |
-| `Sales` | `date`, `customerName` | Sales records |
-| `CashFlow` | `date` | Cash flow entries |
-| `Production` | `Tanggal`, `Kandang` | Daily production data (one cage per file) |
-
-**Examples:**
-```bash
-# Import cages (upserts by kandang)
-npm run import CageMaster data/cages.csv
-
-# Import workers
-npm run import Worker data/workers.csv
-
-# Import production (clears existing first)
-npm run import Production data/production.csv --wipe-all
-
-# Import sales
-npm run import Sales data/sales.csv
-```
-
-**CSV Format Notes:**
-- Date formats: `YYYY-MM-DD`, `DD/MM/YYYY`, or `MM/DD/YYYY`
-- Production: one CSV file per cage. Columns: `Tanggal`, `Kandang`, `Peti 1 Tray`, `Peti 1 Butir`, `Peti 1 Kg`, `Peti 2 Tray`, `Peti 2 Butir`, `Peti 2 Kg`, `Peti 3 Tray`, `Peti 3 Butir`, `Peti 3 Kg`, `Sisa Tray`, `Sisa Butir`, `Sisa Kg`. `Kandang` must exist in CageMaster. Multiple dates per file are supported. Import merges cage data per date (preserves other cages).
-- Sample templates in `templates/` folder
-
-## Prisma Schema → Database
-
-**Command order after ANY schema change:**
-
+**Always run in this order:**
 ```bash
 npx prisma generate && npx prisma db push --accept-data-loss
 ```
+The schema has no `datasource.url` — it relies on env vars and `prisma.config.ts` builds the URL from `DATABASE_USERNAME`, `DATABASE_PASSWORD`, and `DATABASE_HOST`.
 
-Then seed if needed: `npx tsx prisma/seed.ts`
+## Prisma Client
 
-## Prisma Client Setup
-
-`src/lib/prisma.ts` creates the client differently per environment:
-- **Local dev**: `Pool` + `PrismaPg` adapter (no accelerate)
-- **Production**: `@prisma/extension-accelerate` with `accelerateUrl`
+`src/lib/prisma.ts` creates the client adaptively:
+- **Local dev:** `pg.Pool` + `@prisma/adapter-pg` (direct)
+- **Production:** `PrismaClient` with `accelerateUrl` + `withAccelerate()` extension
 - Detection: checks if URL starts with `prisma://` or `prisma+postgres://`
 
-The schema.prisma `datasource` has no `url` — it relies on env vars.
+## Database Host Quirk
 
-## Database Host
+| Context | `DATABASE_HOST` value |
+|---------|----------------------|
+| Local dev server | `localhost` |
+| Docker app container | `db` (hardcoded in compose) |
+| Standalone scripts (`prisma/seed.ts`, `scripts/`, `check-stock.ts`) | From `.env` |
 
-- Local development: `DATABASE_HOST=localhost`
-- Docker: `docker-compose.yml` hardcodes `DATABASE_HOST: db` for the app container
-- The seed script uses `DATABASE_HOST` from `.env`
+## Architecture
 
-## Cage Naming — Dynamic, Not Hardcoded
-
-Cage names (B1, B1+, etc.) come from the `CageMaster` table's `kandang` field. No cage names are hardcoded in code. To add a new cage: insert into `CageMaster` via the **Data Master** tab — the Production form auto-renders it without code changes.
-
-## Stock & Stats Calculation
-
-- **`cageData`** / **`cageSummary`** in `Production` table: keys are cage names (from CageMaster). Structure per cage:
-  ```json
-  {
-    "B1": {
-      "rows": [{ "peti": false, "tray": 0, "butir": 0 }, ...],
-      "extra": { "extraTray": 0, "extraButir": 0, "extraKg": 0 }
-    }
+- **App Router** under `src/app/`. Dashboard pages in `(dashboard)/`, API routes in `api/`.
+- **All API routes** use the `withAuth` wrapper from `src/lib/api-wrapper.ts`:
+  ```ts
+  export async function POST(request: Request) {
+    return withAuth(async () => { ... handler ... }, { requireAdmin: true });
   }
   ```
-- **Stats calc**:
-  - `totalKg` per cage = `rows.filter(r => r.peti).length × 15` + `extra.extraKg`
-  - `totalButir` per cage = `rows.sum(r => (r.tray × 30) + r.butir)` + `(extra.extraTray × 30) + extra.extraButir`
-- **Cumulative Stock**: Tracked in `Production` table via `productionKg` and `soldKg` fields. These are updated for all records on every production/sales save via the `recalculateStock()` helper in `src/lib/data.ts`.
+  Handles session, role check (403 on non-ADMIN writes), and error handling. Admins bypass date restrictions on past entries. `TESTING_MODE=true` bypasses auth entirely (test session is ADMIN).
+
+- **`output: 'standalone'`** in `next.config.ts` — build produces `.next/standalone/` for Docker.
+- **Docker CMD** runs `prisma db push && prisma db seed && node server.js` on every startup.
+
+## Tests
+
+| File | How to run | Status |
+|------|-----------|--------|
+| `tests/api-data-flow.js` | `npm run test:api` (needs dev server running) | **Active** — plain Node.js tests |
+| `tests/api-only.spec.js` | `TESTING_MODE=true node tests/api-only.spec.js` | **Active** — standalone, no server needed |
+| `tests/api-e2e.spec.ts` | Playwright | **SKIPPED** (old flat format) |
+| `tests/data-flow.spec.ts` | Playwright | **SKIPPED** (old flat format) |
+
+Playwright config (`playwright.config.ts`) autostarts dev server with `TESTING_MODE=true`.
+
+## CSV Import
+
+```bash
+npm run import <table> <file.csv> [--wipe-all]
+```
+
+Tables: `CageMaster` (upserts by `kandang`), `Worker`, `OtherExpense`, `Sales`, `CashFlow`, `Production`.
+
+**Production CSV** special behavior: one file per cage, merges cage data by date (other cages preserved). Validates `Kandang` against `CageMaster`. Auto-runs `recalculateStock()` after import.
+
+Date formats accepted: `YYYY-MM-DD`, `DD/MM/YYYY`, `MM/DD/YYYY`.
+
+## Dynamic Cage Names
+
+Cage names come from `CageMaster.kandang` — **never hardcoded**. Adding a cage in **Data Master** tab auto-renders it in the Production form.
+
+## Stock & State
+
+### cageData JSON structure (in Production table)
+```json
+{
+  "B1": {
+    "rows": [{ "peti": false, "tray": 0, "butir": 0 }, ...],
+    "extra": { "extraTray": 0, "extraButir": 0, "extraKg": 0 }
+  }
+}
+```
+- `peti=true` each = 15kg
+- `totalKg` = count(peti) × 15 + extraKg
+- `totalButir` = sum((tray × 30) + butir) + (extraTray × 30) + extraButir
+
+### Cumulative Stock
+
+`Production.productionKg` and `Production.soldKg` store **all-time running totals** (not per-day). Updated on every production or sales save via `recalculateStock()` in `src/lib/stock.ts`. **Never edit these fields directly.**
+
+### Key lib files
+
+| File | Role |
+|------|------|
+| `src/lib/data.ts` | Centralized CRUD (saveProductionData, saveSalesData, etc.) |
+| `src/lib/calculations.ts` | All math (kg, butir, profit, dashboard stats) |
+| `src/lib/stock.ts` | Cumulative stock recalc |
+| `src/lib/date-utils.ts` | WIB (Asia/Jakarta) timezone helpers |
+| `src/lib/utils.ts` | Generic helpers |
 
 ## User Roles
 
 | Role | Access |
 |------|--------|
-| ADMIN | Full CRUD on all entry pages |
-| WHITELISTED | Read-only |
+| `ADMIN` | Full CRUD on all pages; can edit past dates |
+| `WHITELISTED` | Read-only (API 403 + UI disabled) |
 
-- Users in `ALLOWED_EMAILS` env var default to ADMIN on first sign-in.
-- Role enforcement: both API (403 on write) and frontend (UI hidden/disabled).
-- `npm run set-role` requires the user to have signed in first (creates the User record).
+- First sign-in with email in `ALLOWED_EMAILS` env var → creates `ADMIN`.
+- Set-role script requires the user record to exist (must have signed in first).
 
-## Docker Startup
-
-On startup, the app container runs `prisma db push` (idempotent schema sync) and `prisma db seed` (idempotent — uses upserts). Both are safe to run on every restart.
-
-## Testing
-
-`tests/api-data-flow.js` — plain Node.js script (not a test runner). Requires a running dev server. Tests production POST/GET, cashflow POST/GET, and dashboard load.
-
-## API Implementation Pattern
-
-Most API routes follow a standardized pattern using the `withAuth` wrapper in `src/lib/api-wrapper.ts`. This centralized helper handles:
-- **Session retrieval** (with `TESTING_MODE` support)
-- **Role enforcement** (ADMIN required for writes, WHITELISTED for reads)
-- **Generic error handling**
-
-Example usage:
-```ts
-export async function POST(request: Request) {
-  return withAuth(async () => {
-    // Handler logic here...
-  }, { requireAdmin: true });
-}
-```
-
-## Git Workflow
-
-After implementing any set of changes, verify the build succeeds (`npm run build`), then commit with a descriptive message following conventional commits format (`feat:`, `fix:`, `refactor:`, `perf:`, etc.). Include a scope in parentheses when relevant (e.g. `feat(sales):`).
+## Git
 
 ```bash
 npm run build                    # verify first
-git add <files>                  # stage relevant changes
+git add <files>
 git commit -m "type(scope): message"
 ```
+Conventional commits: `feat:`, `fix:`, `refactor:`, `perf:`, etc. Commit immediately when working.
 
-Commit immediately once changes are working as expected — don't batch multiple unrelated changes into one commit.
+## Misc
 
-## Tech Stack
-
-- Next.js 16 (App Router) · Prisma 7 · PostgreSQL · Tailwind CSS v4
-- NextAuth v4 (Google OAuth) · Zod v4 · Recharts · Lucide React
-- `tsx` for dev scripts (not `ts-node`) · `nodemon` for dev hot reload
+- **Time zone:** WIB (Asia/Jakarta) for all date logic — `getWIBDateString()` in `date-utils.ts`.
+- **Lockfile:** `package-lock.json` (npm, not yarn/pnpm). Use `npm ci` in Docker.
+- **Tailwind v4** with `@tailwindcss/postcss` (PostCSS config, no `tailwind.config`).
+- **nodemon** watches `src/` directory for hot reload during dev.
+- **check-stock.ts** at repo root is a standalone debug script (run with `npx tsx check-stock.ts`).
+- **`data_insert/` and `postgres_data/`** are gitignored (local data/DB volume).

@@ -280,13 +280,22 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Master Data Grup</p>
                  </div>
               </div>
-              <button 
-                onClick={() => setEditing(null)} 
-                disabled={saving}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-400 transition-colors disabled:opacity-50"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/cage-check/${encodeURIComponent(editing.kandang)}`}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all active:scale-95"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Cek Kandang
+                </Link>
+                <button 
+                  onClick={() => setEditing(null)} 
+                  disabled={saving}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-400 transition-colors disabled:opacity-50"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Content */}

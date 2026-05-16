@@ -40,6 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# agent hive
+.hive/
+
 /src/generated/prisma
 /test-results/
 
