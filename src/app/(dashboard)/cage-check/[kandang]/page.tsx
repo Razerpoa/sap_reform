@@ -32,9 +32,11 @@ export default function CageCheckPage() {
   const totalBaris = Math.ceil(totalCages / KOLOM_PER_BARIS);
   const producingCount = Object.values(checks).filter((s) => s === "PRODUCING").length;
 
-  // Ref for calendar-week calculation (avoids stale closure in render)
+  // Refs for calendar-week calculation (avoids stale closure in render)
   const dbRecordsRef = useRef(dbRecords);
+  const selectedDateRef = useRef(selectedDate);
   useEffect(() => { dbRecordsRef.current = dbRecords; }, [dbRecords]);
+  useEffect(() => { selectedDateRef.current = selectedDate; }, [selectedDate]);
 
   useEffect(() => {
     fetchData();
@@ -110,11 +112,11 @@ export default function CageCheckPage() {
     const streakStart = new Date(seatRecords[0].date);
     streakStart.setHours(0, 0, 0, 0);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const refDate = new Date(selectedDateRef.current);
+    refDate.setHours(0, 0, 0, 0);
 
     const daysSince = Math.floor(
-      (today.getTime() - streakStart.getTime()) / (1000 * 60 * 60 * 24)
+      (refDate.getTime() - streakStart.getTime()) / (1000 * 60 * 60 * 24)
     );
 
     if (daysSince < 7) return 1;
