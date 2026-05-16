@@ -559,64 +559,56 @@ export async function saveMasterData(data: MasterSaveInput) {
 // ==================== CAGE CHECK DATA ====================
 
 export type CageCheckInput = {
-  date: Date;
   cageMasterId: string;
   checks: { baris: number; kolom: number; status: "PRODUCING" | "NOT_PRODUCING" | "EMPTY" }[];
 };
 
 /**
- * Fetch cage check data for a specific date and cage group
+ * Fetch all cage check records for a cage group
+ * Each position (baris, kolom) has at most one record (latest state)
+ * Missing positions = PRODUCING (default)
  */
-export async function getCageCheckData(date: string, cageMasterId: string) {
+export async function getCageCheckData(cageMasterId: string) {
   const checks = await prisma.cageCheck.findMany({
-    where: { date: new Date(date), cageMasterId },
+    where: { cageMasterId },
     orderBy: [{ baris: "asc" }, { kolom: "asc" }],
   });
   return checks;
 }
 
 /**
- * Fetch cage check history for a date range (used for consistency tracking)
- * Returns all checks for the cage between fromDate and toDate (inclusive)
- */
-export async function getCageCheckHistory(
-  fromDate: string,
-  toDate: string,
-  cageMasterId: string
-) {
-  const checks = await prisma.cageCheck.findMany({
-    where: {
-      cageMasterId,
-      date: { gte: new Date(fromDate), lte: new Date(toDate) },
-    },
-    orderBy: [{ date: "asc" }, { baris: "asc" }, { kolom: "asc" }],
-  });
-  return checks;
-}
-
-/**
- * Save cage check data for a specific date and cage group
- * Deletes existing checks for that date+cageMasterId, then inserts new ones
+ * Save cage check changes — only tracks non-default states.
+ * - PRODUCING = default → DELETE any existing record (back to default)
+ * - NOT_PRODUCING / EMPTY → UPSERT the record (sparse storage)
  */
 export async function saveCageCheckData(data: CageCheckInput) {
-  const { date, cageMasterId, checks } = data;
+  const { cageMasterId, checks } = data;
 
-  // Delete existing checks for this date+cageMasterId
-  await prisma.cageCheck.deleteMany({
-    where: { date, cageMasterId },
-  });
-
-  // Insert new checks
-  if (checks.length > 0) {
-    await prisma.cageCheck.createMany({
-      data: checks.map((c) => ({
-        date,
-        cageMasterId,
-        baris: c.baris,
-        kolom: c.kolom,
-        status: c.status,
-      })),
-    });
+  for (const c of checks) {
+    if (c.status === "PRODUCING") {
+      // PRODUCING = default, remove any saved record for this position
+      await prisma.cageCheck.deleteMany({
+        where: { cageMasterId, baris: c.baris, kolom: c.kolom },
+      });
+    } else {
+      // NOT_PRODUCING or EMPTY = non-default, upsert
+      await prisma.cageCheck.upsert({
+        where: {
+          cageMasterId_baris_kolom: { cageMasterId, baris: c.baris, kolom: c.kolom },
+        },
+        create: {
+          date: new Date(),
+          cageMasterId,
+          baris: c.baris,
+          kolom: c.kolom,
+          status: c.status,
+        },
+        update: {
+          date: new Date(),
+          status: c.status,
+        },
+      });
+    }
   }
 
   revalidatePath("/");

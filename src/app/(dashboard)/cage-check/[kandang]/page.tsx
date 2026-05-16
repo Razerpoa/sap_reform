@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { getWIBDateString } from "@/lib/date-utils";
 import { ArrowLeft, Save, Loader2, CheckCircle2, XCircle, X } from "lucide-react";
 import Link from "next/link";
-import DateSelector from "@/components/DateSelector";
 
 type SeatKey = `${number}-${number}`; // "baris-kolom" format, e.g. "3-7"
 type SeatStatus = "PRODUCING" | "NOT_PRODUCING" | "EMPTY";
@@ -14,7 +12,6 @@ export default function CageCheckPage() {
   const params = useParams();
   const kandang = decodeURIComponent(params.kandang as string);
 
-  const [selectedDate, setSelectedDate] = useState(getWIBDateString());
   const [cageMaster, setCageMaster] = useState<any>(null);
   const [checks, setChecks] = useState<Record<SeatKey, SeatStatus>>({});
   const [loading, setLoading] = useState(true);
@@ -22,7 +19,7 @@ export default function CageCheckPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [originalChecks, setOriginalChecks] = useState("");
-  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [records, setRecords] = useState<any[]>([]); // raw records from DB (sparse, non-PRODUCING only)
 
   const KOLOM_PER_BARIS = 8;
 
@@ -30,40 +27,13 @@ export default function CageCheckPage() {
   const totalBaris = Math.ceil(totalCages / KOLOM_PER_BARIS);
   const producingCount = Object.values(checks).filter((s) => s === "PRODUCING").length;
 
-  const selectedDateRef = useRef(selectedDate);
-  const historyRef = useRef(historyData);
-  useEffect(() => { selectedDateRef.current = selectedDate; }, [selectedDate]);
-  useEffect(() => { historyRef.current = historyData; }, [historyData]);
-
-  function getConsecutiveWeeksNotProducing(baris: number, kolom: number): number {
-    const history = historyRef.current;
-    const currentDate = selectedDateRef.current;
-    const records = history
-      .filter((r: any) => r.baris === baris && r.kolom === kolom)
-      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    const currentDateStr = new Date(currentDate).toISOString().split("T")[0];
-    const currentIdx = records.findIndex(
-      (r: any) => new Date(r.date).toISOString().split("T")[0] === currentDateStr
-    );
-    if (currentIdx === -1) return 0;
-    if (records[currentIdx].status !== "NOT_PRODUCING") return 0;
-
-    let weeks = 0;
-    for (let i = currentIdx; i < records.length; i++) {
-      if (records[i].status === "NOT_PRODUCING") weeks++;
-      else break;
-    }
-    return weeks;
-  }
-
-  function seatKey(baris: number, kolom: number): SeatKey {
-    return `${baris}-${kolom}`;
-  }
+  // Ref for calendar-week calculation (avoids stale closure in render)
+  const recordsRef = useRef(records);
+  useEffect(() => { recordsRef.current = records; }, [records]);
 
   useEffect(() => {
     fetchData();
-  }, [selectedDate, kandang]);
+  }, [kandang]);
 
   async function fetchData() {
     setLoading(true);
@@ -76,39 +46,34 @@ export default function CageCheckPage() {
       setCageMaster(masterData);
 
       if (masterData?.id && (masterData?.jmlKandang > 0 || masterData?.jmlAyam > 0)) {
-        // Fetch current day + 8 weeks history for consecutive week tracking
         const localTotalKandang = masterData.jmlKandang || masterData.jmlAyam;
         const localTotalBaris = Math.ceil(localTotalKandang / KOLOM_PER_BARIS);
-        const d = new Date(selectedDate);
-        d.setDate(d.getDate() - 56); // 8 weeks back
-        const fromDate = d.toISOString().split("T")[0];
 
+        // Fetch all records for this cage group (sparse — only non-PRODUCING)
         const checksRes = await fetch(
-          `/api/cage-check?date=${selectedDate}&cageMasterId=${masterData.id}&fromDate=${fromDate}&_t=${Date.now()}`
+          `/api/cage-check?cageMasterId=${masterData.id}&_t=${Date.now()}`
         );
-        const response = await checksRes.json();
+        const recordsData = await checksRes.json();
+        setRecords(recordsData);
 
-        // Response is { current: [...], history: [...] } when fromDate provided
-        const currentChecks = response?.current ?? response ?? [];
-        const history = response?.history ?? [];
-        setHistoryData(history);
+        // Build a lookup: baris-kolom → status from DB records
+        const recordMap: Record<string, SeatStatus> = {};
+        for (const r of recordsData) {
+          recordMap[seatKey(r.baris, r.kolom)] = r.status;
+        }
 
-        // Initialize all positions as PRODUCING by default
+        // Initialize all positions: use DB record if exists, otherwise PRODUCING (default)
         const checkMap: Record<SeatKey, SeatStatus> = {};
         let pos = 0;
         for (let baris = 1; baris <= localTotalBaris; baris++) {
           for (let kolom = 1; kolom <= KOLOM_PER_BARIS; kolom++) {
             if (pos < localTotalKandang) {
-              checkMap[seatKey(baris, kolom)] = "PRODUCING";
+              const key = seatKey(baris, kolom);
+              checkMap[key] = recordMap[key] || "PRODUCING";
               pos++;
             }
           }
         }
-
-        // Override with saved data from DB
-        (currentChecks || []).forEach((c: any) => {
-          checkMap[seatKey(c.baris, c.kolom)] = c.status;
-        });
 
         setChecks(checkMap);
         setOriginalChecks(JSON.stringify(checkMap));
@@ -120,26 +85,56 @@ export default function CageCheckPage() {
     }
   }
 
+  function seatKey(baris: number, kolom: number): SeatKey {
+    return `${baris}-${kolom}`;
+  }
+
+  /**
+   * Count calendar weeks since the NOT_PRODUCING streak started.
+   * Uses the `date` field of the earliest NOT_PRODUCING record (oldest in chain).
+   * If no NOT_PRODUCING records, returns 0.
+   */
+  function getCalendarWeeksSinceStreak(baris: number, kolom: number): number {
+    const data = recordsRef.current;
+    const seatRecords = data
+      .filter((r: any) => r.baris === baris && r.kolom === kolom && r.status === "NOT_PRODUCING")
+      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    if (seatRecords.length === 0) return 0;
+
+    // Oldest NOT_PRODUCING record = streak start
+    const streakStart = new Date(seatRecords[0].date);
+    streakStart.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const daysSince = Math.floor(
+      (today.getTime() - streakStart.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // 0-6 days → 1 (blue), 7-13 days → 2 (yellow), 14+ → 3+ (red)
+    if (daysSince < 7) return 1;
+    if (daysSince < 14) return 2;
+    return 3;
+  }
+
   function toggleCage(baris: number, kolom: number) {
     const key = seatKey(baris, kolom);
     setChecks((prev) => {
       const current = prev[key];
-      return {
-        ...prev,
-        [key]: current === "PRODUCING" ? "NOT_PRODUCING" : "PRODUCING",
-      };
+      const next =
+        current === "PRODUCING" ? "NOT_PRODUCING"
+        : current === "NOT_PRODUCING" ? "EMPTY"
+        : "PRODUCING";
+      return { ...prev, [key]: next };
     });
-  }
-
-  function handleDoubleClick(baris: number, kolom: number) {
-    const key = seatKey(baris, kolom);
-    setChecks((prev) => ({ ...prev, [key]: "EMPTY" }));
   }
 
   function getSeatColor(status: SeatStatus, baris: number, kolom: number): string {
     if (status === "EMPTY") return "bg-gray-900 text-white";
     if (status === "PRODUCING") return "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30";
-    const weeks = getConsecutiveWeeksNotProducing(baris, kolom);
+    const weeks = getCalendarWeeksSinceStreak(baris, kolom);
     if (weeks >= 3) return "bg-red-500 text-white";
     if (weeks === 2) return "bg-amber-400 text-white";
     return "bg-blue-500 text-white";
@@ -148,7 +143,7 @@ export default function CageCheckPage() {
   function renderSeatIcon(status: SeatStatus, baris: number, kolom: number) {
     if (status === "EMPTY") return <X className="w-3.5 h-3.5" />;
     if (status === "PRODUCING") return <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4" />;
-    const weeks = getConsecutiveWeeksNotProducing(baris, kolom);
+    const weeks = getCalendarWeeksSinceStreak(baris, kolom);
     return <span className="text-xs font-black">{weeks}w</span>;
   }
 
@@ -170,7 +165,6 @@ export default function CageCheckPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          date: selectedDate,
           cageMasterId: cageMaster.id,
           checks: checksArray,
         }),
@@ -179,6 +173,10 @@ export default function CageCheckPage() {
       if (res.ok) {
         setSuccess(true);
         setOriginalChecks(JSON.stringify(checks));
+
+        // Refetch to get updated records with new dates
+        await fetchData();
+
         setTimeout(() => setSuccess(false), 2000);
       } else {
         const errData = await res.json();
@@ -205,48 +203,34 @@ export default function CageCheckPage() {
         {/* Column headers */}
         <div className="flex items-center gap-1 md:gap-2 mb-3">
           <div className="w-8 shrink-0" />
-          {/* Left side labels: kolom 1-4 */}
           <div className="flex-1 grid grid-cols-4 gap-1 md:gap-2">
             {[1, 2, 3, 4].map((k) => (
-              <div
-                key={`hl-${k}`}
-                className="text-center text-[10px] font-black text-slate-400 uppercase tracking-wider"
-              >
+              <div key={`hl-${k}`} className="text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">
                 {k}
               </div>
             ))}
           </div>
-          {/* Aisle spacer */}
           <div className="w-4 md:w-8 shrink-0" />
-          {/* Right side labels: kolom 5-8 */}
           <div className="flex-1 grid grid-cols-4 gap-1 md:gap-2">
             {[5, 6, 7, 8].map((k) => (
-              <div
-                key={`hr-${k}`}
-                className="text-center text-[10px] font-black text-slate-400 uppercase tracking-wider"
-              >
+              <div key={`hr-${k}`} className="text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">
                 {k}
               </div>
             ))}
           </div>
         </div>
 
-        {/* Side labels ("Kiri" / "Kanan") */}
+        {/* Side labels */}
         <div className="flex items-center gap-1 md:gap-2 mb-2">
           <div className="w-8 shrink-0" />
-          <div className="flex-1 text-center text-[9px] font-black text-slate-300 uppercase tracking-widest">
-            Kiri
-          </div>
+          <div className="flex-1 text-center text-[9px] font-black text-slate-300 uppercase tracking-widest">Kiri</div>
           <div className="w-4 md:w-8 shrink-0" />
-          <div className="flex-1 text-center text-[9px] font-black text-slate-300 uppercase tracking-widest">
-            Kanan
-          </div>
+          <div className="flex-1 text-center text-[9px] font-black text-slate-300 uppercase tracking-widest">Kanan</div>
         </div>
 
         {/* Seat rows */}
         {Array.from({ length: totalBaris }, (_, i) => {
           const baris = i + 1;
-          // Determine which kolom positions are occupied in this row
           const occupiedKoloms: number[] = [];
           for (let k = 1; k <= KOLOM_PER_BARIS; k++) {
             if (seatKey(baris, k) in checks) occupiedKoloms.push(k);
@@ -255,7 +239,6 @@ export default function CageCheckPage() {
 
           return (
             <div key={baris} className="flex items-center gap-1 md:gap-2">
-              {/* Baris label */}
               <div className="w-8 shrink-0 text-center">
                 <span className="text-[10px] font-black text-slate-300">{baris}</span>
               </div>
@@ -269,8 +252,7 @@ export default function CageCheckPage() {
                     <button
                       key={`l-${kolom}`}
                       onClick={() => occupied && toggleCage(baris, kolom)}
-                      onDoubleClick={() => occupied && handleDoubleClick(baris, kolom)}
-                      title={occupied ? `Baris ${baris} Kolom ${kolom}` : undefined}
+                      title={occupied ? `Baris ${baris} Kolom ${kolom} — klik untuk ganti status` : undefined}
                       className={`h-9 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 active:scale-95 ${
                         occupied
                           ? getSeatColor(checks[key], baris, kolom)
@@ -297,8 +279,7 @@ export default function CageCheckPage() {
                     <button
                       key={`r-${kolom}`}
                       onClick={() => occupied && toggleCage(baris, kolom)}
-                      onDoubleClick={() => occupied && handleDoubleClick(baris, kolom)}
-                      title={occupied ? `Baris ${baris} Kolom ${kolom}` : undefined}
+                      title={occupied ? `Baris ${baris} Kolom ${kolom} — klik untuk ganti status` : undefined}
                       className={`h-9 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 active:scale-95 ${
                         occupied
                           ? getSeatColor(checks[key], baris, kolom)
@@ -338,17 +319,11 @@ export default function CageCheckPage() {
             Cek Status Produksi
             {cageMaster && (
               <span className="text-slate-400">
-                {" "}
-                &bull; {totalBaris} baris &bull; {cageMaster.jmlKandang || totalCages} kandang &bull;{" "}
-                {cageMaster.jmlAyam} ayam
+                {" "}&bull; {totalBaris} baris &bull; {cageMaster.jmlKandang || totalCages} kandang &bull; {cageMaster.jmlAyam} ayam
               </span>
             )}
           </p>
         </div>
-        <DateSelector
-          value={selectedDate}
-          onChange={(d) => setSelectedDate(d || getWIBDateString())}
-        />
       </div>
 
       {/* Summary Card */}
@@ -357,7 +332,7 @@ export default function CageCheckPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">
-                Cek Minggu Ini
+                Produksi Sekarang
               </p>
               <p className="text-2xl md:text-3xl font-black mt-1">
                 {producingCount}
@@ -385,15 +360,13 @@ export default function CageCheckPage() {
         </div>
       )}
 
-      {/* Error message */}
+      {/* Messages */}
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm font-medium flex items-center gap-2">
           <XCircle className="w-4 h-4 shrink-0" />
           {error}
         </div>
       )}
-
-      {/* Success message */}
       {success && (
         <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-sm font-medium flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
