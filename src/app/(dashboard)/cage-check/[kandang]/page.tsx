@@ -16,13 +16,16 @@ export default function CageCheckPage() {
 
   const [selectedDate, setSelectedDate] = useState(getWIBDateString());
   const [cageMaster, setCageMaster] = useState<any>(null);
-  const [checks, setChecks] = useState<Record<SeatKey, SeatStatus>>({});
+  const [singleChecks, setSingleChecks] = useState<Record<SeatKey, SeatStatus>>({});
+  const [doubleSeats, setDoubleSeats] = useState<Record<string, { left: SeatStatus; right: SeatStatus }>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [originalChecks, setOriginalChecks] = useState("");
+  const [originalSingleChecks, setOriginalSingleChecks] = useState("");
+  const [originalDoubleSeats, setOriginalDoubleSeats] = useState("");
   const [localJmlAyam, setLocalJmlAyam] = useState(0);
+  const [popupTarget, setPopupTarget] = useState<{ baris: number; kolom: number } | null>(null);
 
   // All records loaded from DB (sparse — only explicitly saved positions)
   const [dbRecords, setDbRecords] = useState<any[]>([]);
@@ -36,8 +39,10 @@ export default function CageCheckPage() {
   /**
    * 6+2 row pattern: rows 1-6 single (8 cols), 7-8 double (6 cols), repeat.
    * Block = 8 rows (6×8 + 2×6 = 60 cells).
+   * When doubleRows=false, all rows are single (8 cols each).
    */
   function isDoubleRow(baris: number): boolean {
+    if (!cageMaster?.doubleRows) return false;
     return (baris - 1) % 8 >= 6;
   }
 
@@ -50,6 +55,9 @@ export default function CageCheckPage() {
   }
 
   function computeTotalBaris(totalKandang: number): number {
+    if (!cageMaster?.doubleRows) {
+      return Math.ceil(totalKandang / SINGLE_KOLOM_COUNT);
+    }
     const BLOCK_ROWS = 8;
     const BLOCK_CAPACITY = 60; // 6×8 + 2×6
     const fullBlocks = Math.floor(totalKandang / BLOCK_CAPACITY);
@@ -62,11 +70,20 @@ export default function CageCheckPage() {
   }
 
   const totalBaris = computeTotalBaris(totalPositions);
-  const producingCount = Object.entries(checks).reduce((sum, [key, status]) => {
-    if (status !== "PRODUCING") return sum;
-    const baris = parseInt(key.split("-")[0]);
-    return sum + (isDoubleRow(baris) ? 2 : 1);
-  }, 0);
+
+  const producingCount = (() => {
+    let count = 0;
+    // Count single seat producing
+    for (const status of Object.values(singleChecks)) {
+      if (status === "PRODUCING") count++;
+    }
+    // Count double sub-position producing (left + right)
+    for (const seat of Object.values(doubleSeats)) {
+      if (seat.left === "PRODUCING") count++;
+      if (seat.right === "PRODUCING") count++;
+    }
+    return count;
+  })();
 
   // Refs for streak-day calculation (avoids stale closure in render)
   const dbRecordsRef = useRef(dbRecords);
@@ -99,36 +116,59 @@ export default function CageCheckPage() {
         const recordsData = await checksRes.json();
         setDbRecords(recordsData);
 
-        // Build lookup: baris-kolom → status from DB records
-        // (records are already deduplicated — latest per position)
-        const recordMap: Record<string, SeatStatus> = {};
+        // Separate records by subPos
+        const singleRecordMap: Record<string, SeatStatus> = {};
+        const doubleRecordMap: Record<string, { left: SeatStatus; right: SeatStatus }> = {};
         for (const r of recordsData) {
-          recordMap[seatKey(r.baris, r.kolom)] = r.status;
+          const key = seatKey(r.baris, r.kolom);
+          if (r.subPos === 0) {
+            singleRecordMap[key] = r.status;
+          } else if (r.subPos === 1) {
+            if (!doubleRecordMap[key]) doubleRecordMap[key] = { left: "PRODUCING", right: "PRODUCING" };
+            doubleRecordMap[key].left = r.status;
+          } else if (r.subPos === 2) {
+            if (!doubleRecordMap[key]) doubleRecordMap[key] = { left: "PRODUCING", right: "PRODUCING" };
+            doubleRecordMap[key].right = r.status;
+          }
         }
 
         // Initialize: use DB record if saved, otherwise PRODUCING (default)
         // Positions beyond the chicken budget are EMPTY (cumulative weighted count)
-        const checkMap: Record<SeatKey, SeatStatus> = {};
+        const singleMap: Record<SeatKey, SeatStatus> = {};
+        const doubleMap: Record<string, { left: SeatStatus; right: SeatStatus }> = {};
         let pos = 0;
         let cumulativeChickens = 0;
         const jmlAyamVal = masterData.jmlAyam;
         for (let baris = 1; baris <= localTotalBaris; baris++) {
           const start = startKolom(baris);
           const end = start + colsInRow(baris) - 1;
+          const double = isDoubleRow(baris);
           for (let kolom = start; kolom <= end; kolom++) {
             if (pos >= localTotalKandang) break;
             pos++;
-            const key = seatKey(baris, kolom);
-            const weight = isDoubleRow(baris) ? 2 : 1;
+            const weight = double ? 2 : 1;
             const hasChicken = jmlAyamVal === undefined || (cumulativeChickens + weight <= jmlAyamVal);
             if (hasChicken) cumulativeChickens += weight;
-            checkMap[key] = recordMap[key] ?? (hasChicken ? "PRODUCING" : "EMPTY");
+
+            if (double) {
+              const key = seatKey(baris, kolom);
+              const saved = doubleRecordMap[key];
+              doubleMap[key] = saved ?? { left: "PRODUCING", right: "PRODUCING" };
+              if (!hasChicken) {
+                doubleMap[key] = { left: "EMPTY", right: "EMPTY" };
+              }
+            } else {
+              const key = seatKey(baris, kolom);
+              singleMap[key] = singleRecordMap[key] ?? (hasChicken ? "PRODUCING" : "EMPTY");
+            }
           }
         }
 
-        setChecks(checkMap);
+        setSingleChecks(singleMap);
+        setDoubleSeats(doubleMap);
         setLocalJmlAyam(cumulativeChickens);
-        setOriginalChecks(JSON.stringify(checkMap));
+        setOriginalSingleChecks(JSON.stringify(singleMap));
+        setOriginalDoubleSeats(JSON.stringify(doubleMap));
       }
     } catch (err: any) {
       setError(err.message || "Gagal memuat data");
@@ -146,10 +186,10 @@ export default function CageCheckPage() {
    * Uses the oldest NOT_PRODUCING record for this position in the DB.
    * Returns number of days since streak start (0 = started today).
    */
-  function getDaysSinceStreak(baris: number, kolom: number): number {
+  function getDaysSinceStreak(baris: number, kolom: number, subPos: number = 0): number {
     const data = dbRecordsRef.current;
     const seatRecords = data
-      .filter((r: any) => r.baris === baris && r.kolom === kolom && r.status === "NOT_PRODUCING")
+      .filter((r: any) => r.baris === baris && r.kolom === kolom && r.subPos === subPos && r.status === "NOT_PRODUCING")
       .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     if (seatRecords.length === 0) return -1;
@@ -165,7 +205,7 @@ export default function CageCheckPage() {
     );
   }
 
-  // Long-press timer refs
+  // Long-press timer refs (single seats)
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressTargetRef = useRef<{ baris: number; kolom: number } | null>(null);
 
@@ -179,7 +219,7 @@ export default function CageCheckPage() {
 
   function handlePointerDown(baris: number, kolom: number) {
     const key = seatKey(baris, kolom);
-    if (!(key in checks)) return; // not occupied
+    if (!(key in singleChecks)) return; // not occupied
 
     clearPressTimer();
     pressTargetRef.current = { baris, kolom };
@@ -190,10 +230,9 @@ export default function CageCheckPage() {
       if (pressTargetRef.current) {
         const { baris, kolom } = pressTargetRef.current;
         const k = seatKey(baris, kolom);
-        const weight = isDoubleRow(baris) ? 2 : 1;
-        setChecks((prev) => {
-          if (prev[k] === "EMPTY") return prev; // no-op
-          setLocalJmlAyam((prevAyam) => prevAyam - weight);
+        setSingleChecks((prev) => {
+          if (prev[k] === "EMPTY") return prev;
+          setLocalJmlAyam((prevAyam) => prevAyam - 1);
           return { ...prev, [k]: "EMPTY" };
         });
         pressTargetRef.current = null;
@@ -203,35 +242,93 @@ export default function CageCheckPage() {
 
   function handlePointerUp(baris: number, kolom: number) {
     const key = seatKey(baris, kolom);
-    if (!(key in checks)) return;
+    if (!(key in singleChecks)) return;
 
     if (pressTimerRef.current !== null) {
       // Quick release → toggle green/blue
       clearPressTimer();
-      setChecks((prev) => {
+      setSingleChecks((prev) => {
         const current = prev[key];
         if (current === "EMPTY") {
-          // EMPTY → PRODUCING: increment localJmlAyam by this position's weight
-          const w = isDoubleRow(baris) ? 2 : 1;
-          setLocalJmlAyam((prevAyam) => prevAyam + w);
+          setLocalJmlAyam((prevAyam) => prevAyam + 1);
           return { ...prev, [key]: "PRODUCING" };
         }
         const next = current === "PRODUCING" ? "NOT_PRODUCING" : "PRODUCING";
         return { ...prev, [key]: next };
       });
     }
-    // If pressTimerRef is null, the long press already fired — do nothing
   }
 
   function handlePointerCancel() {
     clearPressTimer();
   }
 
-  function getSeatColor(status: SeatStatus, baris: number, kolom: number): string {
+  // Popup sub-toggle timer refs
+  const popupPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const popupPressTargetRef = useRef<{ side: "left" | "right" } | null>(null);
+
+  function clearPopupPressTimer() {
+    if (popupPressTimerRef.current !== null) {
+      clearTimeout(popupPressTimerRef.current);
+      popupPressTimerRef.current = null;
+    }
+    popupPressTargetRef.current = null;
+  }
+
+  function handlePopupPointerDown(side: "left" | "right") {
+    if (!popupTarget) return;
+    clearPopupPressTimer();
+    popupPressTargetRef.current = { side };
+
+    popupPressTimerRef.current = setTimeout(() => {
+      popupPressTimerRef.current = null;
+      if (popupPressTargetRef.current && popupTarget) {
+        const key = seatKey(popupTarget.baris, popupTarget.kolom);
+        setDoubleSeats((prev) => {
+          const current = prev[key]?.[side];
+          if (current === "EMPTY") return prev;
+          return {
+            ...prev,
+            [key]: { ...prev[key], [side]: "EMPTY" },
+          };
+        });
+        popupPressTargetRef.current = null;
+      }
+    }, 400);
+  }
+
+  function handlePopupPointerUp(side: "left" | "right") {
+    if (!popupTarget) return;
+    const key = seatKey(popupTarget.baris, popupTarget.kolom);
+    if (!(key in doubleSeats)) return;
+
+    if (popupPressTimerRef.current !== null) {
+      clearPopupPressTimer();
+      setDoubleSeats((prev) => {
+        const current = prev[key]?.[side];
+        if (current === "EMPTY") {
+          return {
+            ...prev,
+            [key]: { ...prev[key], [side]: "PRODUCING" },
+          };
+        }
+        const next = current === "PRODUCING" ? "NOT_PRODUCING" : "PRODUCING";
+        return {
+          ...prev,
+          [key]: { ...prev[key], [side]: next },
+        };
+      });
+    }
+  }
+
+  function handlePopupPointerCancel() {
+    clearPopupPressTimer();
+  }
+
+  function getSeatColor(status: SeatStatus, baris: number, kolom: number, subPos: number = 0): string {
     if (status === "EMPTY") return "bg-gray-900 text-white";
     if (status === "PRODUCING") return "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30";
-    const days = getDaysSinceStreak(baris, kolom);
-    // days: 0 = first day not producing, 1 = second day, etc.
+    const days = getDaysSinceStreak(baris, kolom, subPos);
     if (days >= 3) return "bg-red-500 text-white";
     if (days === 2) return "bg-orange-500 text-white";
     if (days === 1) return "bg-amber-400 text-white";
@@ -241,23 +338,44 @@ export default function CageCheckPage() {
   function renderSeatIcon(status: SeatStatus) {
     if (status === "EMPTY") return <X className="w-3.5 h-3.5" />;
     if (status === "PRODUCING") return <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4" />;
-    // NOT_PRODUCING: color only, no day count text
     return null;
   }
 
-  const hasChanges = JSON.stringify(checks) !== originalChecks;
+  const hasChanges = (() => {
+    if (JSON.stringify(singleChecks) !== originalSingleChecks) return true;
+    if (JSON.stringify(doubleSeats) !== originalDoubleSeats) return true;
+    return false;
+  })();
 
   /** Only send the positions that actually changed (diff-based save) */
-  function computeChangedPositions(): { baris: number; kolom: number; status: SeatStatus }[] {
-    const original: Record<SeatKey, SeatStatus> = JSON.parse(originalChecks);
-    const changes: { baris: number; kolom: number; status: SeatStatus }[] = [];
-    for (const key of Object.keys(checks)) {
+  function computeChangedPositions(): { baris: number; kolom: number; subPos: number; status: SeatStatus }[] {
+    const changes: { baris: number; kolom: number; subPos: number; status: SeatStatus }[] = [];
+
+    // Diff single checks (subPos=0)
+    const originalSingle: Record<SeatKey, SeatStatus> = originalSingleChecks ? JSON.parse(originalSingleChecks) : {};
+    for (const key of Object.keys(singleChecks)) {
       const sk = key as SeatKey;
-      if (checks[sk] !== original[sk]) {
+      if (singleChecks[sk] !== originalSingle[sk]) {
         const [b, k] = key.split("-");
-        changes.push({ baris: parseInt(b), kolom: parseInt(k), status: checks[sk] });
+        changes.push({ baris: parseInt(b), kolom: parseInt(k), subPos: 0, status: singleChecks[sk] });
       }
     }
+
+    // Diff double seats (subPos=1 for left, subPos=2 for right)
+    const originalDouble: Record<string, { left: SeatStatus; right: SeatStatus }> = originalDoubleSeats ? JSON.parse(originalDoubleSeats) : {};
+    for (const key of Object.keys(doubleSeats)) {
+      const current = doubleSeats[key];
+      const original = originalDouble[key];
+      if (!original || current.left !== original.left) {
+        const [b, k] = key.split("-");
+        changes.push({ baris: parseInt(b), kolom: parseInt(k), subPos: 1, status: current.left });
+      }
+      if (!original || current.right !== original.right) {
+        const [b, k] = key.split("-");
+        changes.push({ baris: parseInt(b), kolom: parseInt(k), subPos: 2, status: current.right });
+      }
+    }
+
     return changes;
   }
 
@@ -283,7 +401,8 @@ export default function CageCheckPage() {
 
       if (res.ok) {
         setSuccess(true);
-        setOriginalChecks(JSON.stringify(checks));
+        setOriginalSingleChecks(JSON.stringify(singleChecks));
+        setOriginalDoubleSeats(JSON.stringify(doubleSeats));
 
         // Refetch to get updated records with new dates
         await fetchData();
@@ -300,6 +419,40 @@ export default function CageCheckPage() {
     }
   }
 
+  function renderDoubleSeatButton(baris: number, kolom: number, key: string) {
+    const occupied = key in doubleSeats;
+    if (!occupied) {
+      return (
+        <div
+          key={`d-${kolom}`}
+          className="rounded-lg md:rounded-xl flex items-center justify-center h-9 md:h-11 bg-slate-50 border border-dashed border-slate-200"
+        />
+      );
+    }
+    const seat = doubleSeats[key];
+    return (
+      <button
+        key={`d-${kolom}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setPopupTarget({ baris, kolom });
+        }}
+        className="relative rounded-lg md:rounded-xl flex items-center justify-center h-9 md:h-11 overflow-hidden transition-all duration-150 select-none"
+      >
+        {/* Left half */}
+        <div className={`flex-1 h-full flex items-center justify-center ${getSeatColor(seat.left, baris, kolom, 1)}`}>
+          {renderSeatIcon(seat.left)}
+        </div>
+        {/* Vertical divider */}
+        <div className="w-px bg-white/50 shrink-0 h-full" />
+        {/* Right half */}
+        <div className={`flex-1 h-full flex items-center justify-center ${getSeatColor(seat.right, baris, kolom, 2)}`}>
+          {renderSeatIcon(seat.right)}
+        </div>
+      </button>
+    );
+  }
+
   function renderTrainSeats() {
     if (!cageMaster || totalPositions === 0) {
       return (
@@ -313,6 +466,7 @@ export default function CageCheckPage() {
     const rightSingleCols = [5, 6, 7, 8];
     const leftDoubleCols = [2, 3, 4];
     const rightDoubleCols = [5, 6, 7];
+    const hasDoubleRows = !!cageMaster?.doubleRows;
 
     return (
       <div className="space-y-1">
@@ -337,26 +491,28 @@ export default function CageCheckPage() {
           </div>
         </div>
         {/* Double reference */}
-        <div className="flex items-center gap-1 md:gap-2 mb-2">
-          <div className="w-8 shrink-0 text-center">
-            <span className="text-[7px] font-black text-amber-500">2x</span>
+        {hasDoubleRows && (
+          <div className="flex items-center gap-1 md:gap-2 mb-2">
+            <div className="w-8 shrink-0 text-center">
+              <span className="text-[7px] font-black text-amber-500">2x</span>
+            </div>
+            <div className="flex-1 grid grid-cols-3 gap-1 md:gap-2">
+              {leftDoubleCols.map((k) => (
+                <div key={`hld-${k}`} className="text-center text-[10px] font-black text-amber-500/60 uppercase tracking-wider">
+                  {k}
+                </div>
+              ))}
+            </div>
+            <div className="w-4 md:w-8 shrink-0" />
+            <div className="flex-1 grid grid-cols-3 gap-1 md:gap-2">
+              {rightDoubleCols.map((k) => (
+                <div key={`hrd-${k}`} className="text-center text-[10px] font-black text-amber-500/60 uppercase tracking-wider">
+                  {k}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="flex-1 grid grid-cols-3 gap-1 md:gap-2">
-            {leftDoubleCols.map((k) => (
-              <div key={`hld-${k}`} className="text-center text-[10px] font-black text-amber-500/60 uppercase tracking-wider">
-                {k}
-              </div>
-            ))}
-          </div>
-          <div className="w-4 md:w-8 shrink-0" />
-          <div className="flex-1 grid grid-cols-3 gap-1 md:gap-2">
-            {rightDoubleCols.map((k) => (
-              <div key={`hrd-${k}`} className="text-center text-[10px] font-black text-amber-500/60 uppercase tracking-wider">
-                {k}
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
 
         {/* Side labels */}
         <div className="flex items-center gap-1 md:gap-2 mb-2">
@@ -376,10 +532,16 @@ export default function CageCheckPage() {
           const end = start + colsInRow(baris) - 1;
 
           const occupiedKoloms: number[] = [];
+          const occupiedDoubleKoloms: number[] = [];
           for (let k = start; k <= end; k++) {
-            if (seatKey(baris, k) in checks) occupiedKoloms.push(k);
+            if (double) {
+              if (seatKey(baris, k) in doubleSeats) occupiedDoubleKoloms.push(k);
+            } else {
+              if (seatKey(baris, k) in singleChecks) occupiedKoloms.push(k);
+            }
           }
-          if (occupiedKoloms.length === 0) return null;
+          if (double && occupiedDoubleKoloms.length === 0) return null;
+          if (!double && occupiedKoloms.length === 0) return null;
 
           return (
             <div key={baris} className="flex items-center gap-1 md:gap-2">
@@ -394,6 +556,9 @@ export default function CageCheckPage() {
               {/* Left side */}
               <div className={`flex-1 grid gap-1 md:gap-2 ${double ? 'grid-cols-3' : 'grid-cols-4'}`}>
                 {leftCols.map((kolom) => {
+                  if (double) {
+                    return renderDoubleSeatButton(baris, kolom, seatKey(baris, kolom));
+                  }
                   const occupied = occupiedKoloms.includes(kolom);
                   const key = seatKey(baris, kolom);
                   return (
@@ -403,23 +568,14 @@ export default function CageCheckPage() {
                       onPointerUp={() => handlePointerUp(baris, kolom)}
                       onPointerLeave={handlePointerCancel}
                       onPointerCancel={handlePointerCancel}
-                      title={occupied ? `Baris ${baris} Kolom ${kolom}${double ? ' (2 ayam)' : ''}` : undefined}
+                      title={occupied ? `Baris ${baris} Kolom ${kolom}` : undefined}
                       className={`relative rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 select-none h-9 md:h-11 ${
                         occupied
-                          ? getSeatColor(checks[key], baris, kolom)
+                          ? getSeatColor(singleChecks[key], baris, kolom)
                           : "bg-slate-50 border border-dashed border-slate-200"
                       }`}
                     >
-                      {occupied && (
-                        <>
-                          {renderSeatIcon(checks[key])}
-                          {double && (
-                            <span className="absolute -top-0.5 -right-0.5 text-[8px] font-black text-white/70 leading-none">
-                              2
-                            </span>
-                          )}
-                        </>
-                      )}
+                      {occupied && renderSeatIcon(singleChecks[key])}
                     </button>
                   );
                 })}
@@ -433,6 +589,9 @@ export default function CageCheckPage() {
               {/* Right side */}
               <div className={`flex-1 grid gap-1 md:gap-2 ${double ? 'grid-cols-3' : 'grid-cols-4'}`}>
                 {rightCols.map((kolom) => {
+                  if (double) {
+                    return renderDoubleSeatButton(baris, kolom, seatKey(baris, kolom));
+                  }
                   const occupied = occupiedKoloms.includes(kolom);
                   const key = seatKey(baris, kolom);
                   return (
@@ -442,23 +601,14 @@ export default function CageCheckPage() {
                       onPointerUp={() => handlePointerUp(baris, kolom)}
                       onPointerLeave={handlePointerCancel}
                       onPointerCancel={handlePointerCancel}
-                      title={occupied ? `Baris ${baris} Kolom ${kolom}${double ? ' (2 ayam)' : ''}` : undefined}
+                      title={occupied ? `Baris ${baris} Kolom ${kolom}` : undefined}
                       className={`relative rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 select-none h-9 md:h-11 ${
                         occupied
-                          ? getSeatColor(checks[key], baris, kolom)
+                          ? getSeatColor(singleChecks[key], baris, kolom)
                           : "bg-slate-50 border border-dashed border-slate-200"
                       }`}
                     >
-                      {occupied && (
-                        <>
-                          {renderSeatIcon(checks[key])}
-                          {double && (
-                            <span className="absolute -top-0.5 -right-0.5 text-[8px] font-black text-white/70 leading-none">
-                              2
-                            </span>
-                          )}
-                        </>
-                      )}
+                      {occupied && renderSeatIcon(singleChecks[key])}
                     </button>
                   );
                 })}
@@ -466,6 +616,66 @@ export default function CageCheckPage() {
             </div>
           );
         })}
+      </div>
+    );
+  }
+
+  function renderPopup() {
+    if (!popupTarget) return null;
+    const { baris, kolom } = popupTarget;
+    const key = seatKey(baris, kolom);
+    const seat = doubleSeats[key];
+    if (!seat) return null;
+
+    return (
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+        onClick={() => setPopupTarget(null)}
+      >
+        <div
+          className="bg-white rounded-2xl p-6 shadow-2xl max-w-sm w-full mx-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Title */}
+          <h3 className="text-lg font-black text-slate-900 text-center mb-5">
+            Baris {baris} Kolom {kolom}
+          </h3>
+
+          {/* Sub-toggle buttons */}
+          <div className="flex gap-3 mb-5">
+            <SubToggleButton
+              label="KIRI"
+              status={seat.left}
+              baris={baris}
+              kolom={kolom}
+              subPos={1}
+              onPointerDown={() => handlePopupPointerDown("left")}
+              onPointerUp={() => handlePopupPointerUp("left")}
+              onPointerCancel={handlePopupPointerCancel}
+              getSeatColor={getSeatColor}
+            />
+            <SubToggleButton
+              label="KANAN"
+              status={seat.right}
+              baris={baris}
+              kolom={kolom}
+              subPos={2}
+              onPointerDown={() => handlePopupPointerDown("right")}
+              onPointerUp={() => handlePopupPointerUp("right")}
+              onPointerCancel={handlePopupPointerCancel}
+              getSeatColor={getSeatColor}
+            />
+          </div>
+
+          {/* Bottom preview — non-interactive, mirrors current seat colors */}
+          <div className="flex justify-center">
+            <div className="w-20 h-10 rounded-lg flex overflow-hidden">
+              <div className={`flex-1 ${getSeatColor(seat.left, baris, kolom, 1)}`} />
+              <div className="w-px bg-white/50" />
+              <div className={`flex-1 ${getSeatColor(seat.right, baris, kolom, 2)}`} />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -604,6 +814,50 @@ export default function CageCheckPage() {
           )}
         </>
       )}
+
+      {/* Popup overlay */}
+      {renderPopup()}
     </div>
+  );
+}
+
+/* ========== Sub-toggle button component ========== */
+
+function SubToggleButton({
+  label,
+  status,
+  baris,
+  kolom,
+  subPos,
+  onPointerDown,
+  onPointerUp,
+  onPointerCancel,
+  getSeatColor,
+}: {
+  label: string;
+  status: SeatStatus;
+  baris: number;
+  kolom: number;
+  subPos: number;
+  onPointerDown: () => void;
+  onPointerUp: () => void;
+  onPointerCancel: () => void;
+  getSeatColor: (status: SeatStatus, baris: number, kolom: number, subPos: number) => string;
+}) {
+  return (
+    <button
+      className={`flex-1 h-20 rounded-xl flex flex-col items-center justify-center gap-1 select-none ${getSeatColor(status, baris, kolom, subPos)}`}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onPointerLeave={onPointerCancel}
+      onPointerCancel={onPointerCancel}
+    >
+      <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
+        {label}
+      </span>
+      <span className="text-lg font-black">
+        {status === "EMPTY" ? <X className="w-5 h-5" /> : status === "PRODUCING" ? <CheckCircle2 className="w-5 h-5" /> : "—"}
+      </span>
+    </button>
   );
 }
