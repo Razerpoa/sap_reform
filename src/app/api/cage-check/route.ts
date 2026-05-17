@@ -6,6 +6,7 @@ import { z } from "zod";
 const checkItemSchema = z.object({
   baris: z.number().int().min(1),
   kolom: z.number().int().min(1).max(8),
+  subPos: z.number().int().default(0),
   status: z.enum(["PRODUCING", "NOT_PRODUCING", "EMPTY"]),
 });
 

@@ -19,6 +19,7 @@ const cageMasterSchema = z.object({
   hargaSentral: z.number().default(0),
   mortality: z.number().int().default(0),
   faktorPakan: z.number().default(13),
+  doubleRows: z.boolean().optional().default(true),
 });
 
 export async function GET(request: Request) {

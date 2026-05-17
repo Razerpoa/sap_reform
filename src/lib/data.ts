@@ -514,6 +514,7 @@ export type MasterSaveInput = {
   volEmber?: number | null;
   hargaPakan?: number | null;
   faktorPakan?: number;
+  doubleRows?: boolean;
 };
 
 /**
@@ -558,10 +559,12 @@ export async function saveMasterData(data: MasterSaveInput) {
 
 // ==================== CAGE CHECK DATA ====================
 
+export type SeatStatus = "PRODUCING" | "NOT_PRODUCING" | "EMPTY";
+
 export type CageCheckInput = {
   date: Date;
   cageMasterId: string;
-  checks: { baris: number; kolom: number; status: "PRODUCING" | "NOT_PRODUCING" | "EMPTY" }[];
+  checks: { baris: number; kolom: number; subPos: number; status: SeatStatus }[];
   cageMasterJmlAyam?: number;
 };
 
@@ -580,7 +583,7 @@ export async function getCageCheckData(date: string, cageMasterId: string) {
   const seen = new Set<string>();
   const latest: typeof checks = [];
   for (const c of checks) {
-    const key = `${c.baris}-${c.kolom}`;
+    const key = `${c.baris}-${c.kolom}-${c.subPos}`;
     if (!seen.has(key)) {
       seen.add(key);
       latest.push(c);
@@ -607,6 +610,7 @@ export async function saveCageCheckData(data: CageCheckInput) {
       const orConditions = checks.map((c) => ({
         baris: c.baris,
         kolom: c.kolom,
+        subPos: c.subPos,
       }));
       await tx.cageCheck.deleteMany({
         where: { date, cageMasterId, OR: orConditions },
@@ -618,6 +622,7 @@ export async function saveCageCheckData(data: CageCheckInput) {
           cageMasterId,
           baris: c.baris,
           kolom: c.kolom,
+          subPos: c.subPos,
           status: c.status,
         })),
       });
