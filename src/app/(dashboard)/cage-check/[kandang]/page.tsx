@@ -26,13 +26,43 @@ export default function CageCheckPage() {
   // All records loaded from DB (sparse — only explicitly saved positions)
   const [dbRecords, setDbRecords] = useState<any[]>([]);
 
-  const KOLOM_PER_BARIS = 8;
+  const SINGLE_KOLOM_COUNT = 8; // single rows: 1-8
+  const DOUBLE_KOLOM_COUNT = 6; // double rows: 2-7
 
   const totalCages = cageMaster?.jmlKandang || cageMaster?.jmlAyam || 0;
-  const totalBaris = Math.ceil(totalCages / KOLOM_PER_BARIS);
+
+  /**
+   * 6+2 row pattern: rows 1-6 single (8 cols), 7-8 double (6 cols), repeat.
+   * Block = 8 rows (6×8 + 2×6 = 60 cells).
+   */
+  function isDoubleRow(baris: number): boolean {
+    return (baris - 1) % 8 >= 6;
+  }
+
+  function colsInRow(baris: number): number {
+    return isDoubleRow(baris) ? DOUBLE_KOLOM_COUNT : SINGLE_KOLOM_COUNT;
+  }
+
+  function startKolom(baris: number): number {
+    return isDoubleRow(baris) ? 2 : 1;
+  }
+
+  function computeTotalBaris(totalKandang: number): number {
+    const BLOCK_ROWS = 8;
+    const BLOCK_CAPACITY = 60; // 6×8 + 2×6
+    const fullBlocks = Math.floor(totalKandang / BLOCK_CAPACITY);
+    const remainder = totalKandang % BLOCK_CAPACITY;
+    if (remainder === 0) return fullBlocks * BLOCK_ROWS;
+    // First 6 rows of a block are single (8 cols each = 48)
+    if (remainder <= 48) return fullBlocks * BLOCK_ROWS + Math.ceil(remainder / SINGLE_KOLOM_COUNT);
+    // After 6 single rows, remaining cells go into double rows (6 cols each)
+    return fullBlocks * BLOCK_ROWS + 6 + Math.ceil((remainder - 48) / DOUBLE_KOLOM_COUNT);
+  }
+
+  const totalBaris = computeTotalBaris(totalCages);
   const producingCount = Object.values(checks).filter((s) => s === "PRODUCING").length;
 
-  // Refs for calendar-week calculation (avoids stale closure in render)
+  // Refs for streak-day calculation (avoids stale closure in render)
   const dbRecordsRef = useRef(dbRecords);
   const selectedDateRef = useRef(selectedDate);
   useEffect(() => { dbRecordsRef.current = dbRecords; }, [dbRecords]);
@@ -54,7 +84,7 @@ export default function CageCheckPage() {
 
       if (masterData?.id && (masterData?.jmlKandang > 0 || masterData?.jmlAyam > 0)) {
         const localTotalKandang = masterData.jmlKandang || masterData.jmlAyam;
-        const localTotalBaris = Math.ceil(localTotalKandang / KOLOM_PER_BARIS);
+        const localTotalBaris = computeTotalBaris(localTotalKandang);
 
         // Fetch records cumulatively: state as of selectedDate
         const checksRes = await fetch(
@@ -74,7 +104,9 @@ export default function CageCheckPage() {
         const checkMap: Record<SeatKey, SeatStatus> = {};
         let pos = 0;
         for (let baris = 1; baris <= localTotalBaris; baris++) {
-          for (let kolom = 1; kolom <= KOLOM_PER_BARIS; kolom++) {
+          const start = startKolom(baris);
+          const end = start + colsInRow(baris) - 1;
+          for (let kolom = start; kolom <= end; kolom++) {
             if (pos < localTotalKandang) {
               const key = seatKey(baris, kolom);
               checkMap[key] = recordMap[key] || "PRODUCING";
@@ -98,16 +130,17 @@ export default function CageCheckPage() {
   }
 
   /**
-   * Compute calendar weeks since the NOT_PRODUCING streak started.
+   * Compute calendar days since the NOT_PRODUCING streak started.
    * Uses the oldest NOT_PRODUCING record for this position in the DB.
+   * Returns number of days since streak start (0 = started today).
    */
-  function getCalendarWeeksSinceStreak(baris: number, kolom: number): number {
+  function getDaysSinceStreak(baris: number, kolom: number): number {
     const data = dbRecordsRef.current;
     const seatRecords = data
       .filter((r: any) => r.baris === baris && r.kolom === kolom && r.status === "NOT_PRODUCING")
       .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    if (seatRecords.length === 0) return 0;
+    if (seatRecords.length === 0) return -1;
 
     const streakStart = new Date(seatRecords[0].date);
     streakStart.setHours(0, 0, 0, 0);
@@ -115,41 +148,77 @@ export default function CageCheckPage() {
     const refDate = new Date(selectedDateRef.current);
     refDate.setHours(0, 0, 0, 0);
 
-    const daysSince = Math.floor(
+    return Math.floor(
       (refDate.getTime() - streakStart.getTime()) / (1000 * 60 * 60 * 24)
     );
-
-    if (daysSince < 7) return 1;
-    if (daysSince < 14) return 2;
-    return 3;
   }
 
-  function toggleCage(baris: number, kolom: number) {
+  // Long-press timer refs
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressTargetRef = useRef<{ baris: number; kolom: number } | null>(null);
+
+  function clearPressTimer() {
+    if (pressTimerRef.current !== null) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+    pressTargetRef.current = null;
+  }
+
+  function handlePointerDown(baris: number, kolom: number) {
     const key = seatKey(baris, kolom);
-    setChecks((prev) => {
-      const current = prev[key];
-      const next =
-        current === "PRODUCING" ? "NOT_PRODUCING"
-        : current === "NOT_PRODUCING" ? "EMPTY"
-        : "PRODUCING";
-      return { ...prev, [key]: next };
-    });
+    if (!(key in checks)) return; // not occupied
+
+    clearPressTimer();
+    pressTargetRef.current = { baris, kolom };
+
+    pressTimerRef.current = setTimeout(() => {
+      // Long press → set to EMPTY
+      pressTimerRef.current = null;
+      if (pressTargetRef.current) {
+        const k = seatKey(pressTargetRef.current.baris, pressTargetRef.current.kolom);
+        setChecks((prev) => ({ ...prev, [k]: "EMPTY" }));
+        pressTargetRef.current = null;
+      }
+    }, 400);
+  }
+
+  function handlePointerUp(baris: number, kolom: number) {
+    const key = seatKey(baris, kolom);
+    if (!(key in checks)) return;
+
+    if (pressTimerRef.current !== null) {
+      // Quick release → toggle green/blue
+      clearPressTimer();
+      setChecks((prev) => {
+        const current = prev[key];
+        const next = current === "PRODUCING" ? "NOT_PRODUCING" : "PRODUCING";
+        return { ...prev, [key]: next };
+      });
+    }
+    // If pressTimerRef is null, the long press already fired — do nothing
+  }
+
+  function handlePointerCancel() {
+    clearPressTimer();
   }
 
   function getSeatColor(status: SeatStatus, baris: number, kolom: number): string {
     if (status === "EMPTY") return "bg-gray-900 text-white";
     if (status === "PRODUCING") return "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30";
-    const weeks = getCalendarWeeksSinceStreak(baris, kolom);
-    if (weeks >= 3) return "bg-red-500 text-white";
-    if (weeks === 2) return "bg-amber-400 text-white";
+    const days = getDaysSinceStreak(baris, kolom);
+    // days: 0 = first day not producing, 1 = second day, etc.
+    if (days >= 3) return "bg-red-500 text-white";
+    if (days === 2) return "bg-orange-500 text-white";
+    if (days === 1) return "bg-amber-400 text-white";
     return "bg-blue-500 text-white";
   }
 
-  function renderSeatIcon(status: SeatStatus, baris: number, kolom: number) {
+  function renderSeatIcon(status: SeatStatus) {
     if (status === "EMPTY") return <X className="w-3.5 h-3.5" />;
     if (status === "PRODUCING") return <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4" />;
-    const weeks = getCalendarWeeksSinceStreak(baris, kolom);
-    return <span className="text-xs font-black">{weeks}w</span>;
+    // NOT_PRODUCING: color only, no day count text
+    return null;
   }
 
   const hasChanges = JSON.stringify(checks) !== originalChecks;
@@ -215,22 +284,49 @@ export default function CageCheckPage() {
       );
     }
 
+    const leftSingleCols = [1, 2, 3, 4];
+    const rightSingleCols = [5, 6, 7, 8];
+    const leftDoubleCols = [2, 3, 4];
+    const rightDoubleCols = [5, 6, 7];
+
     return (
       <div className="space-y-1">
-        {/* Column headers */}
-        <div className="flex items-center gap-1 md:gap-2 mb-3">
+        {/* Column headers — stacked reference rows */}
+        {/* Single reference */}
+        <div className="flex items-center gap-1 md:gap-2 mb-1">
           <div className="w-8 shrink-0" />
           <div className="flex-1 grid grid-cols-4 gap-1 md:gap-2">
-            {[1, 2, 3, 4].map((k) => (
-              <div key={`hl-${k}`} className="text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">
+            {leftSingleCols.map((k) => (
+              <div key={`hls-${k}`} className="text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">
                 {k}
               </div>
             ))}
           </div>
           <div className="w-4 md:w-8 shrink-0" />
           <div className="flex-1 grid grid-cols-4 gap-1 md:gap-2">
-            {[5, 6, 7, 8].map((k) => (
-              <div key={`hr-${k}`} className="text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">
+            {rightSingleCols.map((k) => (
+              <div key={`hrs-${k}`} className="text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                {k}
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Double reference */}
+        <div className="flex items-center gap-1 md:gap-2 mb-2">
+          <div className="w-8 shrink-0 text-center">
+            <span className="text-[7px] font-black text-amber-500">2x</span>
+          </div>
+          <div className="flex-1 grid grid-cols-3 gap-1 md:gap-2">
+            {leftDoubleCols.map((k) => (
+              <div key={`hld-${k}`} className="text-center text-[10px] font-black text-amber-500/60 uppercase tracking-wider">
+                {k}
+              </div>
+            ))}
+          </div>
+          <div className="w-4 md:w-8 shrink-0" />
+          <div className="flex-1 grid grid-cols-3 gap-1 md:gap-2">
+            {rightDoubleCols.map((k) => (
+              <div key={`hrd-${k}`} className="text-center text-[10px] font-black text-amber-500/60 uppercase tracking-wider">
                 {k}
               </div>
             ))}
@@ -248,35 +344,57 @@ export default function CageCheckPage() {
         {/* Seat rows */}
         {Array.from({ length: totalBaris }, (_, i) => {
           const baris = i + 1;
+          const double = isDoubleRow(baris);
+          const leftCols = double ? leftDoubleCols : leftSingleCols;
+          const rightCols = double ? rightDoubleCols : rightSingleCols;
+          const start = startKolom(baris);
+          const end = start + colsInRow(baris) - 1;
+
           const occupiedKoloms: number[] = [];
-          for (let k = 1; k <= KOLOM_PER_BARIS; k++) {
+          for (let k = start; k <= end; k++) {
             if (seatKey(baris, k) in checks) occupiedKoloms.push(k);
           }
           if (occupiedKoloms.length === 0) return null;
 
           return (
             <div key={baris} className="flex items-center gap-1 md:gap-2">
-              <div className="w-8 shrink-0 text-center">
+              {/* Row number + 2x indicator */}
+              <div className="w-8 shrink-0 text-center leading-none">
                 <span className="text-[10px] font-black text-slate-300">{baris}</span>
+                {double && (
+                  <span className="block text-[7px] font-black text-amber-500 leading-tight -mt-px">2x</span>
+                )}
               </div>
 
-              {/* Left side: kolom 1-4 */}
-              <div className="flex-1 grid grid-cols-4 gap-1 md:gap-2">
-                {[1, 2, 3, 4].map((kolom) => {
+              {/* Left side */}
+              <div className={`flex-1 grid gap-1 md:gap-2 ${double ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                {leftCols.map((kolom) => {
                   const occupied = occupiedKoloms.includes(kolom);
                   const key = seatKey(baris, kolom);
                   return (
                     <button
                       key={`l-${kolom}`}
-                      onClick={() => occupied && toggleCage(baris, kolom)}
-                      title={occupied ? `Baris ${baris} Kolom ${kolom}` : undefined}
-                      className={`h-9 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 active:scale-95 ${
+                      onPointerDown={() => handlePointerDown(baris, kolom)}
+                      onPointerUp={() => handlePointerUp(baris, kolom)}
+                      onPointerLeave={handlePointerCancel}
+                      onPointerCancel={handlePointerCancel}
+                      title={occupied ? `Baris ${baris} Kolom ${kolom}${double ? ' (2 ayam)' : ''}` : undefined}
+                      className={`relative rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 select-none h-9 md:h-11 ${
                         occupied
                           ? getSeatColor(checks[key], baris, kolom)
                           : "bg-slate-50 border border-dashed border-slate-200"
                       }`}
                     >
-                      {occupied && renderSeatIcon(checks[key], baris, kolom)}
+                      {occupied && (
+                        <>
+                          {renderSeatIcon(checks[key])}
+                          {double && (
+                            <span className="absolute -top-0.5 -right-0.5 text-[8px] font-black text-white/70 leading-none">
+                              2
+                            </span>
+                          )}
+                        </>
+                      )}
                     </button>
                   );
                 })}
@@ -287,23 +405,35 @@ export default function CageCheckPage() {
                 <div className="w-px md:w-0.5 h-7 md:h-9 bg-slate-100 rounded-full" />
               </div>
 
-              {/* Right side: kolom 5-8 */}
-              <div className="flex-1 grid grid-cols-4 gap-1 md:gap-2">
-                {[5, 6, 7, 8].map((kolom) => {
+              {/* Right side */}
+              <div className={`flex-1 grid gap-1 md:gap-2 ${double ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                {rightCols.map((kolom) => {
                   const occupied = occupiedKoloms.includes(kolom);
                   const key = seatKey(baris, kolom);
                   return (
                     <button
                       key={`r-${kolom}`}
-                      onClick={() => occupied && toggleCage(baris, kolom)}
-                      title={occupied ? `Baris ${baris} Kolom ${kolom}` : undefined}
-                      className={`h-9 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 active:scale-95 ${
+                      onPointerDown={() => handlePointerDown(baris, kolom)}
+                      onPointerUp={() => handlePointerUp(baris, kolom)}
+                      onPointerLeave={handlePointerCancel}
+                      onPointerCancel={handlePointerCancel}
+                      title={occupied ? `Baris ${baris} Kolom ${kolom}${double ? ' (2 ayam)' : ''}` : undefined}
+                      className={`relative rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 select-none h-9 md:h-11 ${
                         occupied
                           ? getSeatColor(checks[key], baris, kolom)
                           : "bg-slate-50 border border-dashed border-slate-200"
                       }`}
                     >
-                      {occupied && renderSeatIcon(checks[key], baris, kolom)}
+                      {occupied && (
+                        <>
+                          {renderSeatIcon(checks[key])}
+                          {double && (
+                            <span className="absolute -top-0.5 -right-0.5 text-[8px] font-black text-white/70 leading-none">
+                              2
+                            </span>
+                          )}
+                        </>
+                      )}
                     </button>
                   );
                 })}
@@ -410,13 +540,16 @@ export default function CageCheckPage() {
                   <div className="w-3.5 h-3.5 rounded-md bg-emerald-500" /> Produksi
                 </div>
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                  <div className="w-3.5 h-3.5 rounded-md bg-blue-500" /> 1 Mg
+                  <div className="w-3.5 h-3.5 rounded-md bg-blue-500" /> 1 Hari
                 </div>
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                  <div className="w-3.5 h-3.5 rounded-md bg-amber-400" /> 2 Mg
+                  <div className="w-3.5 h-3.5 rounded-md bg-amber-400" /> 2 Hari
                 </div>
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                  <div className="w-3.5 h-3.5 rounded-md bg-red-500" /> 3+ Mg
+                  <div className="w-3.5 h-3.5 rounded-md bg-orange-500" /> 3 Hari
+                </div>
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                  <div className="w-3.5 h-3.5 rounded-md bg-red-500" /> 4+ Hari
                 </div>
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
                   <div className="w-3.5 h-3.5 rounded-md bg-gray-900" /> Kosong
