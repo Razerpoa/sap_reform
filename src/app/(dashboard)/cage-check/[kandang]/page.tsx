@@ -31,7 +31,7 @@ export default function CageCheckPage() {
   const [dbRecords, setDbRecords] = useState<any[]>([]);
 
   const SINGLE_KOLOM_COUNT = 8; // single rows: 1-8
-  const DOUBLE_KOLOM_COUNT = 6; // double rows: 2-7
+  const DOUBLE_KOLOM_COUNT = 8; // double rows: 1-8 (cols 1,8 single; cols 2-7 double)
 
   const totalPositions = cageMaster?.jmlKandang || cageMaster?.jmlAyam || 0;
   const totChickens = localJmlAyam || totalPositions;
@@ -47,12 +47,9 @@ export default function CageCheckPage() {
     return (baris - 1) % 8 >= 6;
   }
 
-  function colsInRow(baris: number, doubleRows?: boolean): number {
-    return isDoubleRow(baris, doubleRows) ? DOUBLE_KOLOM_COUNT : SINGLE_KOLOM_COUNT;
-  }
-
-  function startKolom(baris: number, doubleRows?: boolean): number {
-    return isDoubleRow(baris, doubleRows) ? 2 : 1;
+  /** In a double row, only columns 2-7 are double seats; 1 and 8 are single seats. */
+  function isDoubleKolom(baris: number, kolom: number, doubleRows?: boolean): boolean {
+    return isDoubleRow(baris, doubleRows) && kolom >= 2 && kolom <= 7;
   }
 
   function computeTotalBaris(totalKandang: number, doubleRows?: boolean): number {
@@ -61,13 +58,13 @@ export default function CageCheckPage() {
       return Math.ceil(totalKandang / SINGLE_KOLOM_COUNT);
     }
     const BLOCK_ROWS = 8;
-    const BLOCK_CAPACITY = 60; // 6×8 + 2×6
+    const BLOCK_CAPACITY = 64; // 6×8 + 2×8
     const fullBlocks = Math.floor(totalKandang / BLOCK_CAPACITY);
     const remainder = totalKandang % BLOCK_CAPACITY;
     if (remainder === 0) return fullBlocks * BLOCK_ROWS;
     // First 6 rows of a block are single (8 cols each = 48)
     if (remainder <= 48) return fullBlocks * BLOCK_ROWS + Math.ceil(remainder / SINGLE_KOLOM_COUNT);
-    // After 6 single rows, remaining cells go into double rows (6 cols each)
+    // After 6 single rows, remaining cells go into double rows (8 cols each: cols 1,8 single; 2-7 double)
     return fullBlocks * BLOCK_ROWS + 6 + Math.ceil((remainder - 48) / DOUBLE_KOLOM_COUNT);
   }
 
@@ -143,17 +140,15 @@ export default function CageCheckPage() {
         let cumulativeChickens = 0;
         const jmlAyamVal = masterData.jmlAyam;
         for (let baris = 1; baris <= localTotalBaris; baris++) {
-          const start = startKolom(baris, useDoubleRows);
-          const end = start + colsInRow(baris, useDoubleRows) - 1;
-          const double = isDoubleRow(baris, useDoubleRows);
-          for (let kolom = start; kolom <= end; kolom++) {
+          for (let kolom = 1; kolom <= 8; kolom++) {
             if (pos >= localTotalKandang) break;
             pos++;
-            const weight = double ? 2 : 1;
+            const isDouble = isDoubleKolom(baris, kolom, useDoubleRows);
+            const weight = isDouble ? 2 : 1;
             const hasChicken = jmlAyamVal === undefined || (cumulativeChickens + weight <= jmlAyamVal);
             if (hasChicken) cumulativeChickens += weight;
 
-            if (double) {
+            if (isDouble) {
               const key = seatKey(baris, kolom);
               const saved = doubleRecordMap[key];
               doubleMap[key] = saved ?? { left: "PRODUCING", right: "PRODUCING" };
@@ -474,8 +469,8 @@ export default function CageCheckPage() {
 
     const leftSingleCols = [1, 2, 3, 4];
     const rightSingleCols = [5, 6, 7, 8];
-    const leftDoubleCols = [2, 3, 4];
-    const rightDoubleCols = [5, 6, 7];
+    const leftDoubleCols = [1, 2, 3, 4];
+    const rightDoubleCols = [5, 6, 7, 8];
     const hasDoubleRows = !!cageMaster?.doubleRows;
 
     return (
@@ -516,20 +511,17 @@ export default function CageCheckPage() {
           const double = isDoubleRow(baris);
           const leftCols = double ? leftDoubleCols : leftSingleCols;
           const rightCols = double ? rightDoubleCols : rightSingleCols;
-          const start = startKolom(baris);
-          const end = start + colsInRow(baris) - 1;
 
           const occupiedKoloms: number[] = [];
           const occupiedDoubleKoloms: number[] = [];
-          for (let k = start; k <= end; k++) {
-            if (double) {
+          for (let k = 1; k <= 8; k++) {
+            if (isDoubleKolom(baris, k)) {
               if (seatKey(baris, k) in doubleSeats) occupiedDoubleKoloms.push(k);
             } else {
               if (seatKey(baris, k) in singleChecks) occupiedKoloms.push(k);
             }
           }
-          if (double && occupiedDoubleKoloms.length === 0) return null;
-          if (!double && occupiedKoloms.length === 0) return null;
+          if (occupiedDoubleKoloms.length === 0 && occupiedKoloms.length === 0) return null;
 
           return (
             <div key={baris} className="flex items-center gap-1 md:gap-2">
@@ -541,10 +533,30 @@ export default function CageCheckPage() {
               {/* Left side */}
               <div className={`flex-1 grid gap-1 md:gap-2 grid-cols-4`}>
                 {double ? (
-                  <>
-                    <div />
-                    {leftCols.map((kolom) => renderDoubleSeatButton(baris, kolom, seatKey(baris, kolom)))}
-                  </>
+                  leftCols.map((kolom) => {
+                    const key = seatKey(baris, kolom);
+                    if (kolom === 1) {
+                      const occupied = occupiedKoloms.includes(kolom);
+                      return (
+                        <button
+                          key={`l-${kolom}`}
+                          onPointerDown={() => handlePointerDown(baris, kolom)}
+                          onPointerUp={() => handlePointerUp(baris, kolom)}
+                          onPointerLeave={handlePointerCancel}
+                          onPointerCancel={handlePointerCancel}
+                          title={occupied ? `Baris ${baris} Kolom ${kolom}` : undefined}
+                          className={`relative rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 select-none h-9 md:h-11 ${
+                            occupied
+                              ? getSeatColor(singleChecks[key], baris, kolom)
+                              : "bg-slate-50 border border-dashed border-slate-200"
+                          }`}
+                        >
+                          {occupied && renderSeatIcon(singleChecks[key])}
+                        </button>
+                      );
+                    }
+                    return renderDoubleSeatButton(baris, kolom, key);
+                  })
                 ) : (
                   leftCols.map((kolom) => {
                   const occupied = occupiedKoloms.includes(kolom);
@@ -577,10 +589,30 @@ export default function CageCheckPage() {
               {/* Right side */}
               <div className="flex-1 grid gap-1 md:gap-2 grid-cols-4">
                 {double ? (
-                  <>
-                    {rightCols.map((kolom) => renderDoubleSeatButton(baris, kolom, seatKey(baris, kolom)))}
-                    <div />
-                  </>
+                  rightCols.map((kolom) => {
+                    const key = seatKey(baris, kolom);
+                    if (kolom === 8) {
+                      const occupied = occupiedKoloms.includes(kolom);
+                      return (
+                        <button
+                          key={`r-${kolom}`}
+                          onPointerDown={() => handlePointerDown(baris, kolom)}
+                          onPointerUp={() => handlePointerUp(baris, kolom)}
+                          onPointerLeave={handlePointerCancel}
+                          onPointerCancel={handlePointerCancel}
+                          title={occupied ? `Baris ${baris} Kolom ${kolom}` : undefined}
+                          className={`relative rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-150 select-none h-9 md:h-11 ${
+                            occupied
+                              ? getSeatColor(singleChecks[key], baris, kolom)
+                              : "bg-slate-50 border border-dashed border-slate-200"
+                          }`}
+                        >
+                          {occupied && renderSeatIcon(singleChecks[key])}
+                        </button>
+                      );
+                    }
+                    return renderDoubleSeatButton(baris, kolom, key);
+                  })
                 ) : (
                   rightCols.map((kolom) => {
                   const occupied = occupiedKoloms.includes(kolom);
