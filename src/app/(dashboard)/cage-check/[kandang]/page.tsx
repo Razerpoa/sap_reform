@@ -22,6 +22,7 @@ export default function CageCheckPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [originalChecks, setOriginalChecks] = useState("");
+  const [localJmlAyam, setLocalJmlAyam] = useState(0);
 
   // All records loaded from DB (sparse — only explicitly saved positions)
   const [dbRecords, setDbRecords] = useState<any[]>([]);
@@ -29,7 +30,8 @@ export default function CageCheckPage() {
   const SINGLE_KOLOM_COUNT = 8; // single rows: 1-8
   const DOUBLE_KOLOM_COUNT = 6; // double rows: 2-7
 
-  const totalCages = cageMaster?.jmlKandang || cageMaster?.jmlAyam || 0;
+  const totalPositions = cageMaster?.jmlKandang || cageMaster?.jmlAyam || 0;
+  const totChickens = localJmlAyam || totalPositions;
 
   /**
    * 6+2 row pattern: rows 1-6 single (8 cols), 7-8 double (6 cols), repeat.
@@ -59,8 +61,12 @@ export default function CageCheckPage() {
     return fullBlocks * BLOCK_ROWS + 6 + Math.ceil((remainder - 48) / DOUBLE_KOLOM_COUNT);
   }
 
-  const totalBaris = computeTotalBaris(totalCages);
-  const producingCount = Object.values(checks).filter((s) => s === "PRODUCING").length;
+  const totalBaris = computeTotalBaris(totalPositions);
+  const producingCount = Object.entries(checks).reduce((sum, [key, status]) => {
+    if (status !== "PRODUCING") return sum;
+    const baris = parseInt(key.split("-")[0]);
+    return sum + (isDoubleRow(baris) ? 2 : 1);
+  }, 0);
 
   // Refs for streak-day calculation (avoids stale closure in render)
   const dbRecordsRef = useRef(dbRecords);
@@ -101,21 +107,27 @@ export default function CageCheckPage() {
         }
 
         // Initialize: use DB record if saved, otherwise PRODUCING (default)
+        // Positions beyond the chicken budget are EMPTY (cumulative weighted count)
         const checkMap: Record<SeatKey, SeatStatus> = {};
         let pos = 0;
+        let cumulativeChickens = 0;
+        const jmlAyamVal = masterData.jmlAyam;
         for (let baris = 1; baris <= localTotalBaris; baris++) {
           const start = startKolom(baris);
           const end = start + colsInRow(baris) - 1;
           for (let kolom = start; kolom <= end; kolom++) {
-            if (pos < localTotalKandang) {
-              const key = seatKey(baris, kolom);
-              checkMap[key] = recordMap[key] || "PRODUCING";
-              pos++;
-            }
+            if (pos >= localTotalKandang) break;
+            pos++;
+            const key = seatKey(baris, kolom);
+            const weight = isDoubleRow(baris) ? 2 : 1;
+            const hasChicken = jmlAyamVal === undefined || (cumulativeChickens + weight <= jmlAyamVal);
+            if (hasChicken) cumulativeChickens += weight;
+            checkMap[key] = recordMap[key] ?? (hasChicken ? "PRODUCING" : "EMPTY");
           }
         }
 
         setChecks(checkMap);
+        setLocalJmlAyam(cumulativeChickens);
         setOriginalChecks(JSON.stringify(checkMap));
       }
     } catch (err: any) {
@@ -173,11 +185,17 @@ export default function CageCheckPage() {
     pressTargetRef.current = { baris, kolom };
 
     pressTimerRef.current = setTimeout(() => {
-      // Long press → set to EMPTY
+      // Long press → set to EMPTY (no-op if already EMPTY)
       pressTimerRef.current = null;
       if (pressTargetRef.current) {
-        const k = seatKey(pressTargetRef.current.baris, pressTargetRef.current.kolom);
-        setChecks((prev) => ({ ...prev, [k]: "EMPTY" }));
+        const { baris, kolom } = pressTargetRef.current;
+        const k = seatKey(baris, kolom);
+        const weight = isDoubleRow(baris) ? 2 : 1;
+        setChecks((prev) => {
+          if (prev[k] === "EMPTY") return prev; // no-op
+          setLocalJmlAyam((prevAyam) => prevAyam - weight);
+          return { ...prev, [k]: "EMPTY" };
+        });
         pressTargetRef.current = null;
       }
     }, 400);
@@ -192,6 +210,12 @@ export default function CageCheckPage() {
       clearPressTimer();
       setChecks((prev) => {
         const current = prev[key];
+        if (current === "EMPTY") {
+          // EMPTY → PRODUCING: increment localJmlAyam by this position's weight
+          const w = isDoubleRow(baris) ? 2 : 1;
+          setLocalJmlAyam((prevAyam) => prevAyam + w);
+          return { ...prev, [key]: "PRODUCING" };
+        }
         const next = current === "PRODUCING" ? "NOT_PRODUCING" : "PRODUCING";
         return { ...prev, [key]: next };
       });
@@ -253,6 +277,7 @@ export default function CageCheckPage() {
           date: selectedDate,
           cageMasterId: cageMaster.id,
           checks: changedPositions,
+          cageMasterJmlAyam: localJmlAyam,
         }),
       });
 
@@ -276,7 +301,7 @@ export default function CageCheckPage() {
   }
 
   function renderTrainSeats() {
-    if (!cageMaster || totalCages === 0) {
+    if (!cageMaster || totalPositions === 0) {
       return (
         <div className="text-center py-12 text-slate-400 font-medium bg-white rounded-2xl border border-slate-200">
           Kandang ini tidak memiliki kandang. Atur jumlah kandang di Data Master.
@@ -466,7 +491,7 @@ export default function CageCheckPage() {
             Cek Status Produksi
             {cageMaster && (
               <span className="text-slate-400">
-                {" "}&bull; {totalBaris} baris &bull; {cageMaster.jmlKandang || totalCages} kandang &bull; {cageMaster.jmlAyam} ayam
+                {" "}&bull; {totalBaris} baris &bull; {cageMaster.jmlKandang || totalPositions} kandang &bull; {cageMaster.jmlAyam ?? 0} ayam
               </span>
             )}
           </p>
@@ -478,7 +503,7 @@ export default function CageCheckPage() {
       </div>
 
       {/* Summary Card */}
-      {totalCages > 0 && (
+      {totalPositions > 0 && (
         <div className="bg-slate-900 text-white rounded-2xl p-5 mb-6">
           <div className="flex items-center justify-between">
             <div>
@@ -487,7 +512,7 @@ export default function CageCheckPage() {
               </p>
               <p className="text-2xl md:text-3xl font-black mt-1">
                 {producingCount}
-                <span className="text-sm text-slate-400 font-medium"> / {totalCages}</span>
+                <span className="text-sm text-slate-400 font-medium"> / {totChickens}</span>
               </p>
             </div>
             <div className="text-right">
@@ -495,14 +520,14 @@ export default function CageCheckPage() {
                 Persentase
               </p>
               <p className="text-2xl md:text-3xl font-black mt-1">
-                {totalCages > 0 ? Math.round((producingCount / totalCages) * 100) : 0}%
+                {totChickens > 0 ? Math.round((producingCount / totChickens) * 100) : 0}%
               </p>
             </div>
           </div>
           <div className="mt-4 h-2.5 bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-emerald-500 rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${totalCages > 0 ? (producingCount / totalCages) * 100 : 0}%` }}
+              style={{ width: `${totChickens > 0 ? (producingCount / totChickens) * 100 : 0}%` }}
             />
           </div>
         </div>
@@ -534,7 +559,7 @@ export default function CageCheckPage() {
             {renderTrainSeats()}
 
             {/* Legend */}
-            {totalCages > 0 && (
+            {totalPositions > 0 && (
               <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-5 pt-4 border-t border-slate-100">
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
                   <div className="w-3.5 h-3.5 rounded-md bg-emerald-500" /> Produksi

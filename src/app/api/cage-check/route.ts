@@ -13,6 +13,7 @@ const cageCheckSchema = z.object({
   date: z.string().min(1),
   cageMasterId: z.string().min(1),
   checks: z.array(checkItemSchema),
+  cageMasterJmlAyam: z.number().int().optional(),
 });
 
 export async function GET(request: Request) {
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
       date: new Date(validated.date),
       cageMasterId: validated.cageMasterId,
       checks: validated.checks,
+      cageMasterJmlAyam: validated.cageMasterJmlAyam,
     });
     return NextResponse.json(result);
   } catch (error) {

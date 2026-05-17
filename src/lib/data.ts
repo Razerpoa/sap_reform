@@ -562,6 +562,7 @@ export type CageCheckInput = {
   date: Date;
   cageMasterId: string;
   checks: { baris: number; kolom: number; status: "PRODUCING" | "NOT_PRODUCING" | "EMPTY" }[];
+  cageMasterJmlAyam?: number;
 };
 
 /**
@@ -595,33 +596,42 @@ export async function getCageCheckData(date: string, cageMasterId: string) {
  * Records are sparse: only positions the user actually changed get saved.
  * Missing records = PRODUCING (default).
  * If a record already exists for the same (date, position), it is replaced.
+ * Also updates CageMaster.jmlAyam if cageMasterJmlAyam is provided.
  */
 export async function saveCageCheckData(data: CageCheckInput) {
-  const { date, cageMasterId, checks } = data;
+  const { date, cageMasterId, checks, cageMasterJmlAyam } = data;
 
-  if (checks.length > 0) {
-    // Delete any existing records for these positions on this date (in case of re-save)
-    const orConditions = checks.map((c) => ({
-      baris: c.baris,
-      kolom: c.kolom,
-    }));
-    await prisma.cageCheck.deleteMany({
-      where: { date, cageMasterId, OR: orConditions },
-    });
-
-    await prisma.cageCheck.createMany({
-      data: checks.map((c) => ({
-        date,
-        cageMasterId,
+  return await prisma.$transaction(async (tx) => {
+    if (checks.length > 0) {
+      // Delete any existing records for these positions on this date (in case of re-save)
+      const orConditions = checks.map((c) => ({
         baris: c.baris,
         kolom: c.kolom,
-        status: c.status,
-      })),
-    });
-  }
+      }));
+      await tx.cageCheck.deleteMany({
+        where: { date, cageMasterId, OR: orConditions },
+      });
 
-  revalidatePath("/");
-  return { success: true, count: checks.length };
+      await tx.cageCheck.createMany({
+        data: checks.map((c) => ({
+          date,
+          cageMasterId,
+          baris: c.baris,
+          kolom: c.kolom,
+          status: c.status,
+        })),
+      });
+    }
+
+    if (cageMasterJmlAyam !== undefined) {
+      await tx.cageMaster.update({
+        where: { id: cageMasterId },
+        data: { jmlAyam: cageMasterJmlAyam },
+      });
+    }
+
+    return { success: true, count: checks.length };
+  });
 }
 
 // ==================== OTHER EXPENSES DATA ====================
