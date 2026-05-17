@@ -25,8 +25,9 @@ type TrainSeatsGridProps = {
 
 /**
  * Train-seat-style grid of cage check positions.
- * Handles 6+2 row pattern (single and double rows) and renders
- * the correct seat buttons with colour-coded status feedback.
+ * Renders single and double rows with the correct seat buttons
+ * and colour-coded status feedback.
+ * Double rows have all 8 columns as double seats.
  */
 export default function TrainSeatsGrid({
   cageMaster,
@@ -121,7 +122,12 @@ export default function TrainSeatsGrid({
             {/* Left side */}
             <div className="flex-1 grid gap-1 md:gap-2 grid-cols-4">
               {colGroups.left.map((kolom) =>
-                double && kolom > 1 ? (
+                double && kolom === 1 ? (
+                  <div
+                    key={`empty-${baris}-${kolom}`}
+                    className="h-9 md:h-11"
+                  />
+                ) : double ? (
                   <DoubleSeatButton
                     key={`d-${kolom}`}
                     baris={baris}
@@ -154,7 +160,12 @@ export default function TrainSeatsGrid({
             {/* Right side */}
             <div className="flex-1 grid gap-1 md:gap-2 grid-cols-4">
               {colGroups.right.map((kolom) =>
-                double && kolom < 8 ? (
+                double && kolom === 8 ? (
+                  <div
+                    key={`empty-${baris}-${kolom}`}
+                    className="h-9 md:h-11"
+                  />
+                ) : double ? (
                   <DoubleSeatButton
                     key={`d-${kolom}`}
                     baris={baris}

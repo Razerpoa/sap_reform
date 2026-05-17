@@ -139,6 +139,8 @@ export default function CageCheckPage() {
             if (pos >= localTotalKandang) break;
             pos++;
             const isDouble = isDoubleKolom(baris, kolom, useDbDouble);
+            // In double rows, columns 1 and 8 have no cage — skip entirely
+            if (isDouble && (kolom === 1 || kolom === 8)) continue;
             const weight = isDouble ? 2 : 1;
             const hasChicken =
               jmlAyamVal === undefined ||

@@ -6,18 +6,18 @@ export function isDoubleRow(baris: number, doubleRows: boolean): boolean {
   return (baris - 1) % 8 >= 6;
 }
 
-/** In a double row, columns 2-7 are double seats; 1 and 8 remain single. */
+/** In a double row, all 8 columns are double seats. */
 export function isDoubleKolom(
   baris: number,
-  kolom: number,
+  _kolom: number,
   doubleRows: boolean,
 ): boolean {
-  return isDoubleRow(baris, doubleRows) && kolom >= 2 && kolom <= 7;
+  return isDoubleRow(baris, doubleRows);
 }
 
 /**
  * Compute total rows needed for a given number of cages/positions.
- * 6+2 row pattern: rows 1-6 single (8 cols), 7-8 double (8 cols each, 2-7 double), repeat.
+ * 6+2 row pattern: rows 1-6 single (8 cols), 7-8 double (all 8 cols double), repeat.
  * When doubleRows=false, all rows are single (8 cols each).
  * Block = 8 rows (6×8 + 2×8 = 64 cells).
  */
