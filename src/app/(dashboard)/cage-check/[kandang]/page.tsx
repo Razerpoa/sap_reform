@@ -25,7 +25,7 @@ export default function CageCheckPage() {
   const [originalSingleChecks, setOriginalSingleChecks] = useState("");
   const [originalDoubleSeats, setOriginalDoubleSeats] = useState("");
   const [localJmlAyam, setLocalJmlAyam] = useState(0);
-  const [popupTarget, setPopupTarget] = useState<{ baris: number; kolom: number } | null>(null);
+  const [popupTarget, setPopupTarget] = useState<{ baris: number; kolom: number; rect: DOMRect } | null>(null);
 
   // All records loaded from DB (sparse — only explicitly saved positions)
   const [dbRecords, setDbRecords] = useState<any[]>([]);
@@ -41,21 +41,23 @@ export default function CageCheckPage() {
    * Block = 8 rows (6×8 + 2×6 = 60 cells).
    * When doubleRows=false, all rows are single (8 cols each).
    */
-  function isDoubleRow(baris: number): boolean {
-    if (!cageMaster?.doubleRows) return false;
+  function isDoubleRow(baris: number, doubleRows?: boolean): boolean {
+    const enabled = doubleRows !== undefined ? doubleRows : cageMaster?.doubleRows;
+    if (!enabled) return false;
     return (baris - 1) % 8 >= 6;
   }
 
-  function colsInRow(baris: number): number {
-    return isDoubleRow(baris) ? DOUBLE_KOLOM_COUNT : SINGLE_KOLOM_COUNT;
+  function colsInRow(baris: number, doubleRows?: boolean): number {
+    return isDoubleRow(baris, doubleRows) ? DOUBLE_KOLOM_COUNT : SINGLE_KOLOM_COUNT;
   }
 
-  function startKolom(baris: number): number {
-    return isDoubleRow(baris) ? 2 : 1;
+  function startKolom(baris: number, doubleRows?: boolean): number {
+    return isDoubleRow(baris, doubleRows) ? 2 : 1;
   }
 
-  function computeTotalBaris(totalKandang: number): number {
-    if (!cageMaster?.doubleRows) {
+  function computeTotalBaris(totalKandang: number, doubleRows?: boolean): number {
+    const enabled = doubleRows !== undefined ? doubleRows : cageMaster?.doubleRows;
+    if (!enabled) {
       return Math.ceil(totalKandang / SINGLE_KOLOM_COUNT);
     }
     const BLOCK_ROWS = 8;
@@ -103,11 +105,12 @@ export default function CageCheckPage() {
         `/api/master?kandang=${encodeURIComponent(kandang)}&_t=${Date.now()}`
       );
       const masterData = await masterRes.json();
+      const useDoubleRows = masterData.doubleRows !== false;
       setCageMaster(masterData);
 
       if (masterData?.id && (masterData?.jmlKandang > 0 || masterData?.jmlAyam > 0)) {
         const localTotalKandang = masterData.jmlKandang || masterData.jmlAyam;
-        const localTotalBaris = computeTotalBaris(localTotalKandang);
+        const localTotalBaris = computeTotalBaris(localTotalKandang, useDoubleRows);
 
         // Fetch records cumulatively: state as of selectedDate
         const checksRes = await fetch(
@@ -140,9 +143,9 @@ export default function CageCheckPage() {
         let cumulativeChickens = 0;
         const jmlAyamVal = masterData.jmlAyam;
         for (let baris = 1; baris <= localTotalBaris; baris++) {
-          const start = startKolom(baris);
-          const end = start + colsInRow(baris) - 1;
-          const double = isDoubleRow(baris);
+          const start = startKolom(baris, useDoubleRows);
+          const end = start + colsInRow(baris, useDoubleRows) - 1;
+          const double = isDoubleRow(baris, useDoubleRows);
           for (let kolom = start; kolom <= end; kolom++) {
             if (pos >= localTotalKandang) break;
             pos++;
@@ -204,6 +207,11 @@ export default function CageCheckPage() {
       (refDate.getTime() - streakStart.getTime()) / (1000 * 60 * 60 * 24)
     );
   }
+
+  // Clear popup timers when popup closes (stale closure prevention)
+  useEffect(() => {
+    if (!popupTarget) clearPopupPressTimer();
+  }, [popupTarget]);
 
   // Long-press timer refs (single seats)
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -287,6 +295,7 @@ export default function CageCheckPage() {
         setDoubleSeats((prev) => {
           const current = prev[key]?.[side];
           if (current === "EMPTY") return prev;
+          setLocalJmlAyam((prevAyam) => prevAyam - 1);
           return {
             ...prev,
             [key]: { ...prev[key], [side]: "EMPTY" },
@@ -307,6 +316,7 @@ export default function CageCheckPage() {
       setDoubleSeats((prev) => {
         const current = prev[key]?.[side];
         if (current === "EMPTY") {
+          setLocalJmlAyam((prevAyam) => prevAyam + 1);
           return {
             ...prev,
             [key]: { ...prev[key], [side]: "PRODUCING" },
@@ -335,9 +345,7 @@ export default function CageCheckPage() {
     return "bg-blue-500 text-white";
   }
 
-  function renderSeatIcon(status: SeatStatus) {
-    if (status === "EMPTY") return <X className="w-3.5 h-3.5" />;
-    if (status === "PRODUCING") return <CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4" />;
+  function renderSeatIcon(_status: SeatStatus) {
     return null;
   }
 
@@ -366,13 +374,13 @@ export default function CageCheckPage() {
     for (const key of Object.keys(doubleSeats)) {
       const current = doubleSeats[key];
       const original = originalDouble[key];
+      const [bStr, kStr] = key.split("-");
+      const baris = parseInt(bStr), kolom = parseInt(kStr);
       if (!original || current.left !== original.left) {
-        const [b, k] = key.split("-");
-        changes.push({ baris: parseInt(b), kolom: parseInt(k), subPos: 1, status: current.left });
+        changes.push({ baris, kolom, subPos: 1, status: current.left });
       }
       if (!original || current.right !== original.right) {
-        const [b, k] = key.split("-");
-        changes.push({ baris: parseInt(b), kolom: parseInt(k), subPos: 2, status: current.right });
+        changes.push({ baris, kolom, subPos: 2, status: current.right });
       }
     }
 
@@ -420,35 +428,37 @@ export default function CageCheckPage() {
   }
 
   function renderDoubleSeatButton(baris: number, kolom: number, key: string) {
-    const occupied = key in doubleSeats;
-    if (!occupied) {
+    const seat = doubleSeats[key];
+    if (!seat) {
+      // Beyond-capacity slot: render as a clickable seat-like button
       return (
-        <div
+        <button
           key={`d-${kolom}`}
-          className="rounded-lg md:rounded-xl flex items-center justify-center h-9 md:h-11 bg-slate-50 border border-dashed border-slate-200"
+          onClick={(e) => {
+            e.stopPropagation();
+            const rect = e.currentTarget.getBoundingClientRect();
+            setPopupTarget({ baris, kolom, rect });
+          }}
+          className="rounded-lg md:rounded-xl flex items-center justify-center h-9 md:h-11 bg-emerald-500/20 border border-dashed border-emerald-300 transition-all duration-150 select-none opacity-40"
         />
       );
     }
-    const seat = doubleSeats[key];
     return (
       <button
         key={`d-${kolom}`}
         onClick={(e) => {
           e.stopPropagation();
-          setPopupTarget({ baris, kolom });
+          const rect = e.currentTarget.getBoundingClientRect();
+          setPopupTarget({ baris, kolom, rect });
         }}
         className="relative rounded-lg md:rounded-xl flex items-center justify-center h-9 md:h-11 overflow-hidden transition-all duration-150 select-none"
       >
         {/* Left half */}
-        <div className={`flex-1 h-full flex items-center justify-center ${getSeatColor(seat.left, baris, kolom, 1)}`}>
-          {renderSeatIcon(seat.left)}
-        </div>
+        <div className={`flex-1 h-full flex items-center justify-center ${getSeatColor(seat.left, baris, kolom, 1)}`} />
         {/* Vertical divider */}
         <div className="w-px bg-white/50 shrink-0 h-full" />
         {/* Right half */}
-        <div className={`flex-1 h-full flex items-center justify-center ${getSeatColor(seat.right, baris, kolom, 2)}`}>
-          {renderSeatIcon(seat.right)}
-        </div>
+        <div className={`flex-1 h-full flex items-center justify-center ${getSeatColor(seat.right, baris, kolom, 2)}`} />
       </button>
     );
   }
@@ -490,29 +500,7 @@ export default function CageCheckPage() {
             ))}
           </div>
         </div>
-        {/* Double reference */}
-        {hasDoubleRows && (
-          <div className="flex items-center gap-1 md:gap-2 mb-2">
-            <div className="w-8 shrink-0 text-center">
-              <span className="text-[7px] font-black text-amber-500">2x</span>
-            </div>
-            <div className="flex-1 grid grid-cols-3 gap-1 md:gap-2">
-              {leftDoubleCols.map((k) => (
-                <div key={`hld-${k}`} className="text-center text-[10px] font-black text-amber-500/60 uppercase tracking-wider">
-                  {k}
-                </div>
-              ))}
-            </div>
-            <div className="w-4 md:w-8 shrink-0" />
-            <div className="flex-1 grid grid-cols-3 gap-1 md:gap-2">
-              {rightDoubleCols.map((k) => (
-                <div key={`hrd-${k}`} className="text-center text-[10px] font-black text-amber-500/60 uppercase tracking-wider">
-                  {k}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+
 
         {/* Side labels */}
         <div className="flex items-center gap-1 md:gap-2 mb-2">
@@ -545,20 +533,20 @@ export default function CageCheckPage() {
 
           return (
             <div key={baris} className="flex items-center gap-1 md:gap-2">
-              {/* Row number + 2x indicator */}
+              {/* Row number */}
               <div className="w-8 shrink-0 text-center leading-none">
                 <span className="text-[10px] font-black text-slate-300">{baris}</span>
-                {double && (
-                  <span className="block text-[7px] font-black text-amber-500 leading-tight -mt-px">2x</span>
-                )}
               </div>
 
               {/* Left side */}
-              <div className={`flex-1 grid gap-1 md:gap-2 ${double ? 'grid-cols-3' : 'grid-cols-4'}`}>
-                {leftCols.map((kolom) => {
-                  if (double) {
-                    return renderDoubleSeatButton(baris, kolom, seatKey(baris, kolom));
-                  }
+              <div className={`flex-1 grid gap-1 md:gap-2 grid-cols-4`}>
+                {double ? (
+                  <>
+                    <div />
+                    {leftCols.map((kolom) => renderDoubleSeatButton(baris, kolom, seatKey(baris, kolom)))}
+                  </>
+                ) : (
+                  leftCols.map((kolom) => {
                   const occupied = occupiedKoloms.includes(kolom);
                   const key = seatKey(baris, kolom);
                   return (
@@ -578,7 +566,7 @@ export default function CageCheckPage() {
                       {occupied && renderSeatIcon(singleChecks[key])}
                     </button>
                   );
-                })}
+                }))}
               </div>
 
               {/* Aisle */}
@@ -587,11 +575,14 @@ export default function CageCheckPage() {
               </div>
 
               {/* Right side */}
-              <div className={`flex-1 grid gap-1 md:gap-2 ${double ? 'grid-cols-3' : 'grid-cols-4'}`}>
-                {rightCols.map((kolom) => {
-                  if (double) {
-                    return renderDoubleSeatButton(baris, kolom, seatKey(baris, kolom));
-                  }
+              <div className="flex-1 grid gap-1 md:gap-2 grid-cols-4">
+                {double ? (
+                  <>
+                    {rightCols.map((kolom) => renderDoubleSeatButton(baris, kolom, seatKey(baris, kolom)))}
+                    <div />
+                  </>
+                ) : (
+                  rightCols.map((kolom) => {
                   const occupied = occupiedKoloms.includes(kolom);
                   const key = seatKey(baris, kolom);
                   return (
@@ -611,7 +602,7 @@ export default function CageCheckPage() {
                       {occupied && renderSeatIcon(singleChecks[key])}
                     </button>
                   );
-                })}
+                }))}
               </div>
             </div>
           );
@@ -622,61 +613,81 @@ export default function CageCheckPage() {
 
   function renderPopup() {
     if (!popupTarget) return null;
-    const { baris, kolom } = popupTarget;
+    const { baris, kolom, rect } = popupTarget;
     const key = seatKey(baris, kolom);
     const seat = doubleSeats[key];
     if (!seat) return null;
 
+    // Position popup above the seat button
+    const popupTop = rect.top - 8; // 8px gap above
+    const popupLeft = rect.left + rect.width / 2; // center horizontally over button
+
     return (
-      <div
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm"
-        onClick={() => setPopupTarget(null)}
-      >
+      <>
+        {/* Backdrop covers entire screen to catch outside clicks */}
         <div
-          className="bg-white rounded-2xl p-6 shadow-2xl max-w-sm w-full mx-4"
+          className="fixed inset-0 z-[100]"
+          onClick={() => setPopupTarget(null)}
+        />
+        {/* Popup card positioned above the button */}
+        <div
+          className="fixed z-[101]"
+          style={{
+            top: popupTop,
+            left: popupLeft,
+            transform: "translate(-50%, -100%)",
+          }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Title */}
-          <h3 className="text-lg font-black text-slate-900 text-center mb-5">
-            Baris {baris} Kolom {kolom}
-          </h3>
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 p-3 min-w-[180px]">
+            {/* Title */}
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-2.5">
+              B{baris} K{kolom}
+            </p>
 
-          {/* Sub-toggle buttons */}
-          <div className="flex gap-3 mb-5">
-            <SubToggleButton
-              label="KIRI"
-              status={seat.left}
-              baris={baris}
-              kolom={kolom}
-              subPos={1}
-              onPointerDown={() => handlePopupPointerDown("left")}
-              onPointerUp={() => handlePopupPointerUp("left")}
-              onPointerCancel={handlePopupPointerCancel}
-              getSeatColor={getSeatColor}
-            />
-            <SubToggleButton
-              label="KANAN"
-              status={seat.right}
-              baris={baris}
-              kolom={kolom}
-              subPos={2}
-              onPointerDown={() => handlePopupPointerDown("right")}
-              onPointerUp={() => handlePopupPointerUp("right")}
-              onPointerCancel={handlePopupPointerCancel}
-              getSeatColor={getSeatColor}
-            />
-          </div>
+            {/* Sub-toggle buttons */}
+            <div className="flex gap-2 mb-2.5">
+              <SubToggleButton
+                label="KIRI"
+                status={seat.left}
+                baris={baris}
+                kolom={kolom}
+                subPos={1}
+                onPointerDown={() => handlePopupPointerDown("left")}
+                onPointerUp={() => handlePopupPointerUp("left")}
+                onPointerCancel={handlePopupPointerCancel}
+                getSeatColor={getSeatColor}
+              />
+              <SubToggleButton
+                label="KANAN"
+                status={seat.right}
+                baris={baris}
+                kolom={kolom}
+                subPos={2}
+                onPointerDown={() => handlePopupPointerDown("right")}
+                onPointerUp={() => handlePopupPointerUp("right")}
+                onPointerCancel={handlePopupPointerCancel}
+                getSeatColor={getSeatColor}
+              />
+            </div>
 
-          {/* Bottom preview — non-interactive, mirrors current seat colors */}
-          <div className="flex justify-center">
-            <div className="w-20 h-10 rounded-lg flex overflow-hidden">
-              <div className={`flex-1 ${getSeatColor(seat.left, baris, kolom, 1)}`} />
-              <div className="w-px bg-white/50" />
-              <div className={`flex-1 ${getSeatColor(seat.right, baris, kolom, 2)}`} />
+            {/* Bottom preview — non-interactive, mirrors current seat colors */}
+            <div className="flex justify-center">
+              <div className="w-16 h-7 rounded-md flex overflow-hidden border border-slate-100">
+                <div className={`flex-1 ${getSeatColor(seat.left, baris, kolom, 1)}`} />
+                <div className="w-px bg-white/50" />
+                <div className={`flex-1 ${getSeatColor(seat.right, baris, kolom, 2)}`} />
+              </div>
             </div>
           </div>
+
+          {/* Arrow pointing down to the button */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-slate-200 rotate-45"
+            style={{ bottom: "-6px" }}
+          />
         </div>
-      </div>
+      </>
     );
   }
 
@@ -846,17 +857,14 @@ function SubToggleButton({
 }) {
   return (
     <button
-      className={`flex-1 h-20 rounded-xl flex flex-col items-center justify-center gap-1 select-none ${getSeatColor(status, baris, kolom, subPos)}`}
+      className={`flex-1 h-12 rounded-lg flex flex-col items-center justify-center gap-0.5 select-none ${getSeatColor(status, baris, kolom, subPos)}`}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerCancel}
       onPointerCancel={onPointerCancel}
     >
-      <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
+      <span className="text-[9px] font-black uppercase tracking-widest opacity-80 leading-none">
         {label}
-      </span>
-      <span className="text-lg font-black">
-        {status === "EMPTY" ? <X className="w-5 h-5" /> : status === "PRODUCING" ? <CheckCircle2 className="w-5 h-5" /> : "—"}
       </span>
     </button>
   );
