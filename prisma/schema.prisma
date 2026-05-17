@@ -33,6 +33,7 @@ model CageMaster {
   hargaSentral Float   @default(0)
   mortality   Int      @default(0)
   faktorPakan Float   @default(13)
+  doubleRows  Boolean @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -114,11 +115,12 @@ model CageCheck {
   cageMasterId String
   baris        Int
   kolom        Int
+  subPos       Int    @default(0)
   status       CageCheckStatus @default(PRODUCING)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  @@unique([date, cageMasterId, baris, kolom])
+  @@unique([date, cageMasterId, baris, kolom, subPos])
   @@index([cageMasterId, date])
   @@index([date])
 }
