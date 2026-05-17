@@ -15,7 +15,7 @@ type MasterFormProps = {
 export function MasterForm({ data, onSave }: MasterFormProps) {
   const [editing, setEditing] = useState<any>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [newCage, setNewCage] = useState({ kandang: "", jmlAyam: 0, jmlKandang: 0, jmlEmber: 0, jmlPakan: 0, hargaPakan: 7300 });
+  const [newCage, setNewCage] = useState({ kandang: "", jmlAyam: 0, jmlKandang: 0, jmlEmber: 0, jmlPakan: 0, hargaPakan: 7300, doubleRows: true });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const { isAdmin } = useUserRole();
@@ -63,7 +63,7 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
   );
 
   const handleEdit = (item: any) => {
-    setEditing({ ...item });
+    setEditing({ ...item, doubleRows: item.doubleRows ?? true });
   };
 
   const handleSaveMaster = async () => {
@@ -117,7 +117,7 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
     });
     if (res.ok) {
       setIsAddingNew(false);
-      setNewCage({ kandang: "", jmlAyam: 0, jmlKandang: 0, jmlEmber: 0, jmlPakan: 0, hargaPakan: 7300 });
+      setNewCage({ kandang: "", jmlAyam: 0, jmlKandang: 0, jmlEmber: 0, jmlPakan: 0, hargaPakan: 7300, doubleRows: true });
       onSave();
     }
   };
@@ -204,6 +204,21 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
             <InputField label="Jml Kandang" value={newCage.jmlKandang} onChange={(v) => setNewCage({...newCage, jmlKandang: parseInt(v) || 0})} />
             <InputField label="Jml Ember" value={newCage.jmlEmber} onChange={(v) => setNewCage({...newCage, jmlEmber: parseFloat(v) || 0})} />
             <InputField label="Harga Pakan" value={newCage.hargaPakan} onChange={(v) => setNewCage({...newCage, hargaPakan: parseFloat(v) || 0})} />
+          </div>
+          {/* Baris Ganda Toggle */}
+          <div className="flex items-center justify-between px-1 mb-4">
+            <label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Baris Ganda</label>
+            <button
+              type="button"
+              onClick={() => setNewCage({...newCage, doubleRows: !newCage.doubleRows})}
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+                newCage.doubleRows ? 'bg-blue-600' : 'bg-slate-300'
+              }`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+                newCage.doubleRows ? 'translate-x-5' : 'translate-x-0'
+              }`} />
+            </button>
           </div>
           <div className="flex gap-3">
             <button onClick={() => setIsAddingNew(false)} className="flex-1 py-4 border border-slate-200 rounded-2xl font-black text-slate-500 text-xs uppercase tracking-widest">Batal</button>
@@ -386,6 +401,22 @@ export function MasterForm({ data, onSave }: MasterFormProps) {
                     className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-sm font-black outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
                   />
                 </div>
+              </div>
+
+              {/* Baris Ganda Toggle */}
+              <div className="flex items-center justify-between px-2">
+                <label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Baris Ganda</label>
+                <button
+                  type="button"
+                  onClick={() => setEditing({...editing, doubleRows: !editing.doubleRows})}
+                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+                    editing.doubleRows ? 'bg-blue-600' : 'bg-slate-300'
+                  }`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+                    editing.doubleRows ? 'translate-x-5' : 'translate-x-0'
+                  }`} />
+                </button>
               </div>
 
               {/* Calculated Values */}
