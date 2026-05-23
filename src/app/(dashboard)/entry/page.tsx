@@ -43,11 +43,12 @@ export default function EntryPage() {
   const [cashFlowData, setCashFlowData] = useState<any>({ date: new Date() });
   const [salesData, setSalesData] = useState<any[]>([]);
   const [otherExpenses, setOtherExpenses] = useState<any[]>([]);
-  const [newSale, setNewSale] = useState<any>({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, sourceCages: [] });
+  const [newSale, setNewSale] = useState<any>({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, sourceCages: [], pic: "" });
   const [stockData, setStockData] = useState<any[]>([]);
   const [cages, setCages] = useState<any[]>([]);
   const [newExpense, setNewExpense] = useState<any>({ amount: 0, description: "" });
   const [editingExpense, setEditingExpense] = useState<any>(null);
+  const [salesWorkers, setSalesWorkers] = useState<any[]>([]);
 
   // Original data (baseline) - used to detect if user actually made edits
   const [originalData, setOriginalData] = useState<Record<Tab, any>>({
@@ -113,45 +114,52 @@ export default function EntryPage() {
             jmlPeti: parsed.jmlPeti || 0,
             totalKg: parsed.totalKg || 0,
             hargaJual: parsed.hargaJual || 0,
-            sourceCages: parsed.sourceCages || []
+            sourceCages: parsed.sourceCages || [],
+            pic: parsed.pic || ""
           });
           // Set original to draft data (user hasn't edited yet relative to draft)
           setOriginalData(prev => ({ ...prev, sales: { ...parsed } }));
 
           // Fetch sales list to display existing records
-          const [salesRes, stockRes, cagesRes] = await Promise.all([
+          const [salesRes, stockRes, cagesRes, workersRes] = await Promise.all([
             fetch(`/api/sales?date=${dateStr}&_t=${ts}`),
             fetch(`/api/cage-stock?until=${dateStr}&_t=${ts}`),
-            fetch(`/api/master?_t=${ts}`)
+            fetch(`/api/master?_t=${ts}`),
+            fetch(`/api/workers?canSell=true&_t=${ts}`)
           ]);
           const salesData = await salesRes.json();
           const stockData = await stockRes.json();
           const cagesData = await cagesRes.json();
+          const workersData = await workersRes.json();
 
           setSalesData(salesData || []);
           setStockData(Object.entries(stockData || {}).map(([kandang, v]: any) => ({ kandang: kandang, ...v })));
           setCages([...(cagesData || [])]);
+          setSalesWorkers(Array.isArray(workersData) ? workersData : []);
 
           setLoading(false);
           return;
         }
 
         // No draft, fetch all data in parallel
-        const [salesRes, stockRes, cagesRes] = await Promise.all([
+        const [salesRes, stockRes, cagesRes, workersRes] = await Promise.all([
           fetch(`/api/sales?date=${dateStr}&_t=${ts}`),
           fetch(`/api/cage-stock?until=${dateStr}&_t=${ts}`),
-          fetch(`/api/master?_t=${ts}`)
+          fetch(`/api/master?_t=${ts}`),
+          fetch(`/api/workers?canSell=true&_t=${ts}`)
         ]);
 
         const salesData = await salesRes.json();
         const stockData = await stockRes.json();
         const cagesData = await cagesRes.json();
+        const workersData = await workersRes.json();
 
         setSalesData(salesData || []);
         setStockData(Object.entries(stockData || {}).map(([kandang, v]: any) => ({ kandang: kandang, ...v })));
         setCages([...(cagesData || [])]);
+        setSalesWorkers(Array.isArray(workersData) ? workersData : []);
         // Reset newSale to empty and set as original baseline
-        const emptySale = { customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, sourceCages: [] };
+        const emptySale = { customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, sourceCages: [], pic: "" };
         setNewSale(emptySale);
         setOriginalData(prev => ({ ...prev, sales: emptySale }));
       } catch (err: any) {
@@ -256,17 +264,20 @@ export default function EntryPage() {
           setOriginalData(prev => ({ ...prev, production: prodData || {} }));
         }
         if (activeTab === "sales") {
-          // Clear sales form and re-fetch sales list + stock data
-          setNewSale({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, sourceCages: [] });
+          // Clear sales form and re-fetch sales list + stock data + workers
+          setNewSale({ customerName: "", jmlPeti: 0, totalKg: 0, hargaJual: 0, sourceCages: [], pic: "" });
           const ts = Date.now();
-          const [salesRes, stockRes] = await Promise.all([
+          const [salesRes, stockRes, workersRes] = await Promise.all([
             fetch(`/api/sales?date=${selectedDate}&_t=${ts}`),
-            fetch(`/api/cage-stock?until=${selectedDate}&_t=${ts}`)
+            fetch(`/api/cage-stock?until=${selectedDate}&_t=${ts}`),
+            fetch(`/api/workers?canSell=true&_t=${ts}`)
           ]);
           const salesData = await salesRes.json();
           const stockData = await stockRes.json();
+          const workersData = await workersRes.json();
           setSalesData(salesData || []);
           setStockData(Object.entries(stockData || {}).map(([kandang, v]: any) => ({ kandang: kandang, ...v })));
+          setSalesWorkers(Array.isArray(workersData) ? workersData : []);
         }
         
         await new Promise(r => setTimeout(r, 100));
@@ -459,6 +470,7 @@ export default function EntryPage() {
               onDelete={handleDeleteSale}
               stockData={stockData}
               cages={cages}
+              salesWorkers={salesWorkers}
             />
           )}
           {activeTab === "master" && (

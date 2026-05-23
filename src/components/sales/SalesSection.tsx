@@ -50,9 +50,10 @@ type SalesSectionProps = {
   onDelete: (id: string) => void;
   stockData?: StockData[];
   cages?: CageData[];
+  salesWorkers?: any[];
 };
 
-export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, onDelete, stockData = [], cages = [] }: SalesSectionProps) {
+export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, onDelete, stockData = [], cages = [], salesWorkers = [] }: SalesSectionProps) {
   // New state for multi-cage selection
   const [selectedCages, setSelectedCages] = useState<SelectedCage[]>([]);
   const [showPickerModal, setShowPickerModal] = useState(false);
