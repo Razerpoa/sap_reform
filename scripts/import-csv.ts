@@ -276,17 +276,18 @@ async function importWorker(rows: Record<string, any>[]) {
       }
 
       const active = row.active === true || row.active === "true" || row.active === "1" || row.active === 1;
+      const canSell = row.canSell === true || row.canSell === "true" || row.canSell === "1" || row.canSell === 1;
 
       const existing = await prisma.worker.findUnique({ where: { name: String(name) } });
 
       if (existing) {
         await prisma.worker.update({
           where: { name: String(name) },
-          data: { active },
+          data: { active, canSell },
         });
         updated++;
       } else {
-        await prisma.worker.create({ data: { name: String(name), active } });
+        await prisma.worker.create({ data: { name: String(name), active, canSell } });
         inserted++;
       }
     } catch (e: any) {
