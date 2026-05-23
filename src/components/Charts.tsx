@@ -6,6 +6,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  LineChart,
+  Line,
   AreaChart,
   Area,
   BarChart,
@@ -20,7 +22,7 @@ export default function Charts({
   timeframe = "daily",
 }: {
   data: any[];
-  type?: "production" | "finance";
+  type?: "production" | "finance" | "harga";
   timeframe?: "daily" | "weekly" | "monthly";
 }) {
   if (!data || data.length === 0) {
@@ -38,7 +40,61 @@ export default function Charts({
     kg: Number(entry.totalKg) || 0,
     profit: Number(entry.profit) || 0,
     biaya: Number(entry.expenses) || 0,
+    avgHargaSentral: Number(entry.avgHargaSentral) || 0,
+    avgHargaJual: Number(entry.avgHargaJual) || 0,
   }));
+
+  if (type === "harga") {
+    return (
+      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+          <XAxis 
+            dataKey="name" 
+            axisLine={false} 
+            tickLine={false} 
+            tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+            dy={10}
+          />
+          <YAxis 
+            axisLine={false} 
+            tickLine={false} 
+            tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+            tickFormatter={(val) => `Rp ${Number(val).toLocaleString()}`}
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: '#ffffff',
+              borderRadius: '20px',
+              border: '1px solid #f1f5f9',
+              boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+              padding: '12px 16px',
+            }}
+            itemStyle={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase' }}
+            formatter={(value) => `Rp ${Number(value).toLocaleString()}`}
+          />
+          <Line
+            type="monotone"
+            dataKey="avgHargaSentral"
+            stroke="#2563eb"
+            strokeWidth={3}
+            dot={{ fill: '#2563eb', strokeWidth: 2, r: 4 }}
+            activeDot={{ r: 6, strokeWidth: 0 }}
+            animationDuration={1500}
+          />
+          <Line
+            type="monotone"
+            dataKey="avgHargaJual"
+            stroke="#10b981"
+            strokeWidth={3}
+            dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+            activeDot={{ r: 6, strokeWidth: 0 }}
+            animationDuration={1500}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  }
 
   if (type === "finance") {
     return (
