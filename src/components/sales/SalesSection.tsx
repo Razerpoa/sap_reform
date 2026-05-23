@@ -739,7 +739,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
             )}
             <button
               onClick={handleSave}
-              disabled={selectedCages.length === 0 || !newSale.customerName || newSale.hargaJual === 0}
+              disabled={selectedCages.length === 0 || !newSale.customerName || !newSale.pic || newSale.hargaJual === 0}
               className={`${editingSaleId ? 'flex-1' : 'w-full'} bg-blue-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed`}
             >
               <CheckCircle2 className="w-5 h-5" />

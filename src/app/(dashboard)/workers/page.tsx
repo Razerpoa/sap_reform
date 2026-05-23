@@ -140,7 +140,8 @@ export default function WorkersPage() {
         body: JSON.stringify({ 
           id: worker.id, 
           name: worker.name, 
-          active: !worker.active 
+          active: !worker.active,
+          canSell: worker.canSell
         }),
       });
 
@@ -171,6 +172,7 @@ export default function WorkersPage() {
         body: JSON.stringify({ 
           id: worker.id, 
           name: worker.name, 
+          active: worker.active,
           canSell: !worker.canSell
         }),
       });

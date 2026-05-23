@@ -350,6 +350,7 @@ async function importSales(rows: Record<string, any>[]) {
       const data: any = {
         date,
         customerName: String(customerName),
+        pic: String(row.pic || ""),
         jmlPeti: optionalFloat(row.jmlPeti) ?? 0,
         totalKg: optionalFloat(row.totalKg) ?? 0,
         hargaSentral: optionalFloat(row.hargaSentral) ?? 0,
