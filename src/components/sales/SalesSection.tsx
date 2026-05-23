@@ -861,7 +861,12 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                               type="number" 
                               inputMode="numeric"
                               value={pickerPeti} 
-                              onChange={e => setPickerPeti(parseInt(e.target.value) || 0)}
+                              onChange={e => {
+                                const v = parseInt(e.target.value) || "";
+                                if (v != "") {
+                                  setPickerPeti(v);
+                                }
+                              }}
                               onKeyDown={e => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
@@ -878,8 +883,10 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                               inputMode="decimal"
                               value={pickerKg} 
                               onChange={e => {
-                                const v = parseFloat(e.target.value) || 0;
-                                setPickerKg(v >= 15 ? v % 15 : v);
+                                const v = parseFloat(e.target.value) || "";
+                                if (v != "") {
+                                  setPickerKg(v >= 15 ? v % 15 : v);
+                                }
                               }}
                               onKeyDown={e => {
                                 if (e.key === 'Enter') {
