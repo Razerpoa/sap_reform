@@ -12,9 +12,17 @@ import {
   Bar,
 } from "recharts";
 import { format } from "date-fns";
-import { calculateTotalKgFromCageData } from "@/lib/calculations";
+import { id } from "date-fns/locale";
 
-export default function Charts({ data, type = "production" }: { data: any[], type?: "production" | "finance" }) {
+export default function Charts({
+  data,
+  type = "production",
+  timeframe = "daily",
+}: {
+  data: any[];
+  type?: "production" | "finance";
+  timeframe?: "daily" | "weekly" | "monthly";
+}) {
   if (!data || data.length === 0) {
     return (
       <div className="h-full w-full flex items-center justify-center text-slate-400 text-sm italic font-medium">
@@ -23,9 +31,11 @@ export default function Charts({ data, type = "production" }: { data: any[], typ
     );
   }
 
+  const dateFormat = timeframe === "monthly" ? "MMM yyyy" : "dd MMM";
+
   const chartData = data.map((entry) => ({
-    name: entry.date ? format(new Date(entry.date), "dd MMM") : "Unknown",
-    kg: calculateTotalKgFromCageData(entry.cageData || {}) || Number(entry.totalKg) || 0,
+    name: entry.date ? format(new Date(entry.date), dateFormat, { locale: id }) : "Unknown",
+    kg: Number(entry.totalKg) || 0,
     profit: Number(entry.profit) || 0,
     biaya: Number(entry.expenses) || 0,
   }));

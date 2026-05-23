@@ -3,6 +3,12 @@
  * Centralizes all math logic for Production, Sales, and CashFlow
  */
 import { getWIBDateString } from "@/lib/date-utils";
+import {
+  startOfDay, startOfWeek, startOfMonth,
+  endOfDay, endOfWeek, endOfMonth,
+  eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval,
+  isWithinInterval,
+} from "date-fns";
 
 // ==================== CAGE MASTER CALCULATIONS ====================
 
@@ -228,6 +234,83 @@ export function calculateCashFlowStats(entries: any[]) {
   const totalLiquidAssets = saldoRekening + saldoCash;
   
   return { totalProfit, totalExpenses, avgProfit, todayExpenses, monthExpenses, totalLiquidAssets, saldoRekening, saldoCash };
+}
+
+// ==================== AGGREGATION (Dashboard) ====================
+
+export function aggregateDashboardData(
+  productionEntries: any[],
+  cashFlowEntries: any[],
+  salesEntries: any[],
+  timeframe: "daily" | "weekly" | "monthly"
+): Array<{
+  date: Date;
+  totalKg: number;
+  profit: number;
+  expenses: number;
+  avgHargaSentral: number;
+  avgHargaJual: number;
+}> {
+  if (!productionEntries.length) return [];
+
+  const dates = productionEntries.map((p) => new Date(p.date)).filter((d) => !isNaN(d.getTime()));
+  if (!dates.length) return [];
+
+  const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+  const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+
+  const intervals =
+    timeframe === "daily"
+      ? eachDayOfInterval({ start: minDate, end: maxDate })
+      : timeframe === "weekly"
+        ? eachWeekOfInterval({ start: minDate, end: maxDate, weekStartsOn: 1 })
+        : eachMonthOfInterval({ start: minDate, end: maxDate });
+
+  return intervals.map((intervalStart) => {
+    const start =
+      timeframe === "daily"
+        ? startOfDay(intervalStart)
+        : timeframe === "weekly"
+          ? startOfWeek(intervalStart, { weekStartsOn: 1 })
+          : startOfMonth(intervalStart);
+    const end =
+      timeframe === "daily"
+        ? endOfDay(intervalStart)
+        : timeframe === "weekly"
+          ? endOfWeek(intervalStart, { weekStartsOn: 1 })
+          : endOfMonth(intervalStart);
+
+    const prodInInterval = productionEntries.filter(
+      (p) => p.date && isWithinInterval(new Date(p.date), { start, end }),
+    );
+
+    const totalKg = prodInInterval.reduce(
+      (sum: number, p: any) => sum + calculateTotalKgFromCageData(p.cageData || {}),
+      0,
+    );
+
+    const cfInInterval = cashFlowEntries.filter(
+      (cf) => cf.date && isWithinInterval(new Date(cf.date), { start, end }),
+    );
+    const profit = cfInInterval.reduce((sum: number, cf: any) => sum + calculateCashFlowProfit(cf), 0);
+    const expenses = cfInInterval.reduce((sum: number, cf: any) => sum + calculateCashFlowExpenses(cf), 0);
+
+    const salesInInterval = salesEntries.filter(
+      (s) => s.date && isWithinInterval(new Date(s.date), { start, end }),
+    );
+    const avgHargaSentral =
+      salesInInterval.length > 0
+        ? salesInInterval.reduce((sum: number, s: any) => sum + (s.hargaSentral || 0), 0) /
+          salesInInterval.length
+        : 0;
+    const avgHargaJual =
+      salesInInterval.length > 0
+        ? salesInInterval.reduce((sum: number, s: any) => sum + (s.hargaJual || 0), 0) /
+          salesInInterval.length
+        : 0;
+
+    return { date: intervalStart, totalKg, profit, expenses, avgHargaSentral, avgHargaJual };
+  });
 }
 
 // ==================== COMBINED DASHBOARD STATS ====================
