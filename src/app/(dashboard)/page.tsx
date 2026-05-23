@@ -193,6 +193,26 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Harga Sentral Chart — full width below */}
+      <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+          <h3 className="text-lg sm:text-xl font-black text-slate-900 uppercase tracking-tight">Harga</h3>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-blue-600"></div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Harga Sentral</span>
+            </div>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Harga Jual</span>
+            </div>
+          </div>
+        </div>
+        <div className="h-64 sm:h-80 w-full">
+          <Charts data={chartData} type="harga" timeframe={timeframe} />
+        </div>
+      </div>
     </div>
   );
 }
