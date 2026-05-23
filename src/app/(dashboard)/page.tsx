@@ -1,36 +1,103 @@
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
 import { Download, TrendingUp, Package, Layers, DollarSign, Wallet, ShoppingBag, TrendingDown, Landmark, Receipt } from "lucide-react";
 import Link from "next/link";
 import Charts from "@/components/Charts";
 import { PlusCircle, RefreshCw, BarChart2, Clock, CheckCircle2 } from "lucide-react";
 import { calculateDashboardStats, calculateTotalKgFromCageData, calculateCashFlowProfit, calculateCashFlowExpenses } from "@/lib/calculations";
-import { getDashboardData } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/format";
+import { subDays } from "date-fns";
 
-export const dynamic = 'force-dynamic';
+export default function DashboardPage() {
+  const [productionEntries, setProductionEntries] = useState<any[]>([]);
+  const [cashFlowEntries, setCashFlowEntries] = useState<any[]>([]);
+  const [salesEntries, setSalesEntries] = useState<any[]>([]);
+  const [otherExpenses, setOtherExpenses] = useState<any[]>([]);
+  const [timeframe, setTimeframe] = useState(30);
+  const [loading, setLoading] = useState(true);
 
-export default async function DashboardPage() {
-  // Use centralized data fetching
-  const { productionEntries, cashFlowEntries, salesEntries, otherExpenses } = await getDashboardData({ take: 30 });
- 
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const [prodRes, cfRes, salesRes, expRes] = await Promise.all([
+          fetch("/api/production"),
+          fetch("/api/cashflow"),
+          fetch("/api/sales"),
+          fetch("/api/expense"),
+        ]);
+
+        const [prodData, cfData, salesData, expData] = await Promise.all([
+          prodRes.json(),
+          cfRes.json(),
+          salesRes.json(),
+          expRes.json(),
+        ]);
+
+        setProductionEntries(Array.isArray(prodData) ? prodData : []);
+        setCashFlowEntries(Array.isArray(cfData) ? cfData : []);
+        setSalesEntries(Array.isArray(salesData) ? salesData : []);
+        setOtherExpenses(Array.isArray(expData) ? expData : []);
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
   // Use centralized calculation functions
-  const stats = calculateDashboardStats(productionEntries, cashFlowEntries, salesEntries, otherExpenses);
+  const stats = useMemo(
+    () => calculateDashboardStats(productionEntries, cashFlowEntries, salesEntries, otherExpenses),
+    [productionEntries, cashFlowEntries, salesEntries, otherExpenses]
+  );
 
   // Create a map for faster cashflow lookup
-  const cfMap = new Map(cashFlowEntries.map((cf: any) => [cf.date.toISOString().split('T')[0], cf]));
+  const cfMap = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const cf of cashFlowEntries) {
+      if (cf.date) {
+        const dateKey = new Date(cf.date).toISOString().split('T')[0];
+        map.set(dateKey, cf);
+      }
+    }
+    return map;
+  }, [cashFlowEntries]);
 
-  // Prepare data for charts
-  const chartData = productionEntries.slice().reverse().map((p: any) => {
-    const dateKey = p.date.toISOString().split('T')[0];
-    const cf = cfMap.get(dateKey);
-    
-    return {
-      date: p.date,
-      totalKg: calculateTotalKgFromCageData(p.cageData || {}),
-      profit: cf ? calculateCashFlowProfit(cf) : 0,
-      expenses: cf ? calculateCashFlowExpenses(cf) : 0,
-    };
-  });
+  // Prepare data for charts — filtered by timeframe
+  const chartData = useMemo(() => {
+    const cutoffDate = subDays(new Date(), timeframe);
+
+    return productionEntries
+      .filter((p: any) => p.date && new Date(p.date) >= cutoffDate)
+      .slice()
+      .reverse()
+      .map((p: any) => {
+        const dateKey = new Date(p.date).toISOString().split('T')[0];
+        const cf = cfMap.get(dateKey);
+
+        return {
+          date: p.date,
+          totalKg: calculateTotalKgFromCageData(p.cageData || {}),
+          profit: cf ? calculateCashFlowProfit(cf) : 0,
+          expenses: cf ? calculateCashFlowExpenses(cf) : 0,
+        };
+      });
+  }, [productionEntries, cfMap, timeframe]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6 sm:space-y-10">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-pulse text-slate-400 text-lg font-semibold">Memuat data...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6 sm:space-y-10">
@@ -103,6 +170,24 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* Timeframe Selector */}
+      <div className="flex items-center gap-2">
+        {[7, 14, 30, 90].map((days) => (
+          <button
+            key={days}
+            onClick={() => setTimeframe(days)}
+            className={cn(
+              "px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all",
+              timeframe === days
+                ? "bg-slate-900 text-white shadow-sm"
+                : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-50"
+            )}
+          >
+            {days} Hari
+          </button>
+        ))}
+      </div>
+
       {/* Charts Section */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
         <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
@@ -139,10 +224,6 @@ export default async function DashboardPage() {
       </div>
     </div>
   );
-}
-
-function format(date: Date, str: string) {
-  return new Date(date).toLocaleDateString();
 }
 
 // Added 'href' to the props destructuring
