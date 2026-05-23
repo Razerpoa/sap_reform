@@ -305,6 +305,7 @@ export default function SalesReport() {
               <tr className="bg-slate-50">
                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100">Tanggal</th>
                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100">Pelanggan</th>
+                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100">PIC</th>
                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100">Volume</th>
                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100 text-right">Detail</th>
               </tr>
@@ -319,15 +320,20 @@ export default function SalesReport() {
                   <td className="px-8 py-5">
                     <span className="font-bold text-slate-400 text-xs">{format(new Date(item.date), "dd MMM yyyy", { locale: id })}</span>
                   </td>
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-3">
-                       <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                          <User className="w-4 h-4 text-slate-400" />
-                       </div>
-                       <span className="font-black text-slate-900 uppercase tracking-tight">{item.customerName}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5">
+                   <td className="px-8 py-5">
+                     <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                           <User className="w-4 h-4 text-slate-400" />
+                        </div>
+                        <span className="font-black text-slate-900 uppercase tracking-tight">{item.customerName}</span>
+                     </div>
+                   </td>
+                   <td className="px-8 py-5">
+                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                       {item.pic || "-"}
+                     </span>
+                   </td>
+                   <td className="px-8 py-5">
                     <div className="flex items-center gap-2">
                        <span className="font-black text-emerald-600">{formatNumber(item.totalKg)} KG</span>
                        <span className="text-[10px] font-bold text-slate-300">/ {item.jmlPeti} PETI</span>
@@ -389,12 +395,16 @@ export default function SalesReport() {
                     <span className="text-sm font-bold text-slate-400 uppercase tracking-tight">Volume Berat</span>
                     <span className="font-black text-slate-900">{formatNumber(selectedSale.totalKg)} KG</span>
                  </div>
-                 <div className="flex items-center justify-between py-3 border-b border-slate-50">
-                    <span className="text-sm font-bold text-slate-400 uppercase tracking-tight">Jumlah Peti</span>
-                    <span className="font-black text-slate-900">{selectedSale.jmlPeti} Peti</span>
-                 </div>
-                 <div className="flex items-center justify-between py-3 border-b border-slate-50">
-                    <span className="text-sm font-bold text-slate-400 uppercase tracking-tight">Harga Jual / Kg</span>
+                  <div className="flex items-center justify-between py-3 border-b border-slate-50">
+                     <span className="text-sm font-bold text-slate-400 uppercase tracking-tight">Jumlah Peti</span>
+                     <span className="font-black text-slate-900">{selectedSale.jmlPeti} Peti</span>
+                  </div>
+                  <div className="flex items-center justify-between py-3 border-b border-slate-50">
+                     <span className="text-sm font-bold text-slate-400 uppercase tracking-tight">PIC</span>
+                     <span className="font-black text-slate-900">{selectedSale.pic || "-"}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-3 border-b border-slate-50">
+                     <span className="text-sm font-bold text-slate-400 uppercase tracking-tight">Harga Jual / Kg</span>
                     <span className="font-black text-slate-900">Rp {formatNumber(selectedSale.hargaJual)}</span>
                  </div>
               </div>
