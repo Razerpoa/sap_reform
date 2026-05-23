@@ -39,6 +39,7 @@ type SalesData = {
   jmlPeti: number;
   totalKg: number;
   sourceCages: SelectedCage[];
+  pic?: string;
 };
 
 type SalesSectionProps = {
@@ -313,6 +314,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
       ...newSale,
       customerName: sale.customerName || "",
       hargaJual: sale.hargaJual || 0,
+      pic: sale.pic || "",
     });
     setSelectedCages(sourceCages);
     setEditingSaleId(sale.id);
@@ -354,6 +356,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
       jmlPeti: 0,
       totalKg: 0,
       sourceCages: [],
+      pic: "",
     });
   };
 
@@ -421,6 +424,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
       jmlPeti: totalPeti,
       totalKg: totalKg,
       sourceCages: selectedCages,
+      pic: newSale.pic || "",
     };
 
     // Call onSave with the actual data
@@ -436,6 +440,7 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
       jmlPeti: 0,
       totalKg: 0,
       sourceCages: [],
+      pic: "",
     });
   };
 
@@ -561,7 +566,26 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                 )}
               </div>
 
-              {/* Harga Jual */}
+              {/* PIC */}
+              <div className="space-y-2">
+                <label className="text-xs uppercase text-slate-500 font-black tracking-widest px-1">
+                  PIC
+                </label>
+                <select
+                  value={newSale.pic || ""}
+                  onChange={(e) => setNewSale({ ...newSale, pic: e.target.value })}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-black text-sm text-center outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>Pilih PIC...</option>
+                  {salesWorkers.map((w: any) => (
+                    <option key={w.id} value={w.name}>{w.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Harga Jual */}
+            <div className="mt-4">
               <div className="space-y-2">
                 <label className="text-xs uppercase text-slate-500 font-black tracking-widest px-1">
                   Harga Jual (Rp)
@@ -927,6 +951,11 @@ export function SalesSection({ data, newSale, setNewSale, isEditable, onSave, on
                     <p className="text-xs text-blue-600 font-bold uppercase tracking-widest mt-2">
                       Via: {sale.sourceCages.map((c: any) => `${c.kandang}(${c.jmlPeti})`).join(', ')}
                     </p>
+                  )}
+                  {sale.pic && (
+                    <span className="inline-block mt-1.5 px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-black uppercase rounded-md">
+                      PIC: {sale.pic}
+                    </span>
                   )}
                 </div>
                 <div className="text-right shrink-0">
