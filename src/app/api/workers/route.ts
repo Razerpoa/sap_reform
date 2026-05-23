@@ -11,6 +11,7 @@ const WorkerUpdateSchema = z.object({
   id: z.string().min(1, "Worker ID is required"),
   name: z.string().min(1, "Name is required").trim(),
   active: z.boolean().default(true),
+  canSell: z.boolean().default(false),
 });
 
 /**
@@ -24,7 +25,15 @@ export async function GET(request: Request) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
+    const url = new URL(request.url);
+    const canSellParam = url.searchParams.get("canSell");
+
+    const where = canSellParam === "true"
+      ? { canSell: true }
+      : {};
+
     const workers = await prisma.worker.findMany({
+      where,
       orderBy: { name: "asc" },
     });
 
@@ -108,6 +117,7 @@ export async function PUT(request: Request) {
       data: {
         name: validated.name,
         active: validated.active,
+        canSell: validated.canSell,
       },
     });
 

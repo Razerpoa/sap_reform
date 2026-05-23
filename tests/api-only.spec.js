@@ -126,6 +126,43 @@ async function runTests() {
     res.ok ? passed++ : failed++;
   } catch(e) { console.log('✗ Master POST:', e.message); failed++; }
 
+  // Test 9: Worker CREATE – verify default canSell is false
+  try {
+    const res = await fetch('http://localhost:3000/api/workers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: `Test Worker ${Date.now()}` })
+    });
+    const data = await res.json();
+    const ok = res.ok && data.canSell === false;
+    console.log('✓ Worker CREATE (default canSell=false):', ok ? 'PASS' : 'FAIL', `canSell=${data.canSell}`);
+    ok ? passed++ : failed++;
+    if (ok) global.TEST_WORKER_ID = data.id;
+  } catch(e) { console.log('✗ Worker CREATE:', e.message); failed++; }
+
+  // Test 10: Worker UPDATE – set canSell to true
+  try {
+    if (!global.TEST_WORKER_ID) { throw new Error('No worker ID from previous test'); }
+    const res = await fetch('http://localhost:3000/api/workers', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: global.TEST_WORKER_ID, name: 'Updated Worker', canSell: true })
+    });
+    const data = await res.json();
+    const ok = res.ok && data.canSell === true;
+    console.log('✓ Worker UPDATE (canSell=true):', ok ? 'PASS' : 'FAIL', `canSell=${data.canSell}`);
+    ok ? passed++ : failed++;
+  } catch(e) { console.log('✗ Worker UPDATE:', e.message); failed++; }
+
+  // Test 11: Worker GET filter ?canSell=true
+  try {
+    const res = await fetch('http://localhost:3000/api/workers?canSell=true');
+    const data = await res.json();
+    const ok = res.ok && Array.isArray(data) && data.length > 0 && data.every(w => w.canSell === true);
+    console.log('✓ Worker GET ?canSell=true filter:', ok ? 'PASS' : 'FAIL', `count=${Array.isArray(data) ? data.length : 0}`);
+    ok ? passed++ : failed++;
+  } catch(e) { console.log('✗ Worker GET filter:', e.message); failed++; }
+
   console.log(`\nResults: ${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);
 }
