@@ -82,6 +82,7 @@ async function runTests() {
       body: JSON.stringify({
         date: today,
         customerName: 'Test Buyer',
+        pic: 'Test PIC',
         jmlPeti: 10,
         totalKg: 50,
         hargaJual: 26000,
@@ -162,6 +163,26 @@ async function runTests() {
     console.log('✓ Worker GET ?canSell=true filter:', ok ? 'PASS' : 'FAIL', `count=${Array.isArray(data) ? data.length : 0}`);
     ok ? passed++ : failed++;
   } catch(e) { console.log('✗ Worker GET filter:', e.message); failed++; }
+
+  // Test 12: Sales POST rejects missing pic (TDD RED — will fail until pic is added to schema)
+  try {
+    const res = await fetch(`http://localhost:3000/api/sales`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: today,
+        customerName: 'Test Missing PIC',
+        jmlPeti: 5,
+        totalKg: 25,
+        hargaJual: 26000,
+        // pic deliberately omitted
+      })
+    });
+    const data = await res.json();
+    const ok = !res.ok && res.status === 400;
+    console.log('✓ Sales POST rejects missing pic:', ok ? 'PASS' : 'FAIL', res.ok ? `got 200 instead of 400` : (data.error || ''));
+    ok ? passed++ : failed++;
+  } catch(e) { console.log('✗ Sales POST missing pic:', e.message); failed++; }
 
   console.log(`\nResults: ${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);

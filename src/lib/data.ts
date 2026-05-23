@@ -423,6 +423,7 @@ export type SalesSaveInput = {
   id?: string;
   date: Date;
   customerName: string;
+  pic?: string | null;
   jmlPeti?: number | null;
   totalKg?: number | null;
   hargaSentral?: number | null;

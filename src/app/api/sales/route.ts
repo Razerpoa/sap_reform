@@ -9,6 +9,7 @@ const salesSchema = z.object({
   id: z.string().optional(),
   date: z.string().min(1, "Date is required").transform((str) => new Date(str)),
   customerName: z.string().min(1),
+  pic: z.string().min(1, "PIC is required"),
   jmlPeti: z.number().default(0),
   totalKg: z.number().default(0),
   hargaSentral: z.number().optional().nullable(),
