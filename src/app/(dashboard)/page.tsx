@@ -5,17 +5,16 @@ import { Download, TrendingUp, Package, Layers, DollarSign, Wallet, ShoppingBag,
 import Link from "next/link";
 import Charts from "@/components/Charts";
 import { PlusCircle, RefreshCw, BarChart2, Clock, CheckCircle2 } from "lucide-react";
-import { calculateDashboardStats, calculateTotalKgFromCageData, calculateCashFlowProfit, calculateCashFlowExpenses } from "@/lib/calculations";
+import { calculateDashboardStats, aggregateDashboardData } from "@/lib/calculations";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/format";
-import { subDays } from "date-fns";
 
 export default function DashboardPage() {
   const [productionEntries, setProductionEntries] = useState<any[]>([]);
   const [cashFlowEntries, setCashFlowEntries] = useState<any[]>([]);
   const [salesEntries, setSalesEntries] = useState<any[]>([]);
   const [otherExpenses, setOtherExpenses] = useState<any[]>([]);
-  const [timeframe, setTimeframe] = useState(30);
+  const [timeframe, setTimeframe] = useState<"daily" | "weekly" | "monthly">("daily");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,38 +55,10 @@ export default function DashboardPage() {
     [productionEntries, cashFlowEntries, salesEntries, otherExpenses]
   );
 
-  // Create a map for faster cashflow lookup
-  const cfMap = useMemo(() => {
-    const map = new Map<string, any>();
-    for (const cf of cashFlowEntries) {
-      if (cf.date) {
-        const dateKey = new Date(cf.date).toISOString().split('T')[0];
-        map.set(dateKey, cf);
-      }
-    }
-    return map;
-  }, [cashFlowEntries]);
-
-  // Prepare data for charts — filtered by timeframe
+  // Prepare data for charts — aggregated by timeframe
   const chartData = useMemo(() => {
-    const cutoffDate = subDays(new Date(), timeframe);
-
-    return productionEntries
-      .filter((p: any) => p.date && new Date(p.date) >= cutoffDate)
-      .slice()
-      .reverse()
-      .map((p: any) => {
-        const dateKey = new Date(p.date).toISOString().split('T')[0];
-        const cf = cfMap.get(dateKey);
-
-        return {
-          date: p.date,
-          totalKg: calculateTotalKgFromCageData(p.cageData || {}),
-          profit: cf ? calculateCashFlowProfit(cf) : 0,
-          expenses: cf ? calculateCashFlowExpenses(cf) : 0,
-        };
-      });
-  }, [productionEntries, cfMap, timeframe]);
+    return aggregateDashboardData(productionEntries, cashFlowEntries, salesEntries, timeframe);
+  }, [productionEntries, cashFlowEntries, salesEntries, timeframe]);
 
   if (loading) {
     return (
@@ -170,22 +141,22 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Timeframe Selector */}
-      <div className="flex items-center gap-2">
-        {[7, 14, 30, 90].map((days) => (
-          <button
-            key={days}
-            onClick={() => setTimeframe(days)}
-            className={cn(
-              "px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all",
-              timeframe === days
-                ? "bg-slate-900 text-white shadow-sm"
-                : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-50"
-            )}
+      {/* Sticky Timeframe Selector */}
+      <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-4 mb-4 sm:mb-6 sticky top-4 z-10">
+        <div className="max-w-xs">
+          <label className="block text-[10px] uppercase font-black text-slate-400 tracking-wider mb-1.5">
+            Periode
+          </label>
+          <select
+            value={timeframe}
+            onChange={(e) => setTimeframe(e.target.value as "daily" | "weekly" | "monthly")}
+            className="w-full px-3 py-2.5 bg-slate-900 text-white rounded-xl font-black text-sm appearance-none cursor-pointer"
           >
-            {days} Hari
-          </button>
-        ))}
+            <option value="daily">Harian</option>
+            <option value="weekly">Mingguan</option>
+            <option value="monthly">Bulanan</option>
+          </select>
+        </div>
       </div>
 
       {/* Charts Section */}
@@ -199,7 +170,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="h-64 sm:h-80 w-full">
-            <Charts data={chartData} type="production" />
+            <Charts data={chartData} type="production" timeframe={timeframe} />
           </div>
         </div>
 
@@ -218,7 +189,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="h-64 sm:h-80 w-full">
-            <Charts data={chartData} type="finance" />
+            <Charts data={chartData} type="finance" timeframe={timeframe} />
           </div>
         </div>
       </div>
