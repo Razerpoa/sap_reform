@@ -19,6 +19,7 @@ type Worker = {
   id: string;
   name: string;
   active: boolean;
+  canSell: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -159,6 +160,36 @@ export default function WorkersPage() {
     }
   }
 
+  async function handleToggleCanSell(worker: Worker) {
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/workers", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          id: worker.id, 
+          name: worker.name, 
+          canSell: !worker.canSell
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update can sell status");
+      }
+
+      const updated = await res.json();
+      setWorkers(workers.map((w) => (w.id === worker.id ? updated : w)));
+      setTimeout(() => setSuccess(false), 2000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function handleDeleteWorker() {
     if (!deletingId) return;
 
@@ -256,6 +287,7 @@ export default function WorkersPage() {
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-black uppercase tracking-widest text-slate-600">Nama</th>
                 <th className="px-6 py-4 text-left text-xs font-black uppercase tracking-widest text-slate-600">Status</th>
+                <th className="px-6 py-4 text-left text-xs font-black uppercase tracking-widest text-slate-600">Bisa Jual</th>
                 <th className="px-6 py-4 text-left text-xs font-black uppercase tracking-widest text-slate-600">Dibuat</th>
                 <th className="px-6 py-4 text-right text-xs font-black uppercase tracking-widest text-slate-600">Aksi</th>
               </tr>
@@ -292,6 +324,23 @@ export default function WorkersPage() {
                       )}
                     >
                       {worker.active ? "Aktif" : "Nonaktif"}
+                    </button>
+                  </td>
+
+                  {/* Bisa Jual */}
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => handleToggleCanSell(worker)}
+                      disabled={!isAdmin || submitting}
+                      className={cn(
+                        "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all",
+                        worker.canSell 
+                          ? "bg-blue-100 text-blue-700 hover:bg-blue-200" 
+                          : "bg-slate-100 text-slate-500 hover:bg-slate-200",
+                        !isAdmin && "opacity-50 cursor-not-allowed"
+                      )}
+                    >
+                      {worker.canSell ? "Bisa" : "Tidak"}
                     </button>
                   </td>
 
