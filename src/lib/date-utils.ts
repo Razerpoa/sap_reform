@@ -3,20 +3,23 @@ import { startOfDay } from "date-fns";
 /**
  * Returns the current date string in WIB (Asia/Jakarta) timezone
  * Format: YYYY-MM-DD
+ * Accepts both Date objects and ISO date strings (from API JSON responses).
  */
-export function getWIBDateString(date: Date = new Date()) {
+export function getWIBDateString(date: Date | string = new Date()) {
+  const dateObj = typeof date === "string" ? new Date(date) : date;
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jakarta",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(date);
+  }).format(dateObj);
 }
 
 /**
  * Checks if a given date is "today" in the WIB (Asia/Jakarta) timezone.
+ * Accepts both Date objects and ISO date strings.
  */
-export function isTodayWIB(date: Date) {
+export function isTodayWIB(date: Date | string) {
   const targetStr = getWIBDateString(date);
   const todayStr = getWIBDateString(new Date());
   return targetStr === todayStr;

@@ -75,7 +75,7 @@ export default function Charts({
           />
           <Line
             type="monotone"
-            dataKey="avgHargaSentral"
+            dataKey="harga sentral"
             stroke="#2563eb"
             strokeWidth={3}
             dot={{ fill: '#2563eb', strokeWidth: 2, r: 4 }}
@@ -84,7 +84,7 @@ export default function Charts({
           />
           <Line
             type="monotone"
-            dataKey="avgHargaJual"
+            dataKey="harga jual"
             stroke="#10b981"
             strokeWidth={3}
             dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
